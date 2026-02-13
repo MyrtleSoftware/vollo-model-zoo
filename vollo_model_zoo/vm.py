@@ -17,10 +17,11 @@ class Microseconds:
     Type safe wrapper for microseconds.
     """
 
-    value: float
+    microseconds: float
 
+    @beartype
     def __repr__(self) -> str:
-        return f"{self.value:.3f} us"
+        return f"{self.microseconds}us"
 
 
 @beartype

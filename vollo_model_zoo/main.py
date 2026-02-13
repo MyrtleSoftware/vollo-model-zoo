@@ -2,7 +2,14 @@ import argparse
 import importlib
 import os
 
+from dataclasses import asdict
+import json
+
 from beartype import beartype
+
+from vollo_model_zoo.vm import Result
+
+from typing import Generator
 
 
 @beartype
@@ -20,12 +27,16 @@ def get_available_models() -> list[str]:
 
 
 @beartype
-def main() -> None:
+def main() -> int:
     available_models = get_available_models()
 
     parser = argparse.ArgumentParser(description="Run latency tests for Vollo models")
 
     parser.add_argument("model", choices=available_models, help="Model to run")
+
+    parser.add_argument(
+        "-j", "--json", action="store_true", help="Output results in JSON format"
+    )
 
     args = parser.parse_args()
 
@@ -34,12 +45,27 @@ def main() -> None:
     model_module = importlib.import_module(model_module_path)
 
     if hasattr(model_module, "main"):
-        model_module.main()
+        results: Generator[Result] = model_module.main()
     else:
         raise ImportError(
             f"Model module '{model_module_path}' does not have a main() function."
         )
 
+    if args.json:
+        print(json.dumps({args.model: [asdict(r) for r in results]}))
+        return 0
+
+    print(f"VM Results for model '{args.model}':")
+
+    for x in results:
+        print(f"\tParamaters: {x.param_count / 1e6:4.1f}M", end=" ")
+        print(f"Cycles: {x.cycle_count:>5}", end=" ")
+        print(f"Latency: {x.latency_fast.microseconds:4.1f}us", end=" ")
+        print(f"Latency (back-to-back): {x.latency_slow.microseconds:4.1f}us", end=" ")
+        print("", end="\n", flush=True)
+
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    exit(main())
