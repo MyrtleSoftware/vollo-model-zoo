@@ -5,14 +5,14 @@ description = "Exemplar models for the Vollo SDK "
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "beartype>=0.22.9",
-    "torch>=2.10.0",
-    "vollo-compiler>=26.1.2",
-    "vollo-torch>=26.1.2",
+  "beartype>=0.22.9",
+  "torch>=2.10.0",
+  "vollo-compiler>=26.1.2",
+  "vollo-torch>=26.1.2",
 ]
 
 [project.scripts]
-latency = "vollo_model_zoo.latency:main"
+zoo = "vollo_model_zoo.main:main"
 
 [tool.uv]
 package = true

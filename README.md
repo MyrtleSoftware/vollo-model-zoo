@@ -23,5 +23,5 @@ Then:
 2. Try a model out:
 
    ```fish
-   uv run latency mamba
+   uv run zoo mamba
    ```
