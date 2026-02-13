@@ -1,13 +1,15 @@
-from dataclasses import dataclass
+from typing import Generator
+
+from pathlib import Path
 
 import torch
-import vollo_compiler
-import vollo_torch
+from beartype import beartype
 from torch import nn
 from vollo_torch.nn import PaddedConv1d
 
 
 class _1x1Conv1d(nn.Module):
+    @beartype
     def __init__(self, in_channels: int, out_channels: int, bias: bool):
         super().__init__()
 
@@ -18,7 +20,7 @@ class _1x1Conv1d(nn.Module):
             bias=bias,
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.conv(x)
 
 
@@ -92,6 +94,7 @@ class _WaveNetBlock(nn.Module):
 
 
 class WaveNet(nn.Module):
+    @beartype
     def __init__(
         self,
         layers: int = 4,
@@ -144,7 +147,7 @@ class WaveNet(nn.Module):
             _1x1Conv1d(skip_channels, out_channels, bias=bias),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: Tensor of shape (Batch, in_channels, Time)
@@ -164,17 +167,13 @@ class WaveNet(nn.Module):
         return self.end_conv(acc)
 
 
-@dataclass
-class WaveNetResult:
-    layers_x_blocks: int
-    hidden: int
-    param_count_m: float
-    latency_us: float
+@beartype
+def vm_wavenet(
+    hidden: int, layers: int, blocks: int, in_channels: int = 1, out_channels: int = 3
+):
+    from vollo_model_zoo.vm import vollo_info
 
-
-def test_wavenet(hidden: int, layers: int, blocks: int) -> WaveNetResult:
-    in_channels = 1
-    out_channels = 3
+    input = torch.randn(1, in_channels, 5)
 
     model = WaveNet(
         layers=layers,
@@ -186,44 +185,29 @@ def test_wavenet(hidden: int, layers: int, blocks: int) -> WaveNetResult:
         skip_channels=hidden,
     )
 
-    batch_size = 1
-    sequence_length = 5
-    input = torch.randn(batch_size, in_channels, sequence_length)
-    model, _ = vollo_torch.fx.prepare_shape(model, input)
-    nnir = vollo_torch.fx.nnir.to_nnir(model)
-
-    nnir, _ = nnir.streaming_transform(2)
-
-    program = nnir.to_program(vollo_compiler.Config.v80_c6b32())
-
-    program.pack()
-
-    latency = program.compute_duration_per_inference_us()
-    param_count = sum(p.numel() for p in model.parameters())
-
-    return WaveNetResult(
-        layers_x_blocks=layers * blocks,
+    return vollo_info(
+        model,
+        input,
+        time_axis=2,
+        layers=layers,
         hidden=hidden,
-        param_count_m=param_count / 1e6,
-        latency_us=latency,
+        meta=dict(blocks=blocks),
     )
 
 
-def main():
-    scenarios = [
-        # Requested
+@beartype
+def main() -> Generator:
+    for x in [
         dict(layers=4, blocks=1, hidden=80),
-        # Intermediate 4-layer
         dict(layers=4, blocks=1, hidden=32 * 6 * 2),
-        # Max n-layer
         dict(layers=1, blocks=1, hidden=32 * 6 * 10),
         dict(layers=2, blocks=1, hidden=32 * 6 * 7),
         dict(layers=4, blocks=1, hidden=32 * 6 * 5),
-    ]
-
-    for x in scenarios:
-        print(test_wavenet(**x))
+    ]:
+        yield vm_wavenet(**x)
 
 
 if __name__ == "__main__":
-    main()
+    print(f"Model '{Path(__file__).stem}':")
+    for result in main():
+        print(f"\t{result}")
