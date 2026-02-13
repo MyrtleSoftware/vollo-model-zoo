@@ -189,9 +189,9 @@ def vm_wavenet(
         model,
         input,
         time_axis=2,
-        layers=layers,
+        layers=blocks,
         hidden=hidden,
-        meta=dict(blocks=blocks),
+        meta=dict(layers_per_block=layers),
     )
 
 
