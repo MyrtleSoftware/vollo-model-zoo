@@ -30,7 +30,9 @@ def get_available_models() -> list[str]:
 def main() -> int:
     available_models = get_available_models()
 
-    parser = argparse.ArgumentParser(description="Run latency tests for Vollo models")
+    parser = argparse.ArgumentParser(
+        description="Run (compute) latency simulations for Vollo models"
+    )
 
     parser.add_argument("model", choices=available_models, help="Model to run")
 
@@ -55,7 +57,7 @@ def main() -> int:
         print(json.dumps({args.model: [asdict(r) for r in results]}))
         return 0
 
-    print(f"VM Results for model '{args.model}':")
+    print(f"VM results for model '{args.model}':")
 
     for x in results:
         print(f"\tParamaters: {x.param_count / 1e6:4.1f}M", end=" ")
