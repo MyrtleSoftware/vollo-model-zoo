@@ -3,6 +3,7 @@
 ## TODO before release
 
 - [ ] License (which one)
+- [ ] Can we release the Python SDK as a package (simple execution)
 
 ## Quick start
 
