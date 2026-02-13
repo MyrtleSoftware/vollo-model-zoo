@@ -23,5 +23,5 @@ Then:
 2. Try a model out:
 
    ```fish
-   uv run latency.py mamba
+   uv run latency mamba
    ```

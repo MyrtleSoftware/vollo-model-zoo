@@ -10,3 +10,9 @@ dependencies = [
     "vollo-compiler>=26.1.2",
     "vollo-torch>=26.1.2",
 ]
+
+[project.scripts]
+latency = "vollo_model_zoo.latency:main"
+
+[tool.uv]
+package = true
