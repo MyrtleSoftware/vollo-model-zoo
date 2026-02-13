@@ -1,0 +1,12 @@
+[project]
+name = "vollo-model-zoo"
+version = "0.1.0"
+description = "Exemplar models for the Vollo SDK "
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beartype>=0.22.9",
+    "torch>=2.10.0",
+    "vollo-compiler>=26.1.2",
+    "vollo-torch>=26.1.2",
+]

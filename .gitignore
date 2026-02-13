@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# We don't want to track this as it has machine-specific paths for the Vollo SDK
+uv.lock
+
+# Developer-specific files
+.env
+
+# Virtual environments
+.venv
