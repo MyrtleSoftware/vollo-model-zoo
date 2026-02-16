@@ -22,6 +22,6 @@ addopts = "-v"
 
 [dependency-groups]
 dev = [
-    "black>=26.1.0",
+    "pre-commit>=4.5.1",
     "pytest>=9.0.2",
 ]
