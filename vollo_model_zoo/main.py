@@ -38,7 +38,7 @@ def main() -> int:
         "Parameters (M)",
         "Cycles",
         "Latency/us (spaced)",
-        "Latency/us (back-to-back)",
+        "Latency/us (contiguous)",
     ]
 
     # This generates a markdown table
@@ -49,8 +49,8 @@ def main() -> int:
         row = [
             f"{r.param_count / 1e6:4.1f}",
             f"{r.cycle_count}",
-            f"{r.latency_fast.microseconds:4.1f}",
-            f"{r.latency_slow.microseconds:4.1f}",
+            f"{r.latency_spaced.microseconds:4.1f}",
+            f"{r.latency_contiguous.microseconds:4.1f}",
         ]
 
         # Pad each cell to the width of the header

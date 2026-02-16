@@ -30,16 +30,16 @@ class Result:
     Members:
         param_count: Number of parameters in the model.
         cycle_count: Number of cycles per inference.
-        latency_fast: Spaced inference compute latency.
-        latency_slow: Back-to-back inference compute latency.
+        latency_spaced: Spaced inference compute latency.
+        latency_contiguous: Back-to-back inference compute latency.
 
         meta: Other model metadata, i.e. layers, hidden size, etc.
     """
 
     param_count: int
     cycle_count: int
-    latency_fast: Microseconds
-    latency_slow: Microseconds
+    latency_spaced: Microseconds
+    latency_contiguous: Microseconds
 
     meta: Optional[dict[str, Union[int, float, str]]] = None
 
@@ -95,7 +95,7 @@ def vollo_info(
     return Result(
         param_count=sum(p.numel() for p in model.parameters()),
         cycle_count=p.cycle_count_per_inference(),
-        latency_fast=Microseconds(latency_fast),
-        latency_slow=Microseconds(latency_slow),
+        latency_spaced=Microseconds(latency_fast),
+        latency_contiguous=Microseconds(latency_slow),
         meta=meta,
     )
