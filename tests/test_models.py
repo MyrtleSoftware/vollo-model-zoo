@@ -10,6 +10,6 @@ def test_models(model_name: str):
     assert len(results) > 0, f"Model {model_name} returned no results"
 
     for result in results:
-        assert isinstance(result, Result), (
-            f"Model '{model_name}' produced a non-Result object: {type(result)}"
-        )
+        assert isinstance(
+            result, Result
+        ), f"Model '{model_name}' produced a non-Result object: {type(result)}"
