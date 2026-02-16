@@ -168,7 +168,7 @@ class WaveNet(nn.Module):
 
 
 @beartype
-def _vm_wavenet(hidden: int, layers: int, blocks: int):
+def _vm_wavenet(hidden: int, layers: int, blocks: int, config: str):
     # Defer import
     from vollo_model_zoo.vm import vollo_info
 
@@ -190,6 +190,7 @@ def _vm_wavenet(hidden: int, layers: int, blocks: int):
     return vollo_info(
         model,
         input,
+        config=config,
         time_axis=2,
         meta=dict(
             layers=layers,
@@ -200,7 +201,7 @@ def _vm_wavenet(hidden: int, layers: int, blocks: int):
 
 
 @beartype
-def main() -> Generator:
+def main(config: str = "V80") -> Generator:
     for x in [
         dict(layers=4, blocks=1, hidden=32 * 6),
         dict(layers=4, blocks=1, hidden=32 * 6 * 2),
@@ -208,7 +209,7 @@ def main() -> Generator:
         dict(layers=2, blocks=1, hidden=32 * 6 * 7),
         dict(layers=4, blocks=1, hidden=32 * 6 * 5),
     ]:
-        yield _vm_wavenet(**x)
+        yield _vm_wavenet(**x, config=config)
 
 
 if __name__ == "__main__":

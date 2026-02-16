@@ -4,10 +4,12 @@ import json
 import os
 from collections.abc import Generator
 from dataclasses import asdict
+from typing import Optional
 
 from beartype import beartype
+from vollo_compiler import Config
 
-from vollo_model_zoo.vm import Result
+from vollo_model_zoo.vm import CONFIGS, Result
 
 
 @beartype
@@ -18,15 +20,29 @@ def main() -> int:
         description="Run (compute) latency simulations for Vollo models"
     )
 
-    parser.add_argument("model", choices=available_models, help="Model to run")
+    parser.add_argument(
+        "model",
+        choices=available_models,
+        help="Model to run",
+    )
 
     parser.add_argument(
-        "-j", "--json", action="store_true", help="Output results in JSON format"
+        "--config",
+        choices=list(CONFIGS.keys()),
+        default="V80",
+        help="Hardware configuration to simulate",
+    )
+
+    parser.add_argument(
+        "-j",
+        "--json",
+        action="store_true",
+        help="Output results in JSON format",
     )
 
     args = parser.parse_args()
 
-    results = get_model_results(args.model)
+    results = get_model_results(args.model, args.config)
 
     if args.json:
         print(json.dumps({args.model: [asdict(r) for r in results]}))
@@ -90,7 +106,7 @@ def get_available_models() -> list[str]:
 
 
 @beartype
-def get_model_results(model_name: str) -> Generator[Result, None, None]:
+def get_model_results(model_name: str, config: str) -> Generator[Result, None, None]:
     """
     Import the specified model module and call its main() function, this is
     expected to be a generator that yields Result objects.
@@ -99,7 +115,10 @@ def get_model_results(model_name: str) -> Generator[Result, None, None]:
     model_module = importlib.import_module(model_module_path)
 
     if hasattr(model_module, "main"):
-        return model_module.main()
+        if config is None:
+            return model_module.main()
+        else:
+            return model_module.main(config=config)
 
     raise ImportError(
         f"Model module '{model_module_path}' does not have a main() function."

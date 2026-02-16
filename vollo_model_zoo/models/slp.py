@@ -4,7 +4,6 @@ from pathlib import Path
 import torch
 from beartype import beartype
 from torch import nn
-from vollo_torch.nn import PaddedConv1d
 
 
 class SLP(nn.Module):
@@ -46,7 +45,7 @@ class SLP(nn.Module):
 
 
 @beartype
-def _vm_slp(in_features: int, out_features: int):
+def _vm_slp(in_features: int, out_features: int, config: str):
     from vollo_model_zoo.vm import vollo_info
 
     input = torch.randn(1, 5, in_features)
@@ -56,6 +55,7 @@ def _vm_slp(in_features: int, out_features: int):
     return vollo_info(
         model,
         input,
+        config=config,
         time_axis=1,
         meta=dict(
             input=in_features,
@@ -65,14 +65,17 @@ def _vm_slp(in_features: int, out_features: int):
     )
 
 
+# TODO: which config do we want as the default?
+
+
 @beartype
-def main() -> Generator:
+def main(config: str = "V80") -> Generator:
     for x in [
         dict(in_features=128, out_features=128),
         dict(in_features=256, out_features=1024),
         dict(in_features=1024, out_features=1024),
     ]:
-        yield _vm_slp(**x)
+        yield _vm_slp(**x, config=config)
 
 
 if __name__ == "__main__":

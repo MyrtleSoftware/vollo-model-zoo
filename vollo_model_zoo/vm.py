@@ -6,6 +6,14 @@ import vollo_compiler as vc
 import vollo_torch as vt
 from beartype import beartype
 
+CONFIGS = {
+    "V80": vc.Config.v80_c6b32(),
+    "V80LL": vc.Config.v80ll_c6b32(),
+    "IA-420f": vc.Config.ia_420f_c6b32(),
+    "IA-840f": vc.Config.ia_840f_c3b64(),  # TODO: or ia_840f_c2b64d()?
+    "NT400D11": vc.Config.nt400d11_c6b32(),
+}
+
 
 @beartype
 @dataclass(frozen=True)
@@ -37,6 +45,7 @@ class Result:
               use `_` prefixed-keys to hide from default output.
     """
 
+    config: str
     param_count: int
     cycle_count: int
     latency_spaced: Microseconds
@@ -45,9 +54,43 @@ class Result:
     meta: Optional[dict[str, Union[int, float, str]]] = None
 
 
-_DEFAULT_CONFIG: vc.Config = vc.Config.v80_c6b32()
+@beartype
+def vollo_info(
+    model: torch.nn.Module,
+    x: torch.Tensor,
+    *,
+    time_axis: Optional[int],
+    config: str,
+    meta: Optional[dict[str, Union[int, float, str]]] = None,
+) -> Result:
+    """
+    For a given model/input compile it to a vollo program and return
+    key information about the model and it's performance.
+    """
 
-# TODO: what happens when it's not a streaming model?
+    if config not in CONFIGS:
+        raise ValueError(
+            f"Unknown config: {config}, valid configs are: {list(CONFIGS.keys())}"
+        )
+
+    p = _vollo_compile(
+        model,
+        x,
+        time_axis=time_axis,
+        config=CONFIGS[config],
+    )
+
+    latency_fast = p.compute_duration_per_inference_us(spaced=True)
+    latency_slow = p.compute_duration_per_inference_us(spaced=False)
+
+    return Result(
+        config=config,
+        param_count=sum(p.numel() for p in model.parameters()),
+        cycle_count=p.cycle_count_per_inference(),
+        latency_spaced=Microseconds(latency_fast),
+        latency_contiguous=Microseconds(latency_slow),
+        meta=meta,
+    )
 
 
 @beartype
@@ -58,6 +101,8 @@ def _vollo_compile(
     time_axis: Optional[int],
     config: vc.Config,
 ) -> vc.Program:
+    # TODO: test what happens when it's not a streaming model?
+
     # This gives nicer error messages as a first pass.
     model(x)
 
@@ -73,30 +118,3 @@ def _vollo_compile(
     program.pack()  # Should raise error if it doesn't fit
 
     return program
-
-
-@beartype
-def vollo_info(
-    model: torch.nn.Module,
-    x: torch.Tensor,
-    *,
-    time_axis: Optional[int],
-    meta: Optional[dict[str, Union[int, float, str]]] = None,
-    config: vc.Config = _DEFAULT_CONFIG,
-) -> Result:
-    """
-    For a given model/input compile it to a vollo program and return
-    key information about the model and it's performance.
-    """
-    p = _vollo_compile(model, x, time_axis=time_axis, config=config)
-
-    latency_fast = p.compute_duration_per_inference_us(spaced=True)
-    latency_slow = p.compute_duration_per_inference_us(spaced=False)
-
-    return Result(
-        param_count=sum(p.numel() for p in model.parameters()),
-        cycle_count=p.cycle_count_per_inference(),
-        latency_spaced=Microseconds(latency_fast),
-        latency_contiguous=Microseconds(latency_slow),
-        meta=meta,
-    )
