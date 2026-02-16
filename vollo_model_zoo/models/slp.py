@@ -34,10 +34,10 @@ class SLP(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (Batch, in_features, Time)
+            x: Tensor of shape (Batch, Time, in_features)
 
         Returns:
-            x: Tensor of shape (Batch, out_features, Time)
+            x: Tensor of shape (Batch, Time, out_features)
         """
         x = self.slp(x)
         x = torch.nn.functional.relu(x)
