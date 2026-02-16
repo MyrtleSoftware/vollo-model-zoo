@@ -40,14 +40,15 @@ handle all of the things you might need in an MLP, including:
 - Basic multi-layer: [`mlp.py`](./vollo_model_zoo/models/mlp.py)
 - MLP with residuals and RMSNorm: [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py)
 
-The last of these showcases a variety of builtin activation-functions available
-on Vollo, including:
+The last of these showcases a variety of activation-functions available on
+Vollo, including:
 
 - ReLU
 - Sigmoid
 - Tanh
-- Exponential
 - Softplus
+- SiLU
+- ELU
 
 ### Transformer++'s SwiGLU FFN block
 

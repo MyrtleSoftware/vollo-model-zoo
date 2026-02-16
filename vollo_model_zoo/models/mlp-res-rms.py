@@ -6,17 +6,22 @@ from beartype import beartype
 from torch import nn
 
 
-class Exponential(nn.Module):
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return torch.exp(x)
+class ELU(nn.Module):
+    """
+    Not supported natively in Vollo
+    """
+
+    def forward(self, x: torch.Tensor, alpha=1.0) -> torch.Tensor:
+        return torch.where(x >= 0, x, alpha * (torch.exp(x) - 1))
 
 
 ACTIVATIONS = {
     "relu": nn.ReLU,
     "sigmoid": nn.Sigmoid,
     "tanh": nn.Tanh,
-    "exp": Exponential,
     "softplus": nn.Softplus,
+    "silu": nn.SiLU,
+    "elu": ELU,
 }
 
 
@@ -126,7 +131,7 @@ def main(config: str = "V80") -> Generator:
     # Use the same size but vary the activation function
     size_params = dict(num_layers=2, dim=512, hidden_dim=1024)
 
-    for activation in ["relu", "sigmoid", "tanh", "exp", "softplus"]:
+    for activation in ACTIVATIONS.keys():
         yield _vm_mlp_res_rms(**size_params, activation=activation, config=config)
 
 
