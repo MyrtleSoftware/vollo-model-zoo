@@ -32,6 +32,19 @@ def print_table_row(row: list[str]) -> None:
 
 
 @beartype
+def get_model_results(model_name: str) -> Generator[Result, None, None]:
+    model_module_path = f"vollo_model_zoo.models.{model_name}"
+    model_module = importlib.import_module(model_module_path)
+
+    if hasattr(model_module, "main"):
+        return model_module.main()
+
+    raise ImportError(
+        f"Model module '{model_module_path}' does not have a main() function."
+    )
+
+
+@beartype
 def main() -> int:
     available_models = get_available_models()
 
@@ -47,16 +60,7 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    model_module_path = f"vollo_model_zoo.models.{args.model}"
-
-    model_module = importlib.import_module(model_module_path)
-
-    if hasattr(model_module, "main"):
-        results: Generator[Result] = model_module.main()
-    else:
-        raise ImportError(
-            f"Model module '{model_module_path}' does not have a main() function."
-        )
+    results = get_model_results(args.model)
 
     if args.json:
         print(json.dumps({args.model: [asdict(r) for r in results]}))
