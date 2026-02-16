@@ -5,9 +5,10 @@ import os
 from collections.abc import Generator
 from dataclasses import asdict
 from typing import Optional
+from warnings import warn
 
 from beartype import beartype
-from vollo_compiler import Config
+from vollo_compiler import AllocationError
 
 from vollo_model_zoo.vm import CONFIGS, Result
 
@@ -62,22 +63,25 @@ def main() -> int:
     print_table_row(headers)
     print_table_row([f"{'':-<{len(h) - 1}}:" for h in headers])
 
-    for r in results:
-        # Metadata is optional
-        meta = {} if r.meta is None else r.meta
+    try:
+        for r in results:
+            # Metadata is optional
+            meta = {} if r.meta is None else r.meta
 
-        row = [
-            f"{r.param_count / 1e6:4.1f}",
-            f"{r.cycle_count}",
-            f"{r.latency_spaced.microseconds:4.1f}",
-            f"{r.latency_contiguous.microseconds:4.1f}",
-            ",".join(f"{k}={v}" for k, v in meta.items() if not k.startswith("_")),
-        ]
+            row = [
+                f"{r.param_count / 1e6:4.1f}",
+                f"{r.cycle_count}",
+                f"{r.latency_spaced.microseconds:4.1f}",
+                f"{r.latency_contiguous.microseconds:4.1f}",
+                ",".join(f"{k}={v}" for k, v in meta.items() if not k.startswith("_")),
+            ]
 
-        # Pad each cell to the width of the header
-        row = [x.rjust(len(h)) for x, h in zip(row, headers)]
+            # Pad each cell to the width of the header
+            row = [x.rjust(len(h)) for x, h in zip(row, headers)]
 
-        print_table_row(row)
+            print_table_row(row)
+    except AllocationError:
+        warn("Some configurations don's fit on this config")
 
     print(
         "\nTip: this is human readable output; use -j/--json for machine-readable output."
