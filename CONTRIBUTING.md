@@ -18,13 +18,21 @@ We use `pre-commit` to ensure code quality and consistency. The hooks include:
 
 To install the pre-commit hooks, run:
 
-```bash
+```fish
 uv run pre-commit install
 ```
 
 The hooks will then run automatically on every commit. You can also run them
 manually on all files:
 
-```bash
+```fish
 uv run pre-commit run --all-files
+```
+
+## Testing
+
+You can run all the models in the zoo with:
+
+```fish
+uv run pytest
 ```
