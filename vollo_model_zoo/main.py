@@ -67,7 +67,7 @@ def main() -> int:
     headers = [
         "Parameters (M)",
         "Cycles",
-        "Latency/us (fast)",
+        "Latency/us (spaced)",
         "Latency/us (back-to-back)",
     ]
 
