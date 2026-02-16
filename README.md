@@ -29,6 +29,8 @@ uv run zoo --help
 
 ## Models in the zoo
 
+TODO: index here
+
 ### Base multi-layer perceptrons (MLP)
 
 MLP's are the memory-backbone of modern deep learning architectures, Vollo can
@@ -60,8 +62,12 @@ how to implement a fused calculation of the gate/activation.
 
 ### ResMLP
 
+TODO:
+
 - ResMLP: <https://arxiv.org/pdf/2105.03404> (this is an MLP-mixer)
 - Show softmax
+
+### Mixture of experts (MOE)
 
 ### Basic convolutional neural networks (CNN)
 
@@ -93,3 +99,9 @@ Before release:
     - xLSTM/mLSTM
     - RWKV 6/7
     - TTT: <https://arxiv.org/pdf/2407.04620>
+
+Gig ideas:
+
+- Strange ensembles?
+- Vector quantizer?
+- MOE (William shows it is with weight writing!)
