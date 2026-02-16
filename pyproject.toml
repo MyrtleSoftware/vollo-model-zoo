@@ -17,6 +17,9 @@ zoo = "vollo_model_zoo.main:main"
 [tool.uv]
 package = true
 
+[tool.pytest.ini_options]
+addopts = "-v"
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
