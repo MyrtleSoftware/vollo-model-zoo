@@ -6,7 +6,7 @@ from beartype import beartype
 from torch import nn
 
 
-class ELU(nn.Module):
+class _ELU(nn.Module):
     """
     Not supported natively in Vollo
     """
@@ -21,7 +21,7 @@ ACTIVATIONS = {
     "tanh": nn.Tanh,
     "softplus": nn.Softplus,
     "silu": nn.SiLU,
-    "elu": ELU,
+    "elu": _ELU,
 }
 
 
