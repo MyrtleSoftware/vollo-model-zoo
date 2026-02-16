@@ -34,6 +34,7 @@ class Result:
         latency_contiguous: Back-to-back inference compute latency.
 
         meta: Other model metadata, i.e. layers, hidden size, etc.
+              use `_` prefixed-keys to hide from default output.
     """
 
     param_count: int

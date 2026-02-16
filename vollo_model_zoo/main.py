@@ -47,12 +47,15 @@ def main() -> int:
     print_table_row([f"{'':-<{len(h) - 1}}:" for h in headers])
 
     for r in results:
+        # Metadata is optional
+        meta = {} if r.meta is None else r.meta
+
         row = [
             f"{r.param_count / 1e6:4.1f}",
             f"{r.cycle_count}",
             f"{r.latency_spaced.microseconds:4.1f}",
             f"{r.latency_contiguous.microseconds:4.1f}",
-            ",".join(f"{k}={v}" for k, v in (r.meta or {}).items()),
+            ",".join(f"{k}={v}" for k, v in meta.items() if not k.startswith("_")),
         ]
 
         # Pad each cell to the width of the header
