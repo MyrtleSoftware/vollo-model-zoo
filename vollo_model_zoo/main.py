@@ -37,8 +37,9 @@ def main() -> int:
     headers = [
         "Parameters (M)",
         "Cycles",
-        "Latency/us (spaced)",
+        "Latency/us",
         "Latency/us (contiguous)",
+        " ".join("" for _ in range(50)) + "Metadata",
     ]
 
     # This generates a markdown table
@@ -51,6 +52,7 @@ def main() -> int:
             f"{r.cycle_count}",
             f"{r.latency_spaced.microseconds:4.1f}",
             f"{r.latency_contiguous.microseconds:4.1f}",
+            ",".join(f"{k}={v}" for k, v in (r.meta or {}).items()),
         ]
 
         # Pad each cell to the width of the header
