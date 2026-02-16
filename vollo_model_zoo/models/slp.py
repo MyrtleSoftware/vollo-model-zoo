@@ -57,9 +57,9 @@ def _vm_slp(in_features: int, out_features: int):
         model,
         input,
         time_axis=1,
-        layers=1,
-        hidden=out_features,
         meta=dict(
+            input=in_features,
+            output=out_features,
             activation="ReLU",
         ),
     )

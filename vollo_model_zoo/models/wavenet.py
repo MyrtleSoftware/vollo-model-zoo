@@ -168,10 +168,12 @@ class WaveNet(nn.Module):
 
 
 @beartype
-def _vm_wavenet(
-    hidden: int, layers: int, blocks: int, in_channels: int = 1, out_channels: int = 3
-):
+def _vm_wavenet(hidden: int, layers: int, blocks: int):
+    # Defer import
     from vollo_model_zoo.vm import vollo_info
+
+    in_channels = 1
+    out_channels = 3
 
     input = torch.randn(1, in_channels, 5)
 
@@ -189,9 +191,11 @@ def _vm_wavenet(
         model,
         input,
         time_axis=2,
-        layers=blocks,
-        hidden=hidden,
-        meta=dict(layers_per_block=layers),
+        meta=dict(
+            layers=layers,
+            blocks=blocks,
+            hidden=hidden,
+        ),
     )
 
 

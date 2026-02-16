@@ -33,19 +33,13 @@ class Result:
         latency_fast: Spaced inference compute latency.
         latency_slow: Back-to-back inference compute latency.
 
-        layers: Number of layers (or-equivilent) in the model.
-        hidden: Hidden-size (if applicable) of the model.
-
-        meta: Other model metadata.
+        meta: Other model metadata, i.e. layers, hidden size, etc.
     """
 
     param_count: int
     cycle_count: int
     latency_fast: Microseconds
     latency_slow: Microseconds
-
-    layers: Optional[int] = None
-    hidden: Optional[int] = None
 
     meta: Optional[dict[str, Union[int, float, str]]] = None
 
@@ -85,8 +79,6 @@ def vollo_info(
     model: torch.nn.Module,
     x: torch.Tensor,
     *,
-    layers: Optional[int],
-    hidden: Optional[int],
     time_axis: Optional[int],
     meta: Optional[dict[str, Union[int, float, str]]] = None,
     config: vc.Config = _DEFAULT_CONFIG,
@@ -105,7 +97,5 @@ def vollo_info(
         cycle_count=p.cycle_count_per_inference(),
         latency_fast=Microseconds(latency_fast),
         latency_slow=Microseconds(latency_slow),
-        layers=layers,
-        hidden=hidden,
         meta=meta,
     )
