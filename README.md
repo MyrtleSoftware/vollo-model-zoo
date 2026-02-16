@@ -28,6 +28,12 @@ Then:
    uv run zoo wavenet
    ```
 
+To see all available models (as well as other options), run:
+
+```fish
+uv run zoo --help
+```
+
 ## Models in the zoo
 
 ### Base multi-layer perceptrons (MLP)
