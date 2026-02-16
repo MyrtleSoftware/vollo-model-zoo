@@ -24,5 +24,5 @@ Then:
 2. Try a model out:
 
    ```fish
-   uv run zoo mamba
+   uv run zoo wavenet
    ```
