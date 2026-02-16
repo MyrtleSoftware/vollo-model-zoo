@@ -10,7 +10,7 @@
 
 Pre-requisites:
 
-- Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
+- Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
 - Install the [Vollo SDK](https://vollo.myrtle.ai/latest/installation.html)
 
 Then:
