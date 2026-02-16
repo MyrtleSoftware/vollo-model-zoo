@@ -59,7 +59,7 @@ layer. This block is a key component of the transformer architecture and is
 responsible for processing the output of the attention mechanism. You can find
 an implementation of this block in
 [`ffn-swiglu.py`](./vollo_model_zoo/models/ffn-swiglu.py), which demonstrates
-how to implement a fused calculation of the gate/activation.
+how to implement a fused calculation of the gate/value activation.
 
 ### ResMLP
 
@@ -102,7 +102,7 @@ Before release:
     - RWKV 6/7
     - TTT: <https://arxiv.org/pdf/2407.04620>
 
-Gig ideas:
+Big ideas:
 
 - Strange ensembles?
 - Vector quantizer?

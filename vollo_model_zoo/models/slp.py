@@ -21,7 +21,7 @@ class SLP(nn.Module):
                in_features:          Number of input features
                out_features:         Number of output features
                activation:           Whether to use a ReLU activation
-               bias:                 Whether to use bias in the convolutional layer
+               bias:                 Whether to use bias in the linear layer
         """
         super().__init__()
 
