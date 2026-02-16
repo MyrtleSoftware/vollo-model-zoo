@@ -1,13 +1,10 @@
 from dataclasses import dataclass, field
-from beartype import beartype
-
 from typing import Optional, Union
 
-
 import torch
-
 import vollo_compiler as vc
 import vollo_torch as vt
+from beartype import beartype
 
 
 @beartype
