@@ -25,6 +25,7 @@ class _1x1Conv1d(nn.Module):
 
 
 class _WaveNetBlock(nn.Module):
+    @beartype
     def __init__(
         self,
         residual_channels: int,
@@ -58,7 +59,7 @@ class _WaveNetBlock(nn.Module):
             bias=bias,
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Following:
             https://github.com/vincentherrmann/pytorch-wavenet/blob/master/wavenet_model.py

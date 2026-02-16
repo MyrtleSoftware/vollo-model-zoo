@@ -27,6 +27,11 @@ def get_available_models() -> list[str]:
 
 
 @beartype
+def print_table_row(row: list[str]) -> None:
+    print("  | " + " | ".join(row) + " |")
+
+
+@beartype
 def main() -> int:
     available_models = get_available_models()
 
@@ -59,12 +64,33 @@ def main() -> int:
 
     print(f"VM results for model '{args.model}':")
 
-    for x in results:
-        print(f"\tParamaters: {x.param_count / 1e6:4.1f}M", end=" ")
-        print(f"Cycles: {x.cycle_count:>5}", end=" ")
-        print(f"Latency: {x.latency_fast.microseconds:4.1f}us", end=" ")
-        print(f"Latency (back-to-back): {x.latency_slow.microseconds:4.1f}us", end=" ")
-        print("", end="\n", flush=True)
+    headers = [
+        "Parameters (M)",
+        "Cycles",
+        "Latency/us (fast)",
+        "Latency/us (back-to-back)",
+    ]
+
+    # This generates a markdown table
+    print_table_row(headers)
+    print_table_row([f"{'':-<{len(h) - 1}}:" for h in headers])
+
+    for r in results:
+        row = [
+            f"{r.param_count / 1e6:4.1f}",
+            f"{r.cycle_count}",
+            f"{r.latency_fast.microseconds:4.1f}",
+            f"{r.latency_slow.microseconds:4.1f}",
+        ]
+
+        # Pad each cell to the width of the header
+        row = [x.rjust(len(h)) for x, h in zip(row, headers)]
+
+        print_table_row(row)
+
+    print(
+        "Note: this is human readable output; use -j/--json for machine-readable output."
+    )
 
     return 0
 
