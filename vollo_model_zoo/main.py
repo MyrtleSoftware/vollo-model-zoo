@@ -89,7 +89,7 @@ def main() -> int:
         print_table_row(row)
 
     print(
-        "Note: this is human readable output; use -j/--json for machine-readable output."
+        "Tip: this is human readable output; use -j/--json for machine-readable output."
     )
 
     return 0
