@@ -47,11 +47,7 @@ class Result:
     layers: Optional[int] = None
     hidden: Optional[int] = None
 
-    meta: Optional[dict[str, Union[int, float]]] = None
-
-    # def __repr__(self) -> str:
-    #     # only print if not None/empty
-    #     return "".
+    meta: Optional[dict[str, Union[int, float, str]]] = None
 
 
 _DEFAULT_CONFIG: vc.Config = vc.Config.v80_c6b32()
@@ -92,7 +88,7 @@ def vollo_info(
     layers: Optional[int],
     hidden: Optional[int],
     time_axis: Optional[int],
-    meta: Optional[dict[str, Union[int, float]]] = None,
+    meta: Optional[dict[str, Union[int, float, str]]] = None,
     config: vc.Config = _DEFAULT_CONFIG,
 ) -> Result:
     """
