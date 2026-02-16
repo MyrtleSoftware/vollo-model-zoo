@@ -1,6 +1,5 @@
-from typing import Generator
-
 from pathlib import Path
+from typing import Generator
 
 import torch
 from beartype import beartype
