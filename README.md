@@ -80,6 +80,7 @@ Before release:
 - [ ] Can we release the Python SDK as a package (simple execution)
   - [ ] Then we can add some github actions?
 - [ ] Generating a latency report for all the models in the zoo
+- [ ] Do we want the default config to run v80 and ia-840f?
 
 - CNN:
   - Wavenet
