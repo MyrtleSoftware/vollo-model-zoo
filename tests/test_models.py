@@ -13,8 +13,14 @@ def is_sorted(xs, *, key):
     return all(a <= b for a, b in pairwise(map(key, xs)))
 
 
+def idfn(config):
+    if config is None:
+        return "default"
+    return config
+
+
+@pytest.mark.parametrize("config", [None, *CONFIGS.keys()], ids=idfn)
 @pytest.mark.parametrize("model_name", get_available_models())
-@pytest.mark.parametrize("config", [None, *CONFIGS.keys()])
 @beartype
 def test_models(model_name: str, config: Optional[str]):
     try:
