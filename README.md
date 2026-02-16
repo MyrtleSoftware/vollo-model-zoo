@@ -5,6 +5,7 @@
 - [ ] License (which one)
 - [ ] Can we release the Python SDK as a package (simple execution)
   - [ ] Then we can add some github actions?
+- [ ] Generating a latency report for all the models in the zoo
 
 ## Quick start
 
@@ -26,3 +27,63 @@ Then:
    ```fish
    uv run zoo wavenet
    ```
+
+## Models in the zoo
+
+### Base multi-layer perceptrons (MLP)
+
+MLP's are the memory-backbone of modern deep learning architectures, Vollo can
+handle all of the things you might need in an MLP, including:
+
+- Basic single layer: [`slp.py`](./vollo_model_zoo/models/slp.py)
+- Basic multi-layer: [`mlp.py`](./vollo_model_zoo/models/mlp.py)
+- MLP with residuals and RMSNorm: [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py)
+
+The last of these showcases a variety of builtin activation-functions available
+on Vollo, including:
+
+- ReLU
+- Sigmoid
+- Tanh
+- Exponential
+- Softplus
+
+### Transformer++'s SwiGLU FFN block
+
+This is the feed-forward block, popularized by Llama/Mistral, that you'll find
+in many modern transformer architectures. It consists of a linear layer,
+followed by a gated activation function (SwiGLU), and then another linear
+layer. This block is a key component of the transformer architecture and is
+responsible for processing the output of the attention mechanism. You can find
+an implementation of this block in
+[`ffn-swiglu.py`](./vollo_model_zoo/models/ffn-swiglu.py), which demonstrates
+how to implement a fused calculation of the gate/activation.
+
+### ResMLP
+
+- ResMLP: <https://arxiv.org/pdf/2105.03404> (this is an MLP-mixer)
+- Show softmax
+
+### Basic convolutional neural networks (CNN)
+
+TODO:
+
+- CNN:
+  - Wavenet
+  - Demo `if tracing`
+- LSTM:
+  - Multilayer
+  - Residuals + normalization + FFN (a.k.a Transformer++)
+    - Mixed precision (float 8) on the FFN
+  - **Find a named model**
+- Scan:
+  - S3/S4:
+    - Float 32 hidden state
+  - Multi input/output/state
+  - GRU/LSTM to demo full performance vs builtin
+  - Mamba1 / Mamba2
+  - Other models:
+    - RetNet: <https://arxiv.org/abs/2307.08621>
+    - xLSTM/mLSTM
+    - RWKV 6/7
+    - TTT: <https://arxiv.org/pdf/2407.04620>
