@@ -202,7 +202,7 @@ def _vm_wavenet(hidden: int, layers: int, blocks: int):
 @beartype
 def main() -> Generator:
     for x in [
-        dict(layers=4, blocks=1, hidden=80),
+        dict(layers=4, blocks=1, hidden=32 * 6),
         dict(layers=4, blocks=1, hidden=32 * 6 * 2),
         dict(layers=1, blocks=1, hidden=32 * 6 * 10),
         dict(layers=2, blocks=1, hidden=32 * 6 * 7),
