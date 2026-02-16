@@ -10,7 +10,7 @@ from vollo_model_zoo.vm import CONFIGS, Result
 
 
 def is_sorted(xs, *, key):
-    return all(key(a) <= key(b) for a, b in pairwise(xs))
+    return all(a <= b for a, b in pairwise(map(key, xs)))
 
 
 @pytest.mark.parametrize("model_name", get_available_models())
