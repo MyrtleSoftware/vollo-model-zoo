@@ -3,9 +3,10 @@
 ## Repo structure
 
 We follow the Hugging Face model, each example model should be self-contained
-in a single file. This enables the easiest copy-paste reproducibility for
-users. Hence, each model file should not directly import any `vollo_model_zoo`
-components.
+in a single file. This enables the easiest copy-paste reproducibility for users
+and (more importantly) makes it easier to understand a model without jumping
+between files in an editor. Hence, each model file should not directly import
+any `vollo_model_zoo` components.
 
 ## Pre-commit Hooks
 
