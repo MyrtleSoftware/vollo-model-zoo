@@ -1,12 +1,5 @@
 # Vollo model zoo
 
-## TODO before release
-
-- [ ] License (which one)
-- [ ] Can we release the Python SDK as a package (simple execution)
-  - [ ] Then we can add some github actions?
-- [ ] Generating a latency report for all the models in the zoo
-
 ## Quick start
 
 Pre-requisites:
@@ -72,7 +65,14 @@ how to implement a fused calculation of the gate/activation.
 
 ### Basic convolutional neural networks (CNN)
 
-TODO:
+## TODO
+
+Before release:
+
+- [ ] License (which one)
+- [ ] Can we release the Python SDK as a package (simple execution)
+  - [ ] Then we can add some github actions?
+- [ ] Generating a latency report for all the models in the zoo
 
 - CNN:
   - Wavenet
