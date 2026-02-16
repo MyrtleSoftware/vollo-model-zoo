@@ -4,6 +4,7 @@
 
 - [ ] License (which one)
 - [ ] Can we release the Python SDK as a package (simple execution)
+  - [ ] Then we can add some github actions?
 
 ## Quick start
 
