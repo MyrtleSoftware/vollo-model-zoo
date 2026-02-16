@@ -30,7 +30,7 @@ def main() -> int:
         "--config",
         choices=list(CONFIGS.keys()),
         default="V80",
-        help="Hardware configuration to simulate",
+        help="Hardware configuration (FPGA) to simulate",
     )
 
     parser.add_argument(
@@ -48,7 +48,7 @@ def main() -> int:
         print(json.dumps({args.model: [asdict(r) for r in results]}))
         return 0
 
-    print(f"VM results for model '{args.model}':")
+    print(f"VM results for model '{args.model}' with {args.config} config:\n")
 
     headers = [
         "Parameters (M)",
@@ -80,7 +80,7 @@ def main() -> int:
         print_table_row(row)
 
     print(
-        "Tip: this is human readable output; use -j/--json for machine-readable output."
+        "\nTip: this is human readable output; use -j/--json for machine-readable output."
     )
 
     return 0
@@ -106,7 +106,9 @@ def get_available_models() -> list[str]:
 
 
 @beartype
-def get_model_results(model_name: str, config: str) -> Generator[Result, None, None]:
+def get_model_results(
+    model_name: str, config: Optional[str]
+) -> Generator[Result, None, None]:
     """
     Import the specified model module and call its main() function, this is
     expected to be a generator that yields Result objects.
@@ -114,20 +116,20 @@ def get_model_results(model_name: str, config: str) -> Generator[Result, None, N
     model_module_path = f"vollo_model_zoo.models.{model_name}"
     model_module = importlib.import_module(model_module_path)
 
-    if hasattr(model_module, "main"):
-        if config is None:
-            return model_module.main()
-        else:
-            return model_module.main(config=config)
+    if not hasattr(model_module, "main"):
+        raise ImportError(
+            f"Model module '{model_module_path}' does not have a callable main() function."
+        )
 
-    raise ImportError(
-        f"Model module '{model_module_path}' does not have a main() function."
-    )
+    if config is None:
+        return model_module.main()
+    else:
+        return model_module.main(config=config)
 
 
 @beartype
 def print_table_row(row: list[str]) -> None:
-    print("  | " + " | ".join(row) + " |")
+    print("| " + " | ".join(row) + " |")
 
 
 if __name__ == "__main__":
