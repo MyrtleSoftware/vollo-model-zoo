@@ -33,12 +33,17 @@ uv run zoo --help
 - [Transformer++'s SwiGLU FFN block](transformer++'s-swiglu-ffn-block)
 - [ResMLP](#resmlp)
 
-### Basic multi-layer perceptrons (MLP)
+### Basic multilayer perceptrons (MLP)
 
 Code: [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py)
 
-MLP's are the memory-backbone of modern deep learning architectures, Vollo can
-handle all the things you might need in an MLP, including:
+Multilayer perceptrons are the memory-backbone of modern deep learning
+architectures, an MLP layer/block at its core is a combination of:
+
+1. Linear layer (`Wx + b`)
+2. Non-linear activation function.
+
+Vollo can handle all the things you might need in an MLP, including:
 
 - Basic single layer: [`slp.py`](./vollo_model_zoo/models/slp.py)
 - Basic multi-layer: [`mlp.py`](./vollo_model_zoo/models/mlp.py)
@@ -59,13 +64,16 @@ Vollo, including:
 Code: [ffn-swiglu.py](./vollo_model_zoo/models/ffn-swiglu.py)
 
 This is the feed-forward block, popularized by Llama/Mistral, that you'll find
-in many modern transformer architectures. It consists of a up-projecting linear
-layer, followed by a gated activation function (SwiGLU), and then a final
-down-projecting linear layer. This block is a key component of the transformer
-architecture and is responsible for processing the output of the attention
-mechanism. In our [implementation](./vollo_model_zoo/models/ffn-swiglu.py) of
-this block we demonstrate how to implement a fused calculation of the
-gate/value activation.
+in many modern transformer architectures. It consists of:
+
+1. An up-projecting linear layer
+2. A gated activation function (SwiGLU),
+3. A final down-projecting linear layer.
+
+This block is a key component of the transformer architecture and is
+responsible for processing the output of the attention mechanism. In our
+[implementation](./vollo_model_zoo/models/ffn-swiglu.py) of this block we
+demonstrate how to implement a fused calculation of the gate/value activation.
 
 ### ResMLP
 
@@ -74,9 +82,72 @@ TODO:
 - ResMLP: <https://arxiv.org/pdf/2105.03404> (this is an MLP-mixer)
 - Show softmax
 
-### Mixture of experts (MOE)
+### Mixture of experts (MoE)
+
+Code:
+
+Mixture-of-Experts replaces a single feed-forward block with multiple parallel
+experts, and a learned gating network that routes tokens to a sparse subset of
+them.
+
+An MoE block typically consists of:
+
+1. A gating linear layer that produces routing logits
+2. A Top-k selection (usually k=1 or 2)
+3. Several independent expert FFNs
+4. A weighted combination of selected expert outputs
+
+This architecture is widely used in SoTA large-scale models such as:
+
+- Switch Transformers
+- OpenAI's OSS models
+
+Mixture-of-Experts increase model capacity (parameter count) without increasing
+the computational cost per token, by activating only a subset of the experts
+for each input. This allows for more efficient scaling of model capacity
+compared to dense architectures.
 
 ### Basic convolutional neural networks (CNN)
+
+Code:
+
+Convolutional Neural Networks are designed for spatially structured inputs
+(images, spectrograms, feature maps).
+
+A standard CNN block typically consists of:
+
+1. Convolution layer
+2. Activation (ReLU / SiLU / GELU)
+3. Normalization (BatchNorm / RMSNorm / LayerNorm)
+4. Optional residual connection
+
+Example blocks included
+
+Single convolution + activation
+
+Conv + Norm + Activation
+
+Residual convolutional block
+
+Depthwise separable convolution block
+
+Why CNNs?
+
+Parameter sharing across space
+
+Translation equivariance
+
+Strong inductive bias for images and audio spectrograms
+
+This implementation demonstrates:
+
+Standard convolution
+
+Dilated convolution
+
+Depthwise + pointwise factorization
+
+Residual conv stacks
 
 ### WaveNet
 
