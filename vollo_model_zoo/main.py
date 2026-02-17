@@ -23,12 +23,14 @@ def main() -> int:
 
     parser.add_argument(
         "model",
+        type=str,
         choices=available_models,
         help="Model to run",
     )
 
     parser.add_argument(
         "--config",
+        type=str,
         choices=list(CONFIGS.keys()),
         default="V80",
         help="Hardware configuration (FPGA) to simulate",
