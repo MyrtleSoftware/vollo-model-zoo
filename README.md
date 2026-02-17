@@ -1,6 +1,6 @@
 # Vollo model zoo
 
-## Quick start
+## ⚡ Quick start
 
 Pre-requisites:
 
@@ -27,7 +27,7 @@ To see all available models (as well as other options), run:
 uv run zoo --help
 ```
 
-## Models in the zoo
+## 🐘 Models in the zoo
 
 - [Basic multi-layer perceptrons](#basic-multi-layer-perceptrons-mlp)
 - [Transformer++'s SwiGLU FFN block](transformer++'s-swiglu-ffn-block)
