@@ -12,6 +12,8 @@ Models in the zoo include:
 - [Mixture of experts (MoE) blocks](#mixture-of-experts-moe-block)
 - [Basic convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
 - [WaveNet](#wavenet)
+- [MobileNet](#mobilenet)
+- [ConvNeXt](#convnext)
 
 See the [quick-start](#-quick-start) section to find out how to run the VM and
 calculate the compute-latency for any of these models.
@@ -124,10 +126,7 @@ compared to dense architectures.
 
 ### Basic convolutional neural networks (CNN)
 
-Code/models:
-
-- [cnn.py](./vollo_model_zoo/models/cnn.py)
-- [depthwise-cnn.py](./vollo_model_zoo/models/depthwise-separable-cnn.py)
+Code/models: [cnn.py](./vollo_model_zoo/models/cnn.py)
 
 Convolutional Neural Networks are designed for spatially structured inputs
 (images, spectrograms, feature maps).
@@ -151,6 +150,14 @@ WaveNet is a deep convolutional neural network that uses dilated convolutions
 to reduce parameter count while maintaining a large receptive field. This is
 crucial for the high temporal sampling frequency (kHz) for raw audio.
 
+### MobileNet
+
+1D variant (depthwise separable convolutions)
+
+### ConvNeXt
+
+1D variant
+
 ## TODO
 
 Before release:
@@ -161,9 +168,7 @@ Before release:
 - [ ] Generating a latency report for all the models in the zoo
 - [ ] Do we want the default config to run v80 and ia-840f?
 
-- CNN:
-  - Wavenet
-  - Demo `if tracing`
+- Demo `if tracing`
 - LSTM:
   - Multilayer
   - Residuals + normalization + FFN (a.k.a Transformer++)
