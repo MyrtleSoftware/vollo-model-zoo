@@ -38,7 +38,11 @@ uv run zoo --help
 
 ### Basic multilayer perceptrons (MLP)
 
-Code: [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py)
+Code/models:
+
+- [`slp.py`](./vollo_model_zoo/models/slp.py)
+- [`mlp.py`](./vollo_model_zoo/models/mlp.py)
+- [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py)
 
 Multilayer perceptrons are the memory-backbone of modern deep learning
 architectures, an MLP layer/block at its core is a combination of:
@@ -46,14 +50,10 @@ architectures, an MLP layer/block at its core is a combination of:
 1. A linear layer (`Wx + b`)
 2. A non-linear activation function.
 
-Vollo can handle all the things you might need in an MLP, including:
-
-- Basic single layer: [`slp.py`](./vollo_model_zoo/models/slp.py)
-- Basic multilayer: [`mlp.py`](./vollo_model_zoo/models/mlp.py)
-- MLP with residuals and RMSNorm: [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py)
-
-The last of these showcases a variety of activation-functions available on
-Vollo, including:
+Vollo can handle all the things you might need in an MLP, including
+normalization and residual connections. In addition,
+[mlp-res-rms](./vollo_model_zoo/models/mlp-res-rms.py) showcases a variety of
+activation-functions available on Vollo, including:
 
 - ReLU
 - Sigmoid
@@ -64,7 +64,7 @@ Vollo, including:
 
 ### Transformer++'s SwiGLU feed-forward block
 
-Code: [ffn-swiglu.py](./vollo_model_zoo/models/ffn-swiglu.py)
+Code/models: [ffn-swiglu.py](./vollo_model_zoo/models/ffn-swiglu.py)
 
 This is the feed-forward block, popularized by
 [Llama](https://arxiv.org/abs/2407.21783)/Mistral, that you'll find in many
@@ -81,6 +81,8 @@ demonstrate how to implement a fused calculation of the gate/value activation.
 
 ### ResMLP
 
+Code/models: [resmlp.py](./vollo_model_zoo/models/resmlp.py)
+
 TODO:
 
 - ResMLP: <https://arxiv.org/pdf/2105.03404> (this is an MLP-mixer)
@@ -88,7 +90,7 @@ TODO:
 
 ### Mixture of experts (MoE)
 
-Code:
+Code/models: [moe.py](./vollo_model_zoo/models/moe.py)
 
 Mixture-of-Experts replaces a single feed-forward block with multiple parallel
 experts, and a learned gating network that routes tokens to a sparse subset of
@@ -113,7 +115,10 @@ compared to dense architectures.
 
 ### Basic convolutional neural networks (CNN)
 
-Code:
+Code/models:
+
+- [cnn.py](./vollo_model_zoo/models/cnn.py)
+- [depthwise-cnn.py](./vollo_model_zoo/models/depthwise-separable-cnn.py)
 
 Convolutional Neural Networks are designed for spatially structured inputs
 (images, spectrograms, feature maps).
@@ -126,10 +131,7 @@ A standard CNN block typically consists of:
 4. Optional residual connection
 
 Vollo has comprehensive support for 1D causal convolutions (as Vollo is
-designed for low-latency applications):
-
-- Basic convolutions
-- Depthwise separable convolutions
+designed for low-latency applications).
 
 ### WaveNet
 
