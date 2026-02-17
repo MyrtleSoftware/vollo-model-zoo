@@ -85,8 +85,8 @@ Code: [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)
 [WaveNet](https://arxiv.org/pdf/1609.03499) was a seminal work from Google
 for generating raw audio waveforms which advanced the SoTA in text-to-speech.
 WaveNet is a deep convolutional neural network that uses dilated convolutions
-to reduce parameter count while maintaining a large receptive field needed for
-the high temporal frequency.
+to reduce parameter count while maintaining a large receptive field. This is
+crucial for the high temporal sampling frequency (kHz) for raw audio.
 
 ## TODO
 
