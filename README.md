@@ -139,8 +139,7 @@ A standard CNN block typically consists of:
 3. Normalization
 4. Optional residual connection
 
-Vollo has comprehensive support for 1D causal convolutions (as Vollo is
-designed for low-latency applications).
+Vollo has comprehensive support for 1D causal convolutions.
 
 ### WaveNet
 
