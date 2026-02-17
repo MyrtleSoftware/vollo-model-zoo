@@ -29,9 +29,12 @@ uv run zoo --help
 
 ## 🐘 Models in the zoo
 
-- [Basic multi-layer perceptrons](#basic-multilayer-perceptrons-mlp)
-- [Transformer++'s SwiGLU FFN block](transformer++'s-swiglu-ffn-block)
+- [Basic multi-layer perceptrons (MLP)](#basic-multilayer-perceptrons-mlp)
+- [Transformer++'s SwiGLU feed-forward block](#transformers-swiglu-feed-forward-block)
 - [ResMLP](#resmlp)
+- [Mixture of experts (MoE)](#mixture-of-experts-moe)
+- [Basic convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
+- [WaveNet](#wavenet)
 
 ### Basic multilayer perceptrons (MLP)
 
@@ -46,7 +49,7 @@ architectures, an MLP layer/block at its core is a combination of:
 Vollo can handle all the things you might need in an MLP, including:
 
 - Basic single layer: [`slp.py`](./vollo_model_zoo/models/slp.py)
-- Basic multi-layer: [`mlp.py`](./vollo_model_zoo/models/mlp.py)
+- Basic multilayer: [`mlp.py`](./vollo_model_zoo/models/mlp.py)
 - MLP with residuals and RMSNorm: [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py)
 
 The last of these showcases a variety of activation-functions available on
@@ -59,12 +62,13 @@ Vollo, including:
 - SiLU
 - ELU
 
-### Transformer++'s SwiGLU FFN block
+### Transformer++'s SwiGLU feed-forward block
 
 Code: [ffn-swiglu.py](./vollo_model_zoo/models/ffn-swiglu.py)
 
-This is the feed-forward block, popularized by Llama/Mistral, that you'll find
-in many modern transformer architectures. It consists of:
+This is the feed-forward block, popularized by
+[Llama](https://arxiv.org/abs/2407.21783)/Mistral, that you'll find in many
+modern transformer architectures. It consists of:
 
 1. An up-projecting linear layer
 2. A gated activation function (SwiGLU),
