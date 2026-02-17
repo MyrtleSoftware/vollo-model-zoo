@@ -29,7 +29,7 @@ uv run zoo --help
 
 ## 🐘 Models in the zoo
 
-- [Basic multi-layer perceptrons](#basic-multi-layer-perceptrons-mlp)
+- [Basic multi-layer perceptrons](#basic-multilayer-perceptrons-mlp)
 - [Transformer++'s SwiGLU FFN block](transformer++'s-swiglu-ffn-block)
 - [ResMLP](#resmlp)
 
@@ -40,8 +40,8 @@ Code: [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py)
 Multilayer perceptrons are the memory-backbone of modern deep learning
 architectures, an MLP layer/block at its core is a combination of:
 
-1. Linear layer (`Wx + b`)
-2. Non-linear activation function.
+1. A linear layer (`Wx + b`)
+2. A non-linear activation function.
 
 Vollo can handle all the things you might need in an MLP, including:
 
@@ -90,7 +90,7 @@ Mixture-of-Experts replaces a single feed-forward block with multiple parallel
 experts, and a learned gating network that routes tokens to a sparse subset of
 them.
 
-An MoE block typically consists of:
+A MoE block typically consists of:
 
 1. A gating linear layer that produces routing logits
 2. A Top-k selection (usually k=1 or 2)
@@ -117,37 +117,15 @@ Convolutional Neural Networks are designed for spatially structured inputs
 A standard CNN block typically consists of:
 
 1. Convolution layer
-2. Activation (ReLU / SiLU / GELU)
-3. Normalization (BatchNorm / RMSNorm / LayerNorm)
+2. Activation
+3. Normalization
 4. Optional residual connection
 
-Example blocks included
+Vollo has comprehensive support for 1D causal convolutions (as Vollo is
+designed for low-latency applications):
 
-Single convolution + activation
-
-Conv + Norm + Activation
-
-Residual convolutional block
-
-Depthwise separable convolution block
-
-Why CNNs?
-
-Parameter sharing across space
-
-Translation equivariance
-
-Strong inductive bias for images and audio spectrograms
-
-This implementation demonstrates:
-
-Standard convolution
-
-Dilated convolution
-
-Depthwise + pointwise factorization
-
-Residual conv stacks
+- Basic convolutions
+- Depthwise separable convolutions
 
 ### WaveNet
 
