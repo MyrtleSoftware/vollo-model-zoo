@@ -81,7 +81,7 @@ demonstrate how to implement a fused calculation of the gate/value activation.
 
 ### ResMLP
 
-Code/models: [resmlp.py](./vollo_model_zoo/models/resmlp.py)
+Code/model: [resmlp.py](./vollo_model_zoo/models/resmlp.py)
 
 TODO:
 
@@ -90,7 +90,7 @@ TODO:
 
 ### Mixture of experts (MoE)
 
-Code/models: [moe.py](./vollo_model_zoo/models/moe.py)
+Code/model: [moe.py](./vollo_model_zoo/models/moe.py)
 
 Mixture-of-Experts replaces a single feed-forward block with multiple parallel
 experts, and a learned gating network that routes tokens to a sparse subset of
@@ -135,7 +135,7 @@ designed for low-latency applications).
 
 ### WaveNet
 
-Code: [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)
+Code/model: [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)
 
 [WaveNet](https://arxiv.org/pdf/1609.03499) was a seminal work from Google
 for generating raw audio waveforms which advanced the SoTA in text-to-speech.
