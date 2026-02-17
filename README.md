@@ -1,8 +1,10 @@
 # Vollo model zoo
 
 This repo is a collection of example models (written in PyTorch) that you can
-compile with the Vollo SDK to perform low-latency inference on a variety of
-FPGA accelerators.
+compile with the [Vollo SDK](https://vollo.myrtle.ai/latest/installation.html)
+to perform low-latency inference on a variety of FPGA accelerators.
+
+Models in the zoo include:
 
 - [Basic multi-layer perceptrons (MLP)](#basic-multilayer-perceptrons-mlp)
 - [Transformer++'s SwiGLU feed-forward block](#transformers-swiglu-feed-forward-block)
@@ -10,6 +12,9 @@ FPGA accelerators.
 - [Mixture of experts (MoE)](#mixture-of-experts-moe)
 - [Basic convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
 - [WaveNet](#wavenet)
+
+See the [#quick-start](#-quick-start) section below to find out how to get
+compute latency numbers for any of these models.
 
 ## ⚡ Quick start
 
@@ -38,7 +43,7 @@ To see all available models (as well as other options), run:
 uv run zoo --help
 ```
 
-## 🐘 Models in the zoo
+## 🐘 Models
 
 ### Basic multilayer perceptrons (MLP)
 
