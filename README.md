@@ -35,6 +35,8 @@ uv run zoo --help
 
 ### Basic multi-layer perceptrons (MLP)
 
+Code: [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py)
+
 MLP's are the memory-backbone of modern deep learning architectures, Vollo can
 handle all the things you might need in an MLP, including:
 
@@ -54,14 +56,16 @@ Vollo, including:
 
 ### Transformer++'s SwiGLU FFN block
 
+Code: [ffn-swiglu.py](./vollo_model_zoo/models/ffn-swiglu.py)
+
 This is the feed-forward block, popularized by Llama/Mistral, that you'll find
 in many modern transformer architectures. It consists of a up-projecting linear
 layer, followed by a gated activation function (SwiGLU), and then a final
 down-projecting linear layer. This block is a key component of the transformer
 architecture and is responsible for processing the output of the attention
-mechanism. You can find an implementation of this block in
-[`ffn-swiglu.py`](./vollo_model_zoo/models/ffn-swiglu.py), which demonstrates
-how to implement a fused calculation of the gate/value activation.
+mechanism. In our [implementation](./vollo_model_zoo/models/ffn-swiglu.py) of
+this block we demonstrate how to implement a fused calculation of the
+gate/value activation.
 
 ### ResMLP
 
@@ -73,6 +77,16 @@ TODO:
 ### Mixture of experts (MOE)
 
 ### Basic convolutional neural networks (CNN)
+
+### WaveNet
+
+Code: [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)
+
+[WaveNet](https://arxiv.org/pdf/1609.03499) was a seminal work from Google
+for generating raw audio waveforms which advanced the SoTA in text-to-speech.
+WaveNet is a deep convolutional neural network that uses dilated convolutions
+to reduce parameter count while maintaining a large receptive field needed for
+the high temporal frequency.
 
 ## TODO
 
