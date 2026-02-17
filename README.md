@@ -36,7 +36,7 @@ uv run zoo --help
 ### Basic multi-layer perceptrons (MLP)
 
 MLP's are the memory-backbone of modern deep learning architectures, Vollo can
-handle all of the things you might need in an MLP, including:
+handle all the things you might need in an MLP, including:
 
 - Basic single layer: [`slp.py`](./vollo_model_zoo/models/slp.py)
 - Basic multi-layer: [`mlp.py`](./vollo_model_zoo/models/mlp.py)
@@ -55,11 +55,11 @@ Vollo, including:
 ### Transformer++'s SwiGLU FFN block
 
 This is the feed-forward block, popularized by Llama/Mistral, that you'll find
-in many modern transformer architectures. It consists of a linear layer,
-followed by a gated activation function (SwiGLU), and then another linear
-layer. This block is a key component of the transformer architecture and is
-responsible for processing the output of the attention mechanism. You can find
-an implementation of this block in
+in many modern transformer architectures. It consists of a up-projecting linear
+layer, followed by a gated activation function (SwiGLU), and then a final
+down-projecting linear layer. This block is a key component of the transformer
+architecture and is responsible for processing the output of the attention
+mechanism. You can find an implementation of this block in
 [`ffn-swiglu.py`](./vollo_model_zoo/models/ffn-swiglu.py), which demonstrates
 how to implement a fused calculation of the gate/value activation.
 
