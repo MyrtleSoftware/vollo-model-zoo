@@ -9,12 +9,12 @@ Models in the zoo include:
 - [Basic multi-layer perceptrons (MLP)](#basic-multilayer-perceptrons-mlp)
 - [Transformer++'s SwiGLU feed-forward block](#transformers-swiglu-feed-forward-block)
 - [ResMLP](#resmlp)
-- [Mixture of experts (MoE)](#mixture-of-experts-moe)
+- [Mixture of experts (MoE) blocks](#mixture-of-experts-moe-block)
 - [Basic convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
 - [WaveNet](#wavenet)
 
-See the [#quick-start](#-quick-start) section below to find out how to get
-compute latency numbers for any of these models.
+See the [quick-start](#-quick-start) section to find out how to run the VM and
+calculate the compute-latency for any of these models.
 
 ## ⚡ Quick start
 
@@ -97,7 +97,7 @@ TODO:
 - ResMLP: <https://arxiv.org/pdf/2105.03404> (this is an MLP-mixer)
 - Show softmax
 
-### Mixture of experts (MoE)
+### Mixture of experts (MoE) block
 
 Code/model: [moe.py](./vollo_model_zoo/models/moe.py)
 
