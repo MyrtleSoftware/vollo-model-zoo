@@ -29,9 +29,11 @@ uv run zoo --help
 
 ## Models in the zoo
 
-TODO: index here
+- [Basic multi-layer perceptrons](#basic-multi-layer-perceptrons-mlp)
+- [Transformer++'s SwiGLU FFN block](transformer++'s-swiglu-ffn-block)
+- [ResMLP](#resmlp)
 
-### Base multi-layer perceptrons (MLP)
+### Basic multi-layer perceptrons (MLP)
 
 MLP's are the memory-backbone of modern deep learning architectures, Vollo can
 handle all of the things you might need in an MLP, including:
