@@ -13,8 +13,10 @@ from vollo_compiler import AllocationError, SaveError
 from vollo_model_zoo.vm import CONFIGS, Result
 
 
-def make_type(choices):
-    def find_choice(choice):
+@beartype
+def make_type(choices: list[str]):
+    @beartype
+    def find_choice(choice: str) -> str:
         for key, item in enumerate([choice.lower() for choice in choices]):
             if choice.lower() == item:
                 return choices[key]
