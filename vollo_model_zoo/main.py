@@ -13,6 +13,17 @@ from vollo_compiler import AllocationError, SaveError
 from vollo_model_zoo.vm import CONFIGS, Result
 
 
+def make_type(choices):
+    def find_choice(choice):
+        for key, item in enumerate([choice.lower() for choice in choices]):
+            if choice.lower() == item:
+                return choices[key]
+        else:
+            return choice
+
+    return find_choice
+
+
 @beartype
 def main() -> int:
     available_models = get_available_models()
@@ -23,7 +34,7 @@ def main() -> int:
 
     parser.add_argument(
         "model",
-        type=str,
+        type=make_type(available_models),
         choices=available_models,
         help="Model to run",
     )
