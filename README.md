@@ -98,7 +98,7 @@ Code/model: [resmlp.py](./vollo_model_zoo/models/resmlp.py)
 inspired by the "MLP-Mixer" family of models. It removes convolutions and
 self-attention entirely, replacing them with stacked residual MLP blocks that
 mix information across tokens and channels using only linear layers and
-non-linearities. ResMLP ataints SoTA accuracy/complexity trade- offs on
+non-linearities. ResMLP attains SoTA accuracy/complexity trade- offs on
 fixed-input-length tasks like ImageNet.
 
 A typical ResMLP block consists of two residual sublayers:
