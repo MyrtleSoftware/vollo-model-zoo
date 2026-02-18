@@ -17,6 +17,14 @@ class _Aff(nn.Module):
         return x * self.alpha + self.beta
 
 
+class _GELU(nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Approximation, see: https://arxiv.org/pdf/1606.08415
+        """
+        return x * nn.functional.sigmoid(1.702 * x)
+
+
 class _Mixer(nn.Module):
     @beartype
     def __init__(self, num_patches: int):
@@ -37,14 +45,14 @@ class _Mixer(nn.Module):
 
 class _CrossChannel(nn.Module):
     @beartype
-    def __init__(self, dim: int, activation: str = "relu", expansion: int = 4):
+    def __init__(self, dim: int, activation: str, expansion: int = 4):
         super().__init__()
 
         match activation.lower():
             case "relu":
                 act = nn.ReLU()
             case "gelu":
-                raise NotImplementedError("GELU activation not implemented yet.")
+                act = _GELU()
             case _:
                 raise ValueError(f"Unsupported activation: {activation}")
 
@@ -86,6 +94,7 @@ class ResMLP(nn.Module):
         num_classes: int,
         num_patches: int,
         num_layers: int,
+        activation: str,
     ):
         """
         ResMLP architecture, see: https://arxiv.org/pdf/2105.03404
@@ -103,7 +112,7 @@ class ResMLP(nn.Module):
 
         for _ in range(num_layers):
             layers.append(_CrossPatch(dim=dim, num_patches=num_patches))
-            layers.append(_CrossChannel(dim=dim))
+            layers.append(_CrossChannel(dim=dim, activation=activation))
 
         self.blocks = nn.Sequential(*layers)
 
@@ -132,20 +141,22 @@ class ResMLP(nn.Module):
 @beartype
 def _vm_resmlp(
     dim: int,
-    num_classes: int,
-    num_patches: int,
-    num_layers: int,
+    classes: int,
+    patches: int,
+    layers: int,
+    activation: str,
     config: str,
 ):
     from vollo_model_zoo.vm import vollo_info
 
-    input = torch.randn(1, num_patches, dim)
+    input = torch.randn(1, patches, dim)
 
     model = ResMLP(
         dim=dim,
-        num_classes=num_classes,
-        num_patches=num_patches,
-        num_layers=num_layers,
+        num_classes=classes,
+        num_patches=patches,
+        num_layers=layers,
+        activation=activation,
     )
 
     return vollo_info(
@@ -156,8 +167,9 @@ def _vm_resmlp(
         allow_dynamic_weights=True,
         meta=dict(
             dim=dim,
-            num_patches=num_patches,
-            num_layers=num_layers,
+            patches=patches,
+            layers=layers,
+            activation=activation,
         ),
     )
 
@@ -165,9 +177,10 @@ def _vm_resmlp(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=64, num_classes=10, num_patches=6**2, num_layers=4),
-        dict(dim=196, num_classes=10, num_patches=3**2, num_layers=4),
-        dict(dim=256, num_classes=10, num_patches=3**2, num_layers=4),
+        dict(dim=64, classes=10, patches=6**2, layers=4, activation="ReLU"),
+        dict(dim=64, classes=10, patches=6**2, layers=4, activation="GELU"),
+        dict(dim=196, classes=10, patches=3**2, layers=4, activation="ReLU"),
+        dict(dim=196, classes=10, patches=3**2, layers=4, activation="GELU"),
     ]:
         yield _vm_resmlp(**x, config=config)
 
