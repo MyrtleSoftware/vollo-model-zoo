@@ -127,6 +127,7 @@ def main(config: str = "V80") -> Generator:
         dict(num_layers=4, channels=64, kernel_size=8),
         dict(num_layers=4, channels=64, kernel_size=32),
         dict(num_layers=4, channels=64, kernel_size=64),
+        dict(num_layers=4, channels=256, kernel_size=32),
     ]:
         yield _vm_cnn(**x, config=config)
 
