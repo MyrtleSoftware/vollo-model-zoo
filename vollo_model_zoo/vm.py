@@ -62,6 +62,7 @@ def vollo_info(
     time_axis: Optional[int],
     config: str,
     meta: Optional[dict[str, Union[int, float, str]]] = None,
+    allow_dynamic_weights: bool = False,
 ) -> Result:
     """
     For a given model/input compile it to a vollo program and return
@@ -78,6 +79,7 @@ def vollo_info(
         x,
         time_axis=time_axis,
         config=CONFIGS[config],
+        allow_dynamic_weights=allow_dynamic_weights,
     )
 
     latency_fast = p.compute_duration_per_inference_us(spaced=True)
@@ -100,6 +102,7 @@ def _vollo_compile(
     *,
     time_axis: Optional[int],
     config: vc.Config,
+    allow_dynamic_weights: bool = False,
 ) -> vc.Program:
     # TODO: test what happens when it's not a streaming model?
 
@@ -113,7 +116,7 @@ def _vollo_compile(
     if time_axis is not None:
         nnir, _ = nnir.streaming_transform(time_axis)
 
-    program = nnir.to_program(config)
+    program = nnir.to_program(config, allow_dynamic_weights=allow_dynamic_weights)
 
     program.pack()  # Should raise error if it doesn't fit
 
