@@ -71,11 +71,11 @@ class MoE(nn.Module):
         # print(route.shape)
         # print(self.expert1.w1.weight.shape)
 
-        w1 = torch.where(
-            route[None, :] < 0, self.expert1.w1.weight, self.expert2.w1.weight
-        )
+        # w1 = torch.where(
+        #     route[None, :] < 0, self.expert1.w1.weight, self.expert2.w1.weight
+        # )
 
-        y = self.expert2(w1)
+        y = self.expert2(x)
 
         print(x.shape)  # [h!]
         print(y.shape)  # [h h!]
@@ -84,9 +84,14 @@ class MoE(nn.Module):
 
         # x = w1 @ x
 
-        return x[None, :] @ y
+        w1 = self.expert1.w1.weight
+        w2 = self.expert2.w1.weight
 
-        return x[None, :] + y
+        mask = torch.where(route[:, None] < 0, w1, w2)
+
+        z = mask @ x
+
+        return z
 
 
 @beartype
