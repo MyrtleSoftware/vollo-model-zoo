@@ -46,12 +46,10 @@ class MoE(nn.Module):
 
         self.norm = nn.RMSNorm(dim, eps=1e-5)
 
-        self.init = nn.Linear(dim, dim, bias=bias)
-
         self.router = nn.Linear(dim, 1, bias=bias)
 
-        self.expert1 = _Expert(dim, dim)
-        self.expert2 = _Expert(dim, dim)
+        self.expert1 = _Expert(dim, hidden_dim)
+        self.expert2 = _Expert(dim, hidden_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -64,32 +62,15 @@ class MoE(nn.Module):
         residual = x
         x = self.norm(x)
 
-        x = self.init(x)  # [!h]
-
         route = self.router(x)  # [!1]
-
-        # print(route.shape)
-        # print(self.expert1.w1.weight.shape)
-
-        # w1 = torch.where(
-        #     route[None, :] < 0, self.expert1.w1.weight, self.expert2.w1.weight
-        # )
-
-        y = self.expert2(x)
-
-        print(x.shape)  # [h!]
-        print(y.shape)  # [h h!]
-
-        # [o! h] @ [h!]
-
-        # x = w1 @ x
 
         w1 = self.expert1.w1.weight
         w2 = self.expert2.w1.weight
 
-        mask = torch.where(route[:, None] < 0, w1, w2)
+        e1 = self.expert1(x)
+        e2 = self.expert2(x)
 
-        z = mask @ x
+        z = torch.where(route[:] < 0, e1, e2)
 
         return z
 
@@ -117,8 +98,10 @@ def _vm_moe(dim: int, hidden_dim: int, config: str):
 
 @beartype
 def main(config: str = "V80") -> Generator:
+    n = 9
+
     for x in [
-        dict(dim=32 * 6, hidden_dim=32 * 6 * 4),
+        dict(dim=32 * n, hidden_dim=32 * n * 4),
     ]:
         yield _vm_moe(**x, config=config)
 
