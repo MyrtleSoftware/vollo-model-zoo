@@ -3,7 +3,7 @@ from typing import Optional
 
 import pytest
 from beartype import beartype
-from vollo_compiler import AllocationError
+from vollo_compiler import AllocationError, SaveError
 
 from vollo_model_zoo.main import get_available_models, get_model_results
 from vollo_model_zoo.vm import CONFIGS, Result
@@ -25,7 +25,7 @@ def idfn(config):
 def test_models(model_name: str, config: Optional[str]):
     try:
         results = list(get_model_results(model_name, config=config))
-    except AllocationError:
+    except (AllocationError, SaveError):
         # Skip test if not V80 or default config
         if config not in (None, "V80", "V80LL"):
             pytest.skip(f"Can't allocated on config {config}")

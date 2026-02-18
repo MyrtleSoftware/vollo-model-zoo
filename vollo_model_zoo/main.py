@@ -8,7 +8,7 @@ from typing import Optional
 from warnings import warn
 
 from beartype import beartype
-from vollo_compiler import AllocationError
+from vollo_compiler import AllocationError, SaveError
 
 from vollo_model_zoo.vm import CONFIGS, Result
 
@@ -82,7 +82,7 @@ def main() -> int:
             row = [x.rjust(len(h)) for x, h in zip(row, headers)]
 
             print_table_row(row)
-    except AllocationError:
+    except (AllocationError, SaveError):
         warn("Some configurations don's fit on this config")
 
     print(
