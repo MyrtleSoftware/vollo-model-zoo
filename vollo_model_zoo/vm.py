@@ -104,8 +104,6 @@ def _vollo_compile(
     config: vc.Config,
     allow_dynamic_weights: bool = False,
 ) -> vc.Program:
-    # TODO: test what happens when it's not a streaming model?
-
     # This gives nicer error messages as a first pass.
     model(x)
 
