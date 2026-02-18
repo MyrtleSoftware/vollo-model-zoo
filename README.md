@@ -94,10 +94,24 @@ demonstrate how to implement a fused calculation of the gate/value activation.
 
 Code/model: [resmlp.py](./vollo_model_zoo/models/resmlp.py)
 
-TODO:
+[ResMLP](https://arxiv.org/pdf/2105.03404) is a pure MLP-based architecture
+inspired by the "MLP-Mixer" family of models. It removes convolutions and
+self-attention entirely, replacing them with stacked residual MLP blocks that
+mix information across tokens and channels using only linear layers and
+non-linearities. ResMLP ataints SoTA accuracy/complexity trade- offs on
+fixed-input-length tasks like ImageNet.
 
-- ResMLP: <https://arxiv.org/pdf/2105.03404> (this is an MLP-mixer)
-- Show softmax
+A typical ResMLP block consists of two residual sublayers:
+
+- Token mixing MLP:
+  - Operates across the sequence (or patch) dimension.
+  - Implemented as a linear projection over tokens.
+  - Often followed by a softmax or affine scaling to stabilise mixing.
+- Channel mixing MLP:
+  - Standard per-token feed-forward network:
+  - Linear up-projection.
+  - Non-linearity.
+  - Linear down-projection.
 
 ### Mixture of experts (MoE) block
 
@@ -167,6 +181,8 @@ Before release:
   - [ ] Then we can add some github actions?
 - [ ] Generating a latency report for all the models in the zoo
 - [ ] Do we want the default config to run v80 and ia-840f?
+
+- Show softmax
 
 - Demo `if tracing`
 - LSTM:
