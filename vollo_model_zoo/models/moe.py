@@ -88,7 +88,6 @@ def _vm_moe(dim: int, hidden_dim: int, config: str):
         input,
         config=config,
         time_axis=None,
-        allow_dynamic_weights=True,
         meta=dict(
             dim=dim,
             hidden=hidden_dim,
