@@ -33,9 +33,7 @@ class MoE(nn.Module):
         """
         super().__init__()
 
-        # self.hidden_dim = hidden_dim
-
-        self.norm = nn.RMSNorm(dim, eps=1e-5)
+        assert log_n_experts > 0, "log_n_experts must be greater than 0"
 
         self.n = log_n_experts
         self.router = nn.Linear(dim, 2**self.n, bias=False)
@@ -51,9 +49,6 @@ class MoE(nn.Module):
         Returns:
             x: Tensor of shape (*, dim)
         """
-        residual = x
-        x = self.norm(x)
-
         route = self.router(x)  # [..., !n]
 
         xs = [self.experts[i](x) for i in range(len(self.experts))]
@@ -62,7 +57,7 @@ class MoE(nn.Module):
             mask = route[..., i : i + 1] < 0
             xs = [torch.where(mask, xs[j], xs[j + 1]) for j in range(0, len(xs), 2)]
 
-        return xs[0] + residual
+        return xs[0]
 
 
 @beartype
