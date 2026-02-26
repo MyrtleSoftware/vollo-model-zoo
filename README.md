@@ -13,7 +13,6 @@ Models in the zoo include:
 - [Basic convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
 - [WaveNet](#wavenet)
 - [MobileNet](#mobilenet)
-- [ConvNeXt](#convnext)
 
 See the [quick-start](#-quick-start) section to find out how to run the VM and
 calculate the compute-latency for any of these models.
@@ -169,9 +168,19 @@ crucial for the high temporal sampling frequency (kHz) for raw audio.
 
 ### MobileNet
 
-1D variant (depthwise separable convolutions)
+Code/model: mobilenet.py
 
-TODO: could we support 2D and or stride
+MobileNet is a family of efficient convolutional neural networks designed for
+low-latency and resource-constrained environments. The core architectural idea
+is the use of depthwise separable convolutions, which significantly reduce
+compute and parameter count compared to standard convolutions. This is done by
+factorizing a standard convolution into two separate layers:
+
+- Depthwise convolution (i.e. `groups == in_channels == out_channels`)
+- Pointwise 1×1 convolution (i.e. linear layers)
+
+In the Vollo model zoo implementation we focus on the canonical
+depthwise–pointwise factorisation pattern in 1D.
 
 ## TODO
 
