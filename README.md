@@ -6,11 +6,11 @@ to perform low-latency inference on a variety of FPGA accelerators.
 
 Models in the zoo include:
 
-- [Basic multi-layer perceptrons (MLP)](#basic-multilayer-perceptrons-mlp)
+- [Multilayer perceptrons (MLP)](#basic-multilayer-perceptrons-mlp)
 - [Transformer++'s SwiGLU feed-forward block](#transformers-swiglu-feed-forward-block)
-- [ResMLP](#resmlp)
+- [ResMLP/MLP-mixer](#resmlp)
 - [Mixture of experts (MoE) blocks](#mixture-of-experts-moe-block)
-- [Basic convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
+- [Convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
 - [WaveNet](#wavenet)
 - [MobileNet](#mobilenet)
 
@@ -111,6 +111,9 @@ A typical ResMLP block consists of two residual sublayers:
   - Linear up-projection.
   - Non-linearity.
   - Linear down-projection.
+
+The Vollo implementation also showcases the GELU activation function implemented
+via the common `tanh` approximation.
 
 ### Mixture of experts (MoE) block
 
