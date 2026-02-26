@@ -128,11 +128,12 @@ def _vm_mlp_res_rms(
 
 @beartype
 def main(config: str = "V80") -> Generator:
-    # Use the same size but vary the activation function
-    size_params = dict(num_layers=2, dim=512, hidden_dim=1024)
+    for dim, hidden in [(320, 768), (512, 1024)]:
+        # Use the same size but vary the activation function
+        size_params = dict(num_layers=2, dim=dim, hidden_dim=hidden)
 
-    for activation in ACTIVATIONS.keys():
-        yield _vm_mlp_res_rms(**size_params, activation=activation, config=config)
+        for activation in ACTIVATIONS.keys():
+            yield _vm_mlp_res_rms(**size_params, activation=activation, config=config)
 
 
 if __name__ == "__main__":

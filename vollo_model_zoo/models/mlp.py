@@ -87,8 +87,9 @@ def _vm_mlp(
 def main(config: str = "V80") -> Generator:
     for x in [
         dict(num_layers=2, hidden_features=512),
-        dict(num_layers=3, hidden_features=512),
+        dict(num_layers=7, hidden_features=384),
         dict(num_layers=4, hidden_features=512),
+        dict(num_layers=3, hidden_features=1024),
     ]:
         yield _vm_mlp(**x, config=config)
 

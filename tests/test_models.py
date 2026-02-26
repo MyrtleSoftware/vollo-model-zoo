@@ -33,12 +33,15 @@ def test_models(model_name: str, config: Optional[str]):
 
     assert len(results) > 0, f"Model {model_name} returned no results"
 
+    for result in results:
+        assert isinstance(
+            result, Result
+        ), f"Model '{model_name}' produced a non-Result object: {type(result)}"
+
     param_sorted = is_sorted(results, key=lambda r: r.param_count)
     speed_sorted = is_sorted(results, key=lambda r: r.latency_spaced.microseconds)
 
     assert param_sorted or speed_sorted
 
-    for result in results:
-        assert isinstance(
-            result, Result
-        ), f"Model '{model_name}' produced a non-Result object: {type(result)}"
+    # There should be at least one result close to 1-mill parameters, aka the "baseline"
+    assert any(map(lambda r: 0.95e6 < r.param_count < 1.05e6, results))

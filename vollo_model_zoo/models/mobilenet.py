@@ -140,7 +140,7 @@ def _vm_mobilenet(
 def main(config: str = "V80") -> Generator:
     for x in [
         dict(width_mult=0.1),
-        dict(width_mult=0.4),
+        dict(width_mult=0.42),
         dict(width_mult=1.0),
     ]:
         yield _vm_mobilenet(**x, config=config)

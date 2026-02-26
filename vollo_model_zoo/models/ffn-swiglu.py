@@ -78,6 +78,7 @@ def _vm_ffn_swiglu(dim: int, hidden_dim: int, config: str):
 def main(config: str = "V80") -> Generator:
     for x in [
         dict(dim=32 * 6, hidden_dim=32 * 6 * 4),
+        dict(dim=48 * 6, hidden_dim=48 * 6 * 4),
         dict(dim=64 * 6, hidden_dim=64 * 6 * 4),
     ]:
         yield _vm_ffn_swiglu(**x, config=config)

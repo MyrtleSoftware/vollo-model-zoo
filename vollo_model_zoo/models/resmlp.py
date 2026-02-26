@@ -179,8 +179,8 @@ def main(config: str = "V80") -> Generator:
     for x in [
         dict(dim=64, classes=10, patches=6**2, layers=4, activation="ReLU"),
         dict(dim=64, classes=10, patches=6**2, layers=4, activation="GELU"),
-        dict(dim=196, classes=10, patches=3**2, layers=4, activation="ReLU"),
-        dict(dim=196, classes=10, patches=3**2, layers=4, activation="GELU"),
+        dict(dim=160, classes=10, patches=3**2, layers=5, activation="ReLU"),
+        dict(dim=160, classes=10, patches=3**2, layers=5, activation="GELU"),
     ]:
         yield _vm_resmlp(**x, config=config)
 

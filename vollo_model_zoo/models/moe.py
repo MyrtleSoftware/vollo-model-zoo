@@ -84,9 +84,9 @@ def _vm_moe(dim: int, hidden_dim: int, log_n_experts: int, config: str):
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=192, hidden_dim=768, log_n_experts=2),
-        dict(dim=192, hidden_dim=768, log_n_experts=3),
-        dict(dim=192, hidden_dim=768, log_n_experts=4),
+        dict(dim=192, hidden_dim=640, log_n_experts=2),
+        dict(dim=192, hidden_dim=640, log_n_experts=3),
+        dict(dim=192, hidden_dim=640, log_n_experts=4),
     ]:
         yield _vm_moe(**x, config=config)
 
