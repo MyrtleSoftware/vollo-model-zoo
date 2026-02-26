@@ -171,9 +171,7 @@ crucial for the high temporal sampling frequency (kHz) for raw audio.
 
 1D variant (depthwise separable convolutions)
 
-### ConvNeXt
-
-1D variant
+TODO: could we support 2D and or stride
 
 ## TODO
 

@@ -1,6 +1,5 @@
 from collections.abc import Generator
 from pathlib import Path
-from typing import Optional
 
 import torch
 from beartype import beartype
@@ -15,7 +14,6 @@ class _ConvNormAct(nn.Module):
         in_channels: int,
         out_channels: int,
         kernel_size: int,
-        stride: int = 1,
         groups: int = 1,
         bias: bool = False,
     ):
@@ -24,7 +22,6 @@ class _ConvNormAct(nn.Module):
             in_channels=in_channels,
             out_channels=out_channels,
             kernel_size=kernel_size,
-            stride=stride,
             groups=groups,
             bias=bias,
         )
@@ -47,21 +44,18 @@ class _DepthwiseSeparableConv1d(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        stride: int = 1,
     ):
         super().__init__()
         self.depthwise = _ConvNormAct(
             in_channels,
             in_channels,
             kernel_size=3,
-            stride=stride,
             groups=in_channels,
         )
         self.pointwise = _ConvNormAct(
             in_channels,
             out_channels,
             kernel_size=1,
-            stride=1,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -70,7 +64,7 @@ class _DepthwiseSeparableConv1d(nn.Module):
         return x
 
 
-class MobileNet(nn.Module):
+class MobileNet1D(nn.Module):
     @beartype
     def __init__(
         self,
@@ -83,37 +77,39 @@ class MobileNet(nn.Module):
         """
         super().__init__()
 
-        def c(v: int) -> int:
+        def scale(v: int) -> int:
             return int(v * width_mult)
 
+        # Roughly matching the paper (less the strides)
+
         self.features = nn.Sequential(
-            _ConvNormAct(in_channels, c(32), kernel_size=3, stride=2),
-            _DepthwiseSeparableConv1d(c(32), c(64), stride=1),
-            _DepthwiseSeparableConv1d(c(64), c(128), stride=2),
-            _DepthwiseSeparableConv1d(c(128), c(128), stride=1),
-            _DepthwiseSeparableConv1d(c(128), c(256), stride=2),
-            _DepthwiseSeparableConv1d(c(256), c(256), stride=1),
-            _DepthwiseSeparableConv1d(c(256), c(512), stride=2),
+            _ConvNormAct(in_channels, scale(32), kernel_size=3),
+            # Scale up
+            _DepthwiseSeparableConv1d(scale(32), scale(64)),
+            _DepthwiseSeparableConv1d(scale(64), scale(128)),
+            _DepthwiseSeparableConv1d(scale(128), scale(128)),
+            _DepthwiseSeparableConv1d(scale(128), scale(256)),
+            _DepthwiseSeparableConv1d(scale(256), scale(256)),
+            _DepthwiseSeparableConv1d(scale(256), scale(512)),
             # 5x block
-            _DepthwiseSeparableConv1d(c(512), c(512), stride=1),
-            _DepthwiseSeparableConv1d(c(512), c(512), stride=1),
-            _DepthwiseSeparableConv1d(c(512), c(512), stride=1),
-            _DepthwiseSeparableConv1d(c(512), c(512), stride=1),
-            _DepthwiseSeparableConv1d(c(512), c(512), stride=1),
-            #
-            _DepthwiseSeparableConv1d(c(512), c(1024), stride=2),
-            _DepthwiseSeparableConv1d(c(1024), c(1024), stride=1),
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            # Final
+            _DepthwiseSeparableConv1d(scale(512), scale(1024)),
+            _DepthwiseSeparableConv1d(scale(1024), scale(1024)),
         )
 
         # In standard MobileNet there is avg pool + linear.
-        # For 1D/Streaming, we might keep it sequence-to-sequence or just feature extraction.
-        # To match the reference "classifier" but in 1D, we can use a 1x1 conv
-        # which acts as a Linear layer per timestep.
-        self.classifier = nn.Conv1d(c(1024), num_classes, kernel_size=1)
+        # For 1D/Streaming, we just predict a class at each time step.
+        self.classifier = nn.Linear(scale(1024), num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """ """
         x = self.features(x)
-        x = self.classifier(x)
+        # x = self.classifier(x)
         return x
 
 
@@ -125,9 +121,9 @@ def _vm_mobilenet(
     from vollo_model_zoo.vm import vollo_info
 
     in_channels = 3
-    input_tensor = torch.randn(1, in_channels, 1000)
+    input_tensor = torch.randn(1, in_channels, 4)
 
-    model = MobileNet(in_channels=in_channels, width_mult=width_mult)
+    model = MobileNet1D(in_channels=in_channels, width_mult=width_mult)
 
     return vollo_info(
         model,
@@ -143,9 +139,8 @@ def _vm_mobilenet(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(width_mult=0.25),
-        dict(width_mult=0.5),
-        dict(width_mult=0.75),
+        dict(width_mult=0.1),
+        dict(width_mult=0.4),
         dict(width_mult=1.0),
     ]:
         yield _vm_mobilenet(**x, config=config)
