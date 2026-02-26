@@ -22,14 +22,9 @@ class _Expert(nn.Module):
 
 class MoE(nn.Module):
     @beartype
-    def __init__(
-        self,
-        dim: int,
-        hidden_dim: int,
-        bias: bool = False,
-    ):
+    def __init__(self, dim: int, hidden_dim: int, log_n_experts: int):
         """
-        A model
+        An MoE layer that selects the top 1 of 2**log_n_experts for each input token.
 
         Args:
             dim: Input/output dimension
@@ -42,8 +37,8 @@ class MoE(nn.Module):
 
         self.norm = nn.RMSNorm(dim, eps=1e-5)
 
-        self.n = 4
-        self.router = nn.Linear(dim, 2**self.n, bias=bias)
+        self.n = log_n_experts
+        self.router = nn.Linear(dim, 2**self.n, bias=False)
         self.experts = torch.nn.ModuleList(
             _Expert(dim, hidden_dim) for _ in range(2**self.n)
         )
@@ -51,51 +46,52 @@ class MoE(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (Batch, dim)
+            x: Tensor of shape (*, dim)
 
         Returns:
-            x: Tensor of shape (Batch, dim)
+            x: Tensor of shape (*, dim)
         """
         residual = x
         x = self.norm(x)
 
-        route = self.router(x)  # [!n]
+        route = self.router(x)  # [..., !n]
 
         xs = [self.experts[i](x) for i in range(len(self.experts))]
 
-        for i, n in map(lambda i: (i, 2 ** (self.n - i)), range(self.n)):
-            # Advanced indexing keeps the rank
-            xs = [torch.where(route[[i]] < 0, xs[j], xs[j + 1]) for j in range(0, n, 2)]
+        for i in range(self.n):
+            mask = route[..., i : i + 1] < 0
+            xs = [torch.where(mask, xs[j], xs[j + 1]) for j in range(0, len(xs), 2)]
 
         return xs[0] + residual
 
 
 @beartype
-def _vm_moe(dim: int, hidden_dim: int, config: str):
+def _vm_moe(dim: int, hidden_dim: int, log_n_experts: int, config: str):
     from vollo_model_zoo.vm import vollo_info
 
-    input = torch.randn(dim)
+    input = torch.randn(1, 4, dim)
 
-    model = MoE(dim=dim, hidden_dim=hidden_dim)
+    model = MoE(dim=dim, hidden_dim=hidden_dim, log_n_experts=log_n_experts)
 
     return vollo_info(
         model,
         input,
         config=config,
-        time_axis=None,
+        time_axis=1,
         meta=dict(
             dim=dim,
             hidden=hidden_dim,
+            n_experts=2**log_n_experts,
         ),
     )
 
 
 @beartype
 def main(config: str = "V80") -> Generator:
-    n = 9
-
     for x in [
-        dict(dim=32 * n, hidden_dim=32 * n * 4),
+        dict(dim=192, hidden_dim=768, log_n_experts=2),
+        dict(dim=192, hidden_dim=768, log_n_experts=3),
+        dict(dim=192, hidden_dim=768, log_n_experts=4),
     ]:
         yield _vm_moe(**x, config=config)
 
