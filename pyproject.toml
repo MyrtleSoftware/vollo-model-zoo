@@ -7,12 +7,14 @@ requires-python = ">=3.13"
 dependencies = [
   "beartype>=0.22.9",
   "torch>=2.10.0",
+  "tqdm>=4.67.3",
   "vollo-compiler>=26.1.0",
   "vollo-torch>=26.1.0",
 ]
 
 [project.scripts]
 zoo = "vollo_model_zoo.main:main"
+score = "vollo_model_zoo.main:score"
 
 [tool.uv]
 package = true
@@ -21,7 +23,4 @@ package = true
 addopts = "-v"
 
 [dependency-groups]
-dev = [
-    "pre-commit>=4.5.1",
-    "pytest>=9.0.2",
-]
+dev = ["pre-commit>=4.5.1", "pytest>=9.0.2"]
