@@ -8,17 +8,13 @@ from torch import nn
 
 class _Expert(nn.Module):
     @beartype
-    def __init__(
-        self,
-        dim: int,
-        hidden_dim: int,
-    ):
+    def __init__(self, dim: int, hidden_dim: int):
         super().__init__()
-        self.w1 = nn.Linear(dim, hidden_dim, bias=False)
-        # nn.ReLU(),
-        # nn.Linear(hidden_dim, dim, bias=bias),
-        # )
-        #
+        self.w1 = nn.Sequential(
+            nn.Linear(dim, hidden_dim, bias=False),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, dim, bias=False),
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.w1(x)
@@ -46,10 +42,11 @@ class MoE(nn.Module):
 
         self.norm = nn.RMSNorm(dim, eps=1e-5)
 
-        self.router = nn.Linear(dim, 1, bias=bias)
-
-        self.expert1 = _Expert(dim, hidden_dim)
-        self.expert2 = _Expert(dim, hidden_dim)
+        self.n = 4
+        self.router = nn.Linear(dim, 2**self.n, bias=bias)
+        self.experts = torch.nn.ModuleList(
+            _Expert(dim, hidden_dim) for _ in range(2**self.n)
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -62,17 +59,15 @@ class MoE(nn.Module):
         residual = x
         x = self.norm(x)
 
-        route = self.router(x)  # [!1]
+        route = self.router(x)  # [!n]
 
-        w1 = self.expert1.w1.weight
-        w2 = self.expert2.w1.weight
+        xs = [self.experts[i](x) for i in range(len(self.experts))]
 
-        e1 = self.expert1(x)
-        e2 = self.expert2(x)
+        for i, n in map(lambda i: (i, 2 ** (self.n - i)), range(self.n)):
+            # Advanced indexing keeps the rank
+            xs = [torch.where(route[[i]] < 0, xs[j], xs[j + 1]) for j in range(0, n, 2)]
 
-        z = torch.where(route[:] < 0, e1, e2)
-
-        return z
+        return xs[0] + residual
 
 
 @beartype
