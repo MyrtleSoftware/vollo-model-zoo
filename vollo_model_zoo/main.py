@@ -4,12 +4,10 @@ import json
 import os
 from collections.abc import Generator
 from dataclasses import asdict
-from functools import cache
 from typing import Optional
 from warnings import warn
 
 from beartype import beartype
-from tqdm import tqdm
 from vollo_compiler import AllocationError, SaveError
 
 from vollo_model_zoo.vm import CONFIGS, Result
@@ -29,45 +27,17 @@ def make_type(choices: list[str]):
 
 
 @beartype
-def score() -> int:
-    parser = argparse.ArgumentParser(
-        description="Compute an overall score for Vollo's latency"
-    )
-
-    parser.add_argument(
-        "-j",
-        "--json",
-        action="store_true",
-        help="Output results in JSON format",
-    )
-
-    args = parser.parse_args()
-
-    latencies = []
-
-    for config in CONFIGS.keys():
-        for model in tqdm(
-            get_available_models(), disable=args.json, desc=f"Scoring {config}"
-        ):
-            latencies.extend(get_model_results(model, config=config))
-            try:
-                latencies.extend(get_model_results(model, config=config))
-            except (AllocationError, SaveError):
-                pass
-
-    return 1
-
-
-@beartype
 def main() -> int:
+    available_models = get_available_models()
+
     parser = argparse.ArgumentParser(
         description="Run (compute) latency simulations for Vollo models"
     )
 
     parser.add_argument(
         "model",
-        type=make_type(get_available_models()),
-        choices=get_available_models(),
+        type=make_type(available_models),
+        choices=available_models,
         help="Model to run",
     )
 
@@ -135,7 +105,6 @@ def main() -> int:
     return 0
 
 
-@cache
 @beartype
 def get_available_models() -> list[str]:
     """
