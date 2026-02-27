@@ -242,7 +242,6 @@ def main(config: str = "V80") -> Generator:
         dict(dim=32 * 6, state=6),
         dict(dim=32 * 12, state=6 * 2),
         dict(dim=32 * 32, state=6 * 2),
-        dict(dim=32 * 12, state=6 * 4),
         dict(dim=32 * 32, state=6 * 4),
     ]:
         yield _vm(**x, config=config)
