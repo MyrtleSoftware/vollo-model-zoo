@@ -159,9 +159,7 @@ class Mamba(nn.Module):
 
         self.ssm = vollo_torch.nn.Scan(self.step)
 
-        self.h0 = torch.nn.Buffer(
-            self.step._init_state(), requires_grad=False, persistent=False
-        )
+        self.h0 = torch.nn.Buffer(self.step._init_state(), persistent=False)
 
         # - Mamba parameters
 
@@ -229,7 +227,7 @@ def _vm(
         model,
         input,
         config=config,
-        time_axis=None,  # Not a streaming model
+        time_axis=0,
         allow_dynamic_weights=True,
         meta=dict(
             dim=dim,
@@ -241,7 +239,11 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=6 * 64, state=6 * 2),
+        dict(dim=32 * 6, state=6),
+        dict(dim=32 * 12, state=6 * 2),
+        dict(dim=32 * 32, state=6 * 2),
+        dict(dim=32 * 12, state=6 * 4),
+        dict(dim=32 * 32, state=6 * 4),
     ]:
         yield _vm(**x, config=config)
 
