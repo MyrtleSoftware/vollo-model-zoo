@@ -27,12 +27,17 @@ def test_models(model_name: str, config: Optional[str]):
     results: list[Ok] = []
 
     for r in get_model_results(model_name, config=config):
-        if not isinstance(r, Ok):
-            if config not in (None, "V80", "V80LL"):
-                pytest.skip(f"Can't allocated on config {config}")
-            raise r
-
-        results.append(r)
+        match r:
+            case Ok():
+                results.append(r)
+            case AllocationError():
+                if config in (None, "V80", "V80LL"):
+                    raise r
+            case SaveError():
+                if config in (None, "V80", "V80LL"):
+                    raise r
+            case _:
+                raise ValueError(f"Unexpected result type: {type(r)}")
 
     assert len(results) > 0, f"Model {model_name} returned no results"
 
