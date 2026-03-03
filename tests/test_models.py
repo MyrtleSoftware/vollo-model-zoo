@@ -6,7 +6,7 @@ from beartype import beartype
 from vollo_compiler import AllocationError, SaveError
 
 from vollo_model_zoo.main import get_available_models, get_model_results
-from vollo_model_zoo.vm import CONFIGS, Result
+from vollo_model_zoo.vm import CONFIGS, Ok
 
 
 def is_sorted(xs, *, key):
@@ -23,20 +23,18 @@ def idfn(config):
 @pytest.mark.parametrize("model_name", get_available_models())
 @beartype
 def test_models(model_name: str, config: Optional[str]):
-    try:
-        results = list(get_model_results(model_name, config=config))
-    except (AllocationError, SaveError):
-        # Skip test if not V80 or default config
-        if config not in (None, "V80", "V80LL"):
-            pytest.skip(f"Can't allocated on config {config}")
-        raise
+    #
+    results: list[Ok] = []
+
+    for r in get_model_results(model_name, config=config):
+        if not isinstance(r, Ok):
+            if config not in (None, "V80", "V80LL"):
+                pytest.skip(f"Can't allocated on config {config}")
+            raise r
+
+        results.append(r)
 
     assert len(results) > 0, f"Model {model_name} returned no results"
-
-    for result in results:
-        assert isinstance(
-            result, Result
-        ), f"Model '{model_name}' produced a non-Result object: {type(result)}"
 
     param_sorted = is_sorted(results, key=lambda r: r.param_count)
     speed_sorted = is_sorted(results, key=lambda r: r.latency_spaced.microseconds)

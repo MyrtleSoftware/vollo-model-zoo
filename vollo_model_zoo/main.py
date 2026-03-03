@@ -10,7 +10,7 @@ from warnings import warn
 from beartype import beartype
 from vollo_compiler import AllocationError, SaveError
 
-from vollo_model_zoo.vm import CONFIGS, Result
+from vollo_model_zoo.vm import CONFIGS, Ok, Result
 
 
 @beartype
@@ -61,7 +61,7 @@ def main() -> int:
     results = get_model_results(args.model, args.config)
 
     if args.json:
-        print(json.dumps({args.model: [asdict(r) for r in results]}))
+        print(json.dumps({args.model: [to_dict(r) for r in results]}))
         return 0
 
     print(f"VM results for model '{args.model}' with {args.config} config:\n")
@@ -78,31 +78,43 @@ def main() -> int:
     print_table_row(headers)
     print_table_row([f"{'':-<{len(h) - 1}}:" for h in headers])
 
-    try:
-        for r in results:
-            # Metadata is optional
-            meta = {} if r.meta is None else r.meta
+    for r in results:
+        if not isinstance(r, Ok):
+            continue
 
-            row = [
-                f"{r.param_count / 1e6:4.1f}",
-                f"{r.cycle_count}",
-                f"{r.latency_spaced.microseconds:4.1f}",
-                f"{r.latency_contiguous.microseconds:4.1f}",
-                ",".join(f"{k}={v}" for k, v in meta.items() if not k.startswith("_")),
-            ]
+        # Metadata is optional
+        meta = {} if r.meta is None else r.meta
 
-            # Pad each cell to the width of the header
-            row = [x.rjust(len(h)) for x, h in zip(row, headers)]
+        row = [
+            f"{r.param_count / 1e6:4.1f}",
+            f"{r.cycle_count}",
+            f"{r.latency_spaced.microseconds:4.1f}",
+            f"{r.latency_contiguous.microseconds:4.1f}",
+            ",".join(f"{k}={v}" for k, v in meta.items() if not k.startswith("_")),
+        ]
 
-            print_table_row(row)
-    except (AllocationError, SaveError):
-        warn("Some configurations don's fit on this config")
+        # Pad each cell to the width of the header
+        row = [x.rjust(len(h)) for x, h in zip(row, headers)]
+
+        print_table_row(row)
 
     print(
         "\nTip: this is human readable output; use -j/--json for machine-readable output."
     )
 
     return 0
+
+
+@beartype
+def to_dict(r: Result) -> dict:
+    if isinstance(r, Ok):
+        return {"Ok": asdict(r)}
+    elif isinstance(r, AllocationError):
+        return {"AllocationError": 0}
+    elif isinstance(r, SaveError):
+        return {"SaveError": 1}
+    else:
+        raise ValueError(f"Unknown result type: {type(r)}")
 
 
 @beartype

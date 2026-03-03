@@ -5,6 +5,7 @@ import torch
 import vollo_compiler as vc
 import vollo_torch as vt
 from beartype import beartype
+from vollo_compiler import AllocationError, SaveError
 
 CONFIGS = {
     "V80": vc.Config.v80_c6b32(),
@@ -31,7 +32,7 @@ class Microseconds:
 
 @beartype
 @dataclass
-class Result:
+class Ok:
     """
     Generic VM result object.
 
@@ -54,6 +55,9 @@ class Result:
     meta: Optional[dict[str, Union[int, float, str]]] = None
 
 
+type Result = Union[Ok, AllocationError, SaveError]
+
+
 @beartype
 def vollo_info(
     model: torch.nn.Module,
@@ -74,18 +78,21 @@ def vollo_info(
             f"Unknown config: {config}, valid configs are: {list(CONFIGS.keys())}"
         )
 
-    p = _vollo_compile(
-        model,
-        x,
-        time_axis=time_axis,
-        config=CONFIGS[config],
-        allow_dynamic_weights=allow_dynamic_weights,
-    )
+    try:
+        p = _vollo_compile(
+            model,
+            x,
+            time_axis=time_axis,
+            config=CONFIGS[config],
+            allow_dynamic_weights=allow_dynamic_weights,
+        )
+    except (AllocationError, SaveError) as e:
+        return e
 
     latency_fast = p.compute_duration_per_inference_us(spaced=True)
     latency_slow = p.compute_duration_per_inference_us(spaced=False)
 
-    return Result(
+    return Ok(
         config=config,
         param_count=sum(p.numel() for p in model.parameters()),
         cycle_count=p.cycle_count_per_inference(),
