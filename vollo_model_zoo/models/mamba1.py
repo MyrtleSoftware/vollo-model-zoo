@@ -42,11 +42,12 @@ class _MambaStep(nn.Module):
 
         # -- Mamba derived weights
 
-        # This is equal to `-exp(A_log).T` with A_log from mamba
-        self.A_t = nn.Parameter(
+        # This is equal to `A_log.T` with A_log from mamba
+        self.A_log_t = nn.Parameter(
             torch.arange(1, self.d_state + 1, dtype=torch.float32)
             .repeat(self.d_inner, 1)
             .t()
+            .log()
             .contiguous()
         )
 
@@ -76,6 +77,7 @@ class _MambaStep(nn.Module):
         with torch.no_grad():
             self.dt_proj.bias.copy_(inv_dt)
 
+    @beartype
     def _init_state(self):
         return torch.zeros(
             self.d_state,
@@ -97,24 +99,27 @@ class _MambaStep(nn.Module):
         C = self.x_proj_C(x)  # [s]
 
         dt = self.act(dt)  # [D]
-
-        dA = self.exp(dt[None] * self.A_t)  # A_t = [s, D]
+        dA = self.exp(dt[None] * -self.A_log_t.exp())  # A_t = [s, D]
 
         # This is a trick to broadcast and change data dimension
-        # Equivalent to: bcast_B = B[:, None] with rhs = data dimension
-        bcast_B = torch.stack(
-            [B[i : i + 1].expand(self.d_inner) for i in range(self.d_state)],
-        )
+        # Equivalent to: bcast_C = C[:, None] with rhs = data dimension
+        bcast_C = torch.stack([C[i : i + 1] for i in range(self.d_state)])
 
-        # Core SSM step
-        state = state * dA + bcast_B * (x * dt)[None]
+        def sum(x):
+            return x.sum(dim=0, keepdim=True)
+
+        state = state * dA
+
+        # Using a matmul `state.T @ C` is slower here.
+        y = sum(state * bcast_C) + (x * dt) * sum(B * C)
+
+        # === Now on the slow path ===
 
         # Same trick
-        bcast_C = torch.stack(
-            [C[i : i + 1].expand(self.d_inner) for i in range(self.d_state)],
-        )
+        bcast_B = torch.stack([B[i : i + 1] for i in range(self.d_state)])
 
-        y = (state * bcast_C).sum(dim=0, keepdim=True)  # [1, D]
+        # Core SSM step
+        state = state + bcast_B * (x * dt)[None]
 
         # Inner residual
         y = y + self.D * x[None]
@@ -145,10 +150,11 @@ class Mamba(nn.Module):
             dt_rank:   Generalized delta dimension.
             bias:      Input/output projection bias.
             conv_bias: Convolutional bias.
-            ref_mode:  Use Einsum for SSM (not compilable with vollo in this mode).
         """
 
         super().__init__()
+
+        self.bias = bias
 
         self.step = _MambaStep(
             d_model=d_model,
@@ -159,6 +165,7 @@ class Mamba(nn.Module):
 
         self.ssm = vollo_torch.nn.Scan(self.step)
 
+        # Not technically a parameter but needed for .to() etc
         self.h0 = torch.nn.Buffer(self.step._init_state(), persistent=False)
 
         # - Mamba parameters
