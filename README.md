@@ -197,8 +197,13 @@ State space (sequence) models (SSM) (later expanded to _simple_ and
 _structured_) are discretizations of linear time-invariant systems:
 
 ```math
-h'(t) = A h(t) + B x(t)
+\begin{aligned}
+h'(t) &= A h(t) + B x(t) \\
+y(t) &= C h(t) + D x(t)
+\end{aligned}
 ```
+
+where `h` is the hidden state, `x` is the input, and `y` is the output. The
 
 ### Mamba
 
@@ -251,3 +256,7 @@ Big ideas:
 - Strange ensembles?
 - Vector quantizer?
 - MOE (William shows it is with weight writing!)
+
+```
+
+```
