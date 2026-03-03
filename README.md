@@ -203,7 +203,9 @@ y(t) &= C h(t) + D x(t)
 \end{aligned}
 ```
 
-where `h` is the hidden state, `x` is the input, and `y` is the output. The
+Whare `h` is a hidden state, `x` is the input, and `y` is the output. Through
+the scan API Vollo can efficiently perform inference through the recurrent
+formulation.
 
 ### Mamba
 
@@ -217,9 +219,9 @@ maintaining strong long-range modeling capability.
 
 At a high level, Mamba can be understood as a selective state space model: the
 state update and output projection are dynamically modulated by the input at
-each timestep, allowing content-based reasoning without explicit attention.
+each time step, allowing content-based reasoning without explicit attention.
 
-The Mamba block incorporates
+TODO: check mamba against FLA
 
 ## TODO
 
