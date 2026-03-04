@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-from typing import Optional, Union
+from functools import cache, partial
+from typing import Callable, Optional, Union
 
+import numpy as np
 import torch
 import vollo_compiler as vc
 import vollo_torch as vt
@@ -59,6 +61,15 @@ type Result = Union[Ok, AllocationError, SaveError]
 
 
 @beartype
+def _config(conf: str) -> vc.Config:
+    if conf not in CONFIGS:
+        raise ValueError(
+            f"Unknown config: {conf}, valid configs are: {list(CONFIGS.keys())}"
+        )
+    return CONFIGS[conf]
+
+
+@beartype
 def vollo_info(
     model: torch.nn.Module,
     x: torch.Tensor,
@@ -73,17 +84,12 @@ def vollo_info(
     key information about the model and it's performance.
     """
 
-    if config not in CONFIGS:
-        raise ValueError(
-            f"Unknown config: {config}, valid configs are: {list(CONFIGS.keys())}"
-        )
-
     try:
         p = _vollo_compile(
             model,
             x,
             time_axis=time_axis,
-            config=CONFIGS[config],
+            config=_config(config),
             allow_dynamic_weights=allow_dynamic_weights,
         )
     except (AllocationError, SaveError) as e:
@@ -100,6 +106,44 @@ def vollo_info(
         latency_contiguous=Microseconds(latency_slow),
         meta=meta,
     )
+
+
+type Activation = Callable[[torch.Tensor], torch.Tensor]
+
+
+@cache
+@beartype
+def vollo_fn(fn: Activation, config: str) -> Activation:
+    """
+    Convert a torch activation function to a vollo activation function.
+    """
+
+    # Dummy model for vollo to compile
+    class Model(torch.nn.Module):
+        def forward(self, x):
+            return fn(x)
+
+    # Use scalar effective input
+    program = _vollo_compile(
+        Model(), torch.tensor([0.0]), time_axis=None, config=_config(config)
+    )
+
+    return partial(_tensor_fn, vm=program.to_vm(bit_accurate=True))
+
+
+@beartype
+def _scalar_fn[T](x: T, dtype, vm) -> T:
+    """
+    Run a scalar through the vollo VM.
+    """
+    return vm.run(np.array([x], dtype=dtype)).item()
+
+
+@beartype
+def _tensor_fn(x: torch.Tensor, vm) -> torch.Tensor:
+    y = x.cpu().numpy()
+    y = np.vectorize(partial(_scalar_fn, dtype=y.dtype, vm=vm))(y)
+    return torch.from_numpy(y).to(device=x.device, dtype=x.dtype)
 
 
 @beartype
