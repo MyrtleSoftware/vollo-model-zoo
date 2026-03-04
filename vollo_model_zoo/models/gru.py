@@ -90,9 +90,9 @@ class GRU(nn.Module):
     def forward(self, x):
         """
         Input:
-            x: [T, input_size]
+            x: [T, *, input_size]
         Return:
-            y: [T, hidden_size]
+            y: [T, *, hidden_size]
         """
         return self.layers(x)
 
