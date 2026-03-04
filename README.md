@@ -6,11 +6,11 @@ to perform low-latency inference on a variety of FPGA accelerators.
 
 Models in the zoo include:
 
-- [Multilayer perceptrons (MLP)](#basic-multilayer-perceptrons-mlp)
+- [Basic multilayer perceptrons (MLP)](#basic-multilayer-perceptrons-mlp)
 - [Transformer++'s SwiGLU feed-forward block](#transformers-swiglu-feed-forward-block)
-- [ResMLP/MLP-mixer](#resmlp)
-- [Mixture of experts (MoE) blocks](#mixture-of-experts-moe-block)
-- [Convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
+- [ResMLP (MLP-mixer)](#resmlp)
+- [Mixture of experts (MoE)](#mixture-of-experts-moe-block)
+- [Basic Convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
 - [WaveNet](#wavenet)
 - [MobileNet](#mobilenet)
 - [State space models (S3/S4/S5)](#s3s4s5)
