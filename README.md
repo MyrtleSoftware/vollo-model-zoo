@@ -13,6 +13,8 @@ Models in the zoo include:
 - [Convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
 - [WaveNet](#wavenet)
 - [MobileNet](#mobilenet)
+- [State space models (S3/S4/S5)](#s3s4s5)
+- [Mamba](#mamba)
 
 See the [quick-start](#-quick-start) section to find out how to run the VM and
 calculate the compute-latency for any of these models.
