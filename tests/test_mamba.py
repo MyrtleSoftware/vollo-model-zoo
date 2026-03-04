@@ -1,15 +1,16 @@
+import beartype
 import numpy as np
 import pytest
 import torch
-from fla.layers.mamba import Mamba as FLAMamba
+from beartype import beartype
+from mock_mamba import Mamba as FLAMamba
 
 from vollo_model_zoo.models.mamba1 import Mamba as VolloMamba
 
-# --- Weight Conversion ---
 
-
+@beartype
 def convert_state_dict(
-    fla_state_dict,
+    fla_state_dict: dict,
     intermediate_size,
     ssm_state_size,
     time_step_rank,
@@ -20,42 +21,46 @@ def convert_state_dict(
 
     # in_proj split: FLA has one Linear, Vollo has two (in_proj_x and in_proj_z)
     weight = fla_state_dict["in_proj.weight"]
-    vollo_state_dict["in_proj_x.weight"] = weight[:intermediate_size, :]
-    vollo_state_dict["in_proj_z.weight"] = weight[intermediate_size:, :]
+    assert 2 * (N := weight.shape[0] // 2) == weight.shape[0]
+    vollo_state_dict["in_proj_x.weight"] = weight[:N, :]
+    vollo_state_dict["in_proj_z.weight"] = weight[N:, :]
 
-    if use_bias:
-        bias = fla_state_dict["in_proj.bias"]
-        vollo_state_dict["in_proj_x.bias"] = bias[:intermediate_size]
-        vollo_state_dict["in_proj_z.bias"] = bias[intermediate_size:]
+    if (bias := fla_state_dict.get("in_proj.bias")) is not None:
+        vollo_state_dict["in_proj_x.bias"] = bias[:N]
+        vollo_state_dict["in_proj_z.bias"] = bias[N:]
 
     # conv1d: Vollo's PaddedConv1d wraps an nn.Conv1d in self.conv
     vollo_state_dict["conv1d.conv.weight"] = fla_state_dict["conv1d.weight"]
-    if use_conv_bias:
+    if "conv1d.bias" in fla_state_dict:
         vollo_state_dict["conv1d.conv.bias"] = fla_state_dict["conv1d.bias"]
+
+    # ---
 
     # x_proj split: FLA is [dt_rank + 2 * ssm_state_size, intermediate_size]
     # Vollo has three separate linear layers
     x_proj_weight = fla_state_dict["x_proj.weight"]
-    vollo_state_dict["step.x_proj_t.weight"] = x_proj_weight[:time_step_rank, :]
-    vollo_state_dict["step.x_proj_B.weight"] = x_proj_weight[
+    vollo_state_dict["ssm.step.x_proj_t.weight"] = x_proj_weight[:time_step_rank, :]
+    vollo_state_dict["ssm.step.x_proj_B.weight"] = x_proj_weight[
         time_step_rank : time_step_rank + ssm_state_size, :
     ]
-    vollo_state_dict["step.x_proj_C.weight"] = x_proj_weight[
+    vollo_state_dict["ssm.step.x_proj_C.weight"] = x_proj_weight[
         time_step_rank + ssm_state_size :, :
     ]
 
     # dt_proj
-    vollo_state_dict["step.dt_proj.weight"] = fla_state_dict["dt_proj.weight"]
-    vollo_state_dict["step.dt_proj.bias"] = fla_state_dict["dt_proj.bias"]
+    vollo_state_dict["ssm.step.dt_proj.weight"] = fla_state_dict["dt_proj.weight"]
+    vollo_state_dict["ssm.step.dt_proj.bias"] = fla_state_dict["dt_proj.bias"]
 
     # A_log and D
     # Vollo A_log_t is [ssm_state_size, intermediate_size], FLA A_log is [intermediate_size, ssm_state_size]
-    vollo_state_dict["step.A_log_t"] = fla_state_dict["A_log"].t()
-    vollo_state_dict["step.D"] = fla_state_dict["D"].unsqueeze(0)
+    vollo_state_dict["ssm.step.A_log_t"] = fla_state_dict["A_log"].t()
+    vollo_state_dict["ssm.step.D"] = fla_state_dict["D"].unsqueeze(0)
+
+    # ---
 
     # out_proj
     vollo_state_dict["out_proj.weight"] = fla_state_dict["out_proj.weight"]
-    if use_bias:
+    if "out_proj.bias" in fla_state_dict:
         vollo_state_dict["out_proj.bias"] = fla_state_dict["out_proj.bias"]
 
     return vollo_state_dict
@@ -64,9 +69,7 @@ def convert_state_dict(
 # --- Test Comparison ---
 
 
-@pytest.mark.skipif(
-    not torch.cuda.is_available(), reason="Requires CUDA for triton backend"
-)
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA for triton")
 @pytest.mark.parametrize("d_model", [64])
 @pytest.mark.parametrize("d_state", [16])
 @pytest.mark.parametrize("d_conv", [4])
@@ -83,6 +86,9 @@ def test_mamba_equivalence(
     bias,
     conv_bias,
 ):
+    # Set seed
+    torch.manual_seed(42)
+
     fla_model = (
         FLAMamba(
             hidden_size=d_model,
@@ -121,9 +127,11 @@ def test_mamba_equivalence(
         use_conv_bias=conv_bias,
     )
 
-    vollo_model.load_state_dict(vollo_state_dict, strict=False)
+    vollo_model.load_state_dict(vollo_state_dict, strict=True)
 
-    x = torch.randn(1, 32, d_model).cuda()
+    T = 2
+
+    x = torch.randn(1, T, d_model).cuda()
 
     with torch.no_grad():
         # FLA Mamba forward
@@ -135,19 +143,11 @@ def test_mamba_equivalence(
     # Check shapes
     assert fla_out.shape == vollo_out.shape
 
-    # Check values
-    np.testing.assert_allclose(
-        fla_out.cpu().numpy(),
-        vollo_out.cpu().numpy(),
-        rtol=1e-5,
-        atol=1e-5,
-        err_msg="Mamba implementations output mismatch",
-    )
-
-
-if __name__ == "__main__":
-    if torch.cuda.is_available():
-        test_mamba_equivalence(64, 2, 16, 32)
-        print("Test passed!")
-    else:
-        print("CUDA not available, skipping test.")
+    for i in range(T):
+        np.testing.assert_allclose(
+            fla_out[0, i].cpu().numpy(),
+            vollo_out[0, i].cpu().numpy(),
+            rtol=1e-5,
+            atol=1e-5,
+            err_msg=f"Mamba implementations output mismatch at step={i}",
+        )

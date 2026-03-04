@@ -156,36 +156,36 @@ class Mamba(nn.Module):
 
         self.bias = bias
 
-        self.step = _MambaStep(
+        step = _MambaStep(
             d_model=d_model,
             d_state=d_state,
             expand=expand,
             dt_rank=dt_rank,
         )
 
-        self.ssm = vollo_torch.nn.Scan(self.step)
+        self.ssm = vollo_torch.nn.Scan(step)
 
         # Not technically a parameter but needed for .to() etc
-        self.h0 = torch.nn.Buffer(self.step._init_state(), persistent=False)
+        self.h0 = torch.nn.Buffer(step._init_state(), persistent=False)
 
         # - Mamba parameters
 
         # These are a single linear layer ("in_proj") in Mamba
-        self.in_proj_x = nn.Linear(self.step.d_model, self.step.d_inner, bias=bias)
-        self.in_proj_z = nn.Linear(self.step.d_model, self.step.d_inner, bias=bias)
+        self.in_proj_x = nn.Linear(step.d_model, step.d_inner, bias=bias)
+        self.in_proj_z = nn.Linear(step.d_model, step.d_inner, bias=bias)
 
         # Depthwise
         self.conv1d = vollo_torch.nn.PaddedConv1d(
-            in_channels=self.step.d_inner,
-            out_channels=self.step.d_inner,
-            groups=self.step.d_inner,
+            in_channels=step.d_inner,
+            out_channels=step.d_inner,
+            groups=step.d_inner,
             kernel_size=d_conv,
             bias=conv_bias,
         )
 
         self.act = nn.SiLU()
 
-        self.out_proj = nn.Linear(self.step.d_inner, self.step.d_model, bias=bias)
+        self.out_proj = nn.Linear(step.d_inner, step.d_model, bias=bias)
 
     def forward(self, x):
         """
