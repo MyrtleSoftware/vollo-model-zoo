@@ -22,6 +22,7 @@ addopts = "-v"
 
 [dependency-groups]
 dev = [
+    "flash-linear-attention>=0.4.1",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
 ]
