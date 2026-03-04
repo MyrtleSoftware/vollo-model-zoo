@@ -46,8 +46,8 @@ class _Layer(nn.Module):
         bias,
     ):
         super().__init__()
-        self.step = _Step(input_size, hidden_size, bias=bias)
-        self.scan = vollo_torch.nn.Scan(self.step)
+        step = _Step(input_size, hidden_size, bias=bias)
+        self.scan = vollo_torch.nn.Scan(step)
         self.h_0 = torch.nn.Buffer(torch.zeros(hidden_size), persistent=False)
 
     def forward(self, x):
