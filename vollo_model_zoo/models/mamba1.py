@@ -190,8 +190,6 @@ class Mamba(nn.Module):
                 self.act = nn.SiLU()
             case "relu":
                 self.act = nn.ReLU()
-            case _:
-                raise ValueError(f"Unsupported activation: {activation}")
 
         self.out_proj = nn.Linear(step.d_inner, step.d_model, bias=bias)
 
