@@ -8,12 +8,8 @@ from torch import nn
 
 
 class _Step(nn.Module):
-    def __init__(
-        self,
-        input_size,
-        hidden_size,
-        bias,
-    ):
+    @beartype
+    def __init__(self, input_size: int, hidden_size: int, fp32: bool, bias: bool):
         super().__init__()
         self.linear_ih_r = nn.Linear(input_size, hidden_size, bias=bias)
         self.linear_ih_z = nn.Linear(input_size, hidden_size, bias=bias)
@@ -23,30 +19,23 @@ class _Step(nn.Module):
         self.linear_hh_n = nn.Linear(hidden_size, hidden_size, bias=bias)
         self.linear_hh_z = nn.Linear(hidden_size, hidden_size, bias=bias)
 
-    def forward(self, x, h_old):
-        """
-        x: (*, input_size,)
-        h_old (scan state): (*, hidden_size,)
-        """
+    def forward(self, x: torch.Tensor, h: torch.Tensor):
+        r = torch.sigmoid(self.linear_ih_r(x) + self.linear_hh_r(h))
+        z = torch.sigmoid(self.linear_ih_z(x) + self.linear_hh_z(h))
+        n = torch.tanh(self.linear_ih_n(x) + r * self.linear_hh_n(h))
 
-        r = torch.sigmoid(self.linear_ih_r(x) + self.linear_hh_r(h_old))
-        z = torch.sigmoid(self.linear_ih_z(x) + self.linear_hh_z(h_old))
-        n = torch.tanh(self.linear_ih_n(x) + r * self.linear_hh_n(h_old))
+        h = (1 - z) * n + z * h
 
-        h_new = (1 - z) * n + z * h_old
-
-        return h_new, h_new
+        return h, h
 
 
 class _Layer(nn.Module):
-    def __init__(
-        self,
-        input_size,
-        hidden_size,
-        bias,
-    ):
+    @beartype
+    def __init__(self, input_size: int, hidden_size: int, fp32: bool, bias: bool):
         super().__init__()
-        step = _Step(input_size, hidden_size, bias=bias)
+        step = _Step(
+            input_size=input_size, hidden_size=hidden_size, fp32=fp32, bias=bias
+        )
         self.scan = vollo_torch.nn.Scan(step)
         self.h_0 = torch.nn.Buffer(torch.zeros(hidden_size), persistent=False)
 
@@ -56,11 +45,7 @@ class _Layer(nn.Module):
 
 class GRU(nn.Module):
     def __init__(
-        self,
-        input_size,
-        hidden_size,
-        num_layers=1,
-        bias=True,
+        self, input_size, hidden_size, num_layers=1, bias=True, fp32: bool = False
     ):
         """
         GRU (Gated Recurrent Unit) network.
@@ -83,6 +68,7 @@ class GRU(nn.Module):
                 input_size if i == 0 else hidden_size,
                 hidden_size,
                 bias=bias,
+                fp32=fp32,
             )
             for i in range(num_layers)
         )
@@ -102,13 +88,16 @@ def _vm(
     input_size: int,
     hidden_size: int,
     layers: int,
+    fp32: bool,
     config: str,
 ):
     from vollo_model_zoo.vm import vollo_info
 
     input = torch.randn(1, input_size)
 
-    model = GRU(input_size=input_size, hidden_size=hidden_size, num_layers=layers)
+    model = GRU(
+        input_size=input_size, hidden_size=hidden_size, num_layers=layers, fp32=fp32
+    )
 
     return vollo_info(
         model,
@@ -127,9 +116,9 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(input_size=512, hidden_size=384, layers=1),
-        dict(input_size=512, hidden_size=512, layers=1),
-        dict(input_size=512, hidden_size=512, layers=3),
+        dict(input_size=512, hidden_size=384, layers=1, fp32=False),
+        dict(input_size=512, hidden_size=512, layers=1, fp32=False),
+        dict(input_size=512, hidden_size=512, layers=3, fp32=False),
     ]:
         yield _vm(**x, config=config)
 
