@@ -226,8 +226,11 @@ A GRU cell consists of:
 1. **Reset gate**: Determines how much of the past information to forget.
 2. **Update gate**: Controls how much of the previous state is carried over to the current state.
 
-Through the scan API, Vollo can efficiently perform streaming inference for
-GRU models, allowing for high-performance recurrent computations.
+Through the scan API, Vollo can efficiently perform streaming inference for GRU
+models, allowing for high-performance recurrent computations. In addition, the
+GRU example demonstrates how to use select `fp32` operations to keep the hidden
+state in full precision, as is often required to prevent numerical errors
+accumulating over long sequences.
 
 ### S3/S4/S5
 
