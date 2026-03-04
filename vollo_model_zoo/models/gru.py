@@ -13,6 +13,8 @@ class _Step(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, fp32: bool, bias: bool):
         super().__init__()
 
+        self.fp32 = fp32
+
         self.context = vollo_torch.Fp32Activations if fp32 else nullcontext
 
         self.linear_ih_r = nn.Linear(input_size, hidden_size, bias=bias)
@@ -24,14 +26,31 @@ class _Step(nn.Module):
         self.linear_hh_z = nn.Linear(hidden_size, hidden_size, bias=bias)
 
     def forward(self, x: torch.Tensor, h: torch.Tensor):
-        r = torch.sigmoid(self.linear_ih_r(x) + self.linear_hh_r(h))
-        z = torch.sigmoid(self.linear_ih_z(x) + self.linear_hh_z(h))
-        n = torch.tanh(self.linear_ih_n(x) + r * self.linear_hh_n(h))
+        r = self.linear_ih_r(x) + self.linear_hh_r(h)
 
-        with self.context():
+        z = self.linear_ih_z(x) + self.linear_hh_z(h)
+
+        n = self.linear_ih_n(x) + torch.sigmoid(r) * self.linear_hh_n(h)
+
+        if not self.fp32:
+            # Use vollo's bf16 activation functions
+            r = torch.sigmoid(r)
+            z = torch.sigmoid(z)
+            n = torch.tanh(n)
+
             h = (1 - z) * n + z * h
 
-        return h, h
+            return h, h
+
+
+def _sigmoid32(x: torch.Tensor) -> torch.Tensor:
+    """
+    Compute sigmoid of x (bf16/fp32) to fp32 precision.
+
+    Sigmoid formula:
+
+        s(x) = 1 / ()
+    """
 
 
 class _Layer(nn.Module):
