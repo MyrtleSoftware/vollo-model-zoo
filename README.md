@@ -13,6 +13,8 @@ Models in the zoo include:
 - [Basic Convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
 - [WaveNet](#wavenet)
 - [MobileNet](#mobilenet)
+- [Long short-term memory (LSTM)](#lstm)
+- [Gated recurrent units (GRU)](#gru)
 - [State space models (S3/S4/S5)](#s3s4s5)
 - [Mamba](#mamba)
 
@@ -74,7 +76,7 @@ activation-functions available on Vollo, including:
 - SiLU
 - ELU
 
-Some of these are "first-class" (i.e. have hardware support) whilst others are
+Some of these are _first-class_ (i.e. have hardware support) whilst others are
 composed of simpler operations.
 
 ### Transformer++'s SwiGLU feed-forward block
@@ -164,7 +166,7 @@ A standard CNN block typically consists of:
 3. Normalization
 4. Optional residual connection
 
-Vollo has comprehensive support for 1D causal convolutions.
+Vollo has comprehensive first-class support for 1D causal convolutions.
 
 ### WaveNet
 
@@ -232,6 +234,16 @@ each time step, allowing content-based reasoning without explicit attention.
 If you would like to see example code to convert an
 [FLA](https://github.com/fla-org/flash-linear-attention) Mamba state-dict to a
 Vollo Mamba state dict see the [the tests](./tests/test_mamba.py).
+
+TODO: below
+
+Note: when compiled to Vollo the example Mamba will use a `bf16` hidden state,
+if this is not accurate enough for your use-case please see [Mamba
+2](./vollo_model_zoo/models/mamba2.py) for examples of how to modify to use an
+`fp32` hidden state. In addition you can reach out directly to Myrtle for
+support.
+
+### Mamba 2
 
 ## TODO
 
