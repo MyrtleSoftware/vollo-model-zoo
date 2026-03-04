@@ -74,6 +74,9 @@ activation-functions available on Vollo, including:
 - SiLU
 - ELU
 
+Some of these are "first-class" (i.e. have hardware support) whilst others are
+composed of simpler operations.
+
 ### Transformer++'s SwiGLU feed-forward block
 
 Code/models: [ffn-swiglu.py](./vollo_model_zoo/models/ffn-swiglu.py)
