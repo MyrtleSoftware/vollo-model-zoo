@@ -1,6 +1,4 @@
-import math
 from pathlib import Path
-from typing import Literal
 
 import torch
 import vollo_torch
@@ -84,6 +82,7 @@ def main(config: str = "V80") -> Generator:
         dict(dim=32 * 12, hidden=32 * 12),
         dict(dim=32 * 18, hidden=32 * 14),
         dict(dim=32 * 6 * 4, hidden=32 * 6 * 8),
+        dict(dim=32 * 6 * 8, hidden=32 * 6 * 16),
     ]:
         yield _vm(**x, config=config)
 
