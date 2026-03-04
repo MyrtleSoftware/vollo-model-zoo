@@ -212,7 +212,7 @@ y(t) &= C h(t) + D x(t)
 
 Whare `h` is a hidden state, `x` is the input, and `y` is the output. Through
 the scan API Vollo can efficiently perform inference through the recurrent
-formulation. The Vollo exemplar is full general in the parameterization of
+formulation. The Vollo exemplar is fully general in the parameterization of
 `A..D`.
 
 ### Mamba
