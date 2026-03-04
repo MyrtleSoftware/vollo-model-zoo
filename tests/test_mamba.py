@@ -8,7 +8,7 @@ from vollo_model_zoo.models.mamba1 import Mamba as VolloMamba
 
 
 @beartype
-def convert_state_dict(fla_state_dict: dict):
+def convert_state_dict(fla_state_dict: dict) -> dict:
     """
     Convert the state dict from an FLA Mamba block to a Vollo Mamba block.
     """
