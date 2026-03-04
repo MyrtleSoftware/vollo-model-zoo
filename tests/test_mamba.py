@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 import torch
 from beartype import beartype
-from mock_mamba import Mamba as FLAMamba
+from fla.layers.mamba import Mamba as FLAMamba
 
 from vollo_model_zoo.models.mamba1 import Mamba as VolloMamba
 
@@ -70,13 +70,13 @@ def convert_state_dict(
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA for triton")
-@pytest.mark.parametrize("d_model", [64])
-@pytest.mark.parametrize("d_state", [16])
-@pytest.mark.parametrize("d_conv", [4])
-@pytest.mark.parametrize("expand", [2])
-@pytest.mark.parametrize("dt_rank", [16])
-@pytest.mark.parametrize("bias", [True])
-@pytest.mark.parametrize("conv_bias", [True])
+@pytest.mark.parametrize("d_model", [32, 64])
+@pytest.mark.parametrize("d_state", [4, 16])
+@pytest.mark.parametrize("d_conv", [2, 4])
+@pytest.mark.parametrize("expand", [1, 2])
+@pytest.mark.parametrize("dt_rank", [4, 16])
+@pytest.mark.parametrize("bias", [True, False])
+@pytest.mark.parametrize("conv_bias", [True, False])
 def test_mamba_equivalence(
     d_model,
     d_state,
@@ -89,6 +89,10 @@ def test_mamba_equivalence(
     # Set seed
     torch.manual_seed(42)
 
+    # NOTE: we don't test the "silu" activation function because the fla
+    # implementation produces slightly different numerics than the torch
+    # implementation
+
     fla_model = (
         FLAMamba(
             hidden_size=d_model,
@@ -99,6 +103,7 @@ def test_mamba_equivalence(
             use_bias=bias,
             use_conv_bias=conv_bias,
             backend="triton",
+            hidden_act="relu",
         )
         .eval()
         .cuda()
@@ -108,10 +113,12 @@ def test_mamba_equivalence(
         VolloMamba(
             d_model=d_model,
             d_state=d_state,
+            d_conv=d_conv,
             expand=expand,
             dt_rank=dt_rank,
             bias=bias,
             conv_bias=conv_bias,
+            activation="relu",
         )
         .eval()
         .cuda()
@@ -129,7 +136,7 @@ def test_mamba_equivalence(
 
     vollo_model.load_state_dict(vollo_state_dict, strict=True)
 
-    T = 2
+    T = 32
 
     x = torch.randn(1, T, d_model).cuda()
 
