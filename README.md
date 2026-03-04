@@ -196,6 +196,22 @@ depthwise-pointwise factorisation pattern in 1D.
 
 ### LSTM
 
+Code/model: [`lstm.py`](./vollo_model_zoo/models/lstm.py)
+
+Long Short-Term Memory (LSTM) is a recurrent neural network (RNN) architecture
+that uses a series of gates to control the flow of information, allowing it to
+capture long-term dependencies in sequential data while mitigating the
+vanishing gradient problem common in vanilla RNNs.
+
+A standard LSTM cell consists of:
+
+1. **Forget gate**: Decides what information to discard from the cell state.
+2. **Input gate**: Decides what new information to store in the cell state.
+3. **Output gate**: Decides what part of the cell state to output.
+
+Vollo has first-class support for `torch.nn.LSTM`, allowing for efficient
+streaming inference of multi-layer, biased, and batch-first LSTM models.
+
 ### GRU
 
 ### S3/S4/S5
