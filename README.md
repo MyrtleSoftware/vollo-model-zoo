@@ -207,7 +207,8 @@ y(t) &= C h(t) + D x(t)
 
 Whare `h` is a hidden state, `x` is the input, and `y` is the output. Through
 the scan API Vollo can efficiently perform inference through the recurrent
-formulation.
+formulation. The Vollo exemplar is full general in the parameterization of
+`A..D`.
 
 ### Mamba
 
@@ -223,7 +224,9 @@ At a high level, Mamba can be understood as a selective state space model: the
 state update and output projection are dynamically modulated by the input at
 each time step, allowing content-based reasoning without explicit attention.
 
-TODO: check mamba against FLA
+If you would like to see example code to convert an
+[FLA](https://github.com/fla-org/flash-linear-attention) Mamba state-dict to a
+Vollo Mamba state dict see the [the tests](./tests/test_mamba.py).
 
 ## TODO
 
