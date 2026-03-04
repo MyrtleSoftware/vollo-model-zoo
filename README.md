@@ -92,7 +92,9 @@ modern transformer architectures. It consists of:
 This block is a key component of the transformer architecture and is
 responsible for processing the output of the attention mechanism. In our
 [implementation](./vollo_model_zoo/models/ffn-swiglu.py) of this block we
-demonstrate how to implement a fused calculation of the gate/value activation.
+demonstrate how to implement a fused calculation of the gate/value activation
+(as would often be done to optimize a GPU program) to highlight how this
+premature optimization can actually slow a Vollo program.
 
 ### ResMLP
 
