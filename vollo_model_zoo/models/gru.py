@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from contextlib import nullcontext
 from pathlib import Path
 
 import torch
@@ -11,6 +12,9 @@ class _Step(nn.Module):
     @beartype
     def __init__(self, input_size: int, hidden_size: int, fp32: bool, bias: bool):
         super().__init__()
+
+        self.context = vollo_torch.Fp32Activations if fp32 else nullcontext
+
         self.linear_ih_r = nn.Linear(input_size, hidden_size, bias=bias)
         self.linear_ih_z = nn.Linear(input_size, hidden_size, bias=bias)
         self.linear_ih_n = nn.Linear(input_size, hidden_size, bias=bias)
@@ -24,7 +28,8 @@ class _Step(nn.Module):
         z = torch.sigmoid(self.linear_ih_z(x) + self.linear_hh_z(h))
         n = torch.tanh(self.linear_ih_n(x) + r * self.linear_hh_n(h))
 
-        h = (1 - z) * n + z * h
+        with self.context():
+            h = (1 - z) * n + z * h
 
         return h, h
 
@@ -109,6 +114,7 @@ def _vm(
             input=input_size,
             hidden=hidden_size,
             layers=layers,
+            fp32=fp32,
         ),
     )
 
@@ -117,8 +123,11 @@ def _vm(
 def main(config: str = "V80") -> Generator:
     for x in [
         dict(input_size=512, hidden_size=384, layers=1, fp32=False),
+        dict(input_size=512, hidden_size=384, layers=1, fp32=True),
         dict(input_size=512, hidden_size=512, layers=1, fp32=False),
+        dict(input_size=512, hidden_size=512, layers=1, fp32=True),
         dict(input_size=512, hidden_size=512, layers=3, fp32=False),
+        dict(input_size=512, hidden_size=512, layers=3, fp32=True),
     ]:
         yield _vm(**x, config=config)
 
