@@ -214,6 +214,21 @@ streaming inference of multi-layer, biased, and batch-first LSTM models.
 
 ### GRU
 
+Code/model: [`gru.py`](./vollo_model_zoo/models/gru.py)
+
+Gated Recurrent Unit (GRU) is a recurrent neural network (RNN) architecture
+designed to capture dependencies at different time scales. It simplifies the
+standard LSTM architecture by merging the cell state and hidden state, and
+using fewer gates.
+
+A GRU cell consists of:
+
+1. **Reset gate**: Determines how much of the past information to forget.
+2. **Update gate**: Controls how much of the previous state is carried over to the current state.
+
+Through the scan API, Vollo can efficiently perform streaming inference for
+GRU models, allowing for high-performance recurrent computations.
+
 ### S3/S4/S5
 
 Code/model: ['ssm.py'](./vollo_model_zoo/models/ssm.py)
