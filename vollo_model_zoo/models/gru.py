@@ -101,13 +101,14 @@ class GRU(nn.Module):
 def _vm(
     input_size: int,
     hidden_size: int,
+    layers: int,
     config: str,
 ):
     from vollo_model_zoo.vm import vollo_info
 
     input = torch.randn(1, input_size)
 
-    model = GRU(input_size=input_size, hidden_size=hidden_size)
+    model = GRU(input_size=input_size, hidden_size=hidden_size, num_layers=layers)
 
     return vollo_info(
         model,
@@ -116,8 +117,9 @@ def _vm(
         time_axis=0,
         allow_dynamic_weights=True,
         meta=dict(
-            input_size=input_size,
-            hidden_size=hidden_size,
+            input=input_size,
+            hidden=hidden_size,
+            layers=layers,
         ),
     )
 
@@ -125,10 +127,9 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        # ~1M parameters baseline: 3 * (I*H + H*H). If I=H, 6*H^2 approx 1M => H approx 408
-        dict(input_size=408, hidden_size=408),
-        dict(input_size=512, hidden_size=340),
-        dict(input_size=256, hidden_size=512),
+        dict(input_size=512, hidden_size=384, layers=1),
+        dict(input_size=512, hidden_size=512, layers=1),
+        dict(input_size=512, hidden_size=512, layers=3),
     ]:
         yield _vm(**x, config=config)
 
