@@ -97,7 +97,7 @@ class MLPResRMS(nn.Module):
 
 
 @beartype
-def _vm_mlp_res_rms(
+def _vm(
     num_layers: int,
     dim: int,
     hidden_dim: int,
@@ -133,7 +133,7 @@ def main(config: str = "V80") -> Generator:
         size_params = dict(num_layers=2, dim=dim, hidden_dim=hidden)
 
         for activation in ACTIVATIONS.keys():
-            yield _vm_mlp_res_rms(**size_params, activation=activation, config=config)
+            yield _vm(**size_params, activation=activation, config=config)
 
 
 if __name__ == "__main__":

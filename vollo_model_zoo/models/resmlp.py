@@ -139,7 +139,7 @@ class ResMLP(nn.Module):
 
 
 @beartype
-def _vm_resmlp(
+def _vm(
     dim: int,
     classes: int,
     patches: int,
@@ -182,7 +182,7 @@ def main(config: str = "V80") -> Generator:
         dict(dim=160, classes=10, patches=3**2, layers=5, activation="ReLU"),
         dict(dim=160, classes=10, patches=3**2, layers=5, activation="GELU"),
     ]:
-        yield _vm_resmlp(**x, config=config)
+        yield _vm(**x, config=config)
 
 
 if __name__ == "__main__":

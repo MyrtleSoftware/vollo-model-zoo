@@ -114,7 +114,7 @@ class MobileNet1D(nn.Module):
 
 
 @beartype
-def _vm_mobilenet(
+def _vm(
     width_mult: float,
     config: str,
 ):
@@ -143,7 +143,7 @@ def main(config: str = "V80") -> Generator:
         dict(width_mult=0.42),
         dict(width_mult=1.0),
     ]:
-        yield _vm_mobilenet(**x, config=config)
+        yield _vm(**x, config=config)
 
 
 if __name__ == "__main__":

@@ -269,6 +269,4 @@ Big ideas:
 - Vector quantizer?
 - MOE (William shows it is with weight writing!)
 
-```
-
-```
+TODO: which config do we want as the default?

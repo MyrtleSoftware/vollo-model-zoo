@@ -54,7 +54,7 @@ class MLP(nn.Module):
 
 
 @beartype
-def _vm_mlp(
+def _vm(
     num_layers: int,
     hidden_features: int,
     config: str,
@@ -91,7 +91,7 @@ def main(config: str = "V80") -> Generator:
         dict(num_layers=4, hidden_features=512),
         dict(num_layers=3, hidden_features=1024),
     ]:
-        yield _vm_mlp(**x, config=config)
+        yield _vm(**x, config=config)
 
 
 if __name__ == "__main__":

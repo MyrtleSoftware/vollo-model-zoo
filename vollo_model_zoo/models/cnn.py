@@ -92,7 +92,7 @@ class CNN(nn.Module):
 
 
 @beartype
-def _vm_cnn(
+def _vm(
     num_layers: int,
     channels: int,
     kernel_size: int,
@@ -129,7 +129,7 @@ def main(config: str = "V80") -> Generator:
         dict(num_layers=4, channels=64, kernel_size=64),
         dict(num_layers=4, channels=256, kernel_size=32),
     ]:
-        yield _vm_cnn(**x, config=config)
+        yield _vm(**x, config=config)
 
 
 if __name__ == "__main__":

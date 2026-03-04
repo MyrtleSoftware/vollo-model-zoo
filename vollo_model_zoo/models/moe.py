@@ -61,7 +61,7 @@ class MoE(nn.Module):
 
 
 @beartype
-def _vm_moe(dim: int, hidden_dim: int, log_n_experts: int, config: str):
+def _vm(dim: int, hidden_dim: int, log_n_experts: int, config: str):
     from vollo_model_zoo.vm import vollo_info
 
     input = torch.randn(1, 4, dim)
@@ -88,7 +88,7 @@ def main(config: str = "V80") -> Generator:
         dict(dim=192, hidden_dim=640, log_n_experts=3),
         dict(dim=192, hidden_dim=640, log_n_experts=4),
     ]:
-        yield _vm_moe(**x, config=config)
+        yield _vm(**x, config=config)
 
 
 if __name__ == "__main__":

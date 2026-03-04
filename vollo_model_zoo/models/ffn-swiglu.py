@@ -63,7 +63,7 @@ class LlamaSwiGLU(nn.Module):
 
 
 @beartype
-def _vm_ffn_swiglu(dim: int, hidden_dim: int, fuse: bool, config: str):
+def _vm(dim: int, hidden_dim: int, fuse: bool, config: str):
     from vollo_model_zoo.vm import vollo_info
 
     input = torch.randn(1, 5, dim)
@@ -94,7 +94,7 @@ def main(config: str = "V80") -> Generator:
         dict(dim=64 * 6, hidden_dim=64 * 6 * 4, fuse=True),
         dict(dim=64 * 6, hidden_dim=64 * 6 * 4, fuse=False),
     ]:
-        yield _vm_ffn_swiglu(**x, config=config)
+        yield _vm(**x, config=config)
 
 
 if __name__ == "__main__":

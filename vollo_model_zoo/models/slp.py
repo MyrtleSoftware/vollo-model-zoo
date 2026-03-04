@@ -45,7 +45,7 @@ class SLP(nn.Module):
 
 
 @beartype
-def _vm_slp(in_features: int, out_features: int, config: str):
+def _vm(in_features: int, out_features: int, config: str):
     from vollo_model_zoo.vm import vollo_info
 
     input = torch.randn(1, 5, in_features)
@@ -65,9 +65,6 @@ def _vm_slp(in_features: int, out_features: int, config: str):
     )
 
 
-# TODO: which config do we want as the default?
-
-
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
@@ -75,7 +72,7 @@ def main(config: str = "V80") -> Generator:
         dict(in_features=256, out_features=1024),
         dict(in_features=1024, out_features=1024),
     ]:
-        yield _vm_slp(**x, config=config)
+        yield _vm(**x, config=config)
 
 
 if __name__ == "__main__":
