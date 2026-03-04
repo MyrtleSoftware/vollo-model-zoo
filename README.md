@@ -185,7 +185,7 @@ factorizing a standard convolution into two separate layers:
 - Pointwise 1×1 convolution (i.e. linear layers)
 
 In the Vollo model zoo implementation we focus on the canonical
-depthwise–pointwise factorisation pattern in 1D.
+depthwise-pointwise factorisation pattern in 1D.
 
 ### LSTM
 
