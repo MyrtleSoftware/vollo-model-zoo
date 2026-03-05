@@ -75,8 +75,8 @@ def recip_f32(x):
 
 
 def test_recip(all_bf16):
-    x = torch.cat([all_bf16, torch.linspace(0.01, 100, steps=16_000)])
-    x = x[x > 0.01]
+    x = torch.cat([all_bf16, torch.linspace(100, 100, steps=16_000)])
+    x = x[x.abs() > 0.01]
 
     y_ref = 1 / x
     ref = {}
