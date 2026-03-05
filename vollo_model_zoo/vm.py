@@ -116,6 +116,14 @@ type Activation = Callable[[torch.Tensor], torch.Tensor]
 def vollo_fn(fn: Activation, config: str) -> Activation:
     """
     Convert a torch activation function to a vollo activation function.
+
+    When the resultant functions is used the following conversions occur:
+        1. Torch tensor -> Numpy array
+        2. Array scalar type -> np.float32 (since vollo VM only supports scalar float32)
+        3. Vollo converts the float32 scalar to bf16 then runs the function
+        4. Vollo returns an fp32 which is then cast to a python scalar (fp64)
+        5. These are aggregated back into an fp64 numpy array
+        6. The numpy array is converted back to an fp64 torch tensor
     """
 
     # Dummy model for vollo to compile
@@ -128,22 +136,26 @@ def vollo_fn(fn: Activation, config: str) -> Activation:
         Model(), torch.tensor([0.0]), time_axis=None, config=_config(config)
     )
 
-    return partial(_tensor_fn, vm=program.to_vm(bit_accurate=True))
+    return partial(
+        _tensor_fn, fn=partial(_scalar_fn, vm=program.to_vm(bit_accurate=True))
+    )
 
 
+@np.vectorize
 @beartype
-def _scalar_fn[T](x: T, dtype, vm) -> T:
+def _scalar_fn[T](x: T, vm) -> T:
     """
     Run a scalar through the vollo VM.
     """
-    return vm.run(np.array([x], dtype=dtype)).item()
+    return vm.run(np.atleast_1d(x).astype(np.float32)).item()
 
 
 @beartype
-def _tensor_fn(x: torch.Tensor, vm) -> torch.Tensor:
-    y = x.cpu().numpy()
-    y = np.vectorize(partial(_scalar_fn, dtype=y.dtype, vm=vm))(y)
-    return torch.from_numpy(y).to(device=x.device, dtype=x.dtype)
+def _tensor_fn(x: torch.Tensor, fn: Callable[[np.ndarray], np.ndarray]) -> torch.Tensor:
+    """
+    Performs: x -> .numpy() -> numpy_fn(x) -> from_numpy()
+    """
+    return torch.from_numpy(fn(x.numpy()))
 
 
 @beartype
