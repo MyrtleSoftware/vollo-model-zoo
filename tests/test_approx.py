@@ -26,16 +26,15 @@ def fp32sig(x):
     x = -x
 
     with Fp32Activations():
-        denom = 1.0 + torch.exp(x)
+        z = 1.0 + torch.exp(x)
 
-    # Now we want to compute 1 / denom, this is a bf16 approx
-    y = 1 / denom
+    # Now we want to compute 1 / z, this is a bf16 approx
+    y = 1 / z
 
     with Fp32Activations():
-        # Newton-Raphson to compute 1 / denom in fp32
-        for _ in range(2):
-            y = y * (2 - denom * y)
-
+        # Newton-Raphson to compute reciprocal in fp32
+        y = y * (2 - z * y)
+        y = y * (2 - z * y)
         return y
 
 
