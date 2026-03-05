@@ -61,13 +61,13 @@ def recip_f32(x):
     Given an f32 x, compute 1/x to almost full precision. This should be called
     outside of the Fp32Activation context.
     """
-    # Now we want to compute 1 / z, this is a bf16 approx
-    # hence, ~6 bits of precision
+    # Now we want to compute 1 / z, this is a bf16 approx hence, ~6 bits of
+    # mantissa precision
     y = 1 / x
 
     with Fp32Activations():
-        # Newton-Raphson to compute reciprocal in fp32,
-        # converges quadratically so 6 -> 12 -> 24 bits
+        # Newton-Raphson to compute reciprocal in fp32, converges quadratically
+        # so 6 -> 12 -> 24 mantissa bits
         y = y * (2 - x * y)
         y = y * (2 - x * y)
 
