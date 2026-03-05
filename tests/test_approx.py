@@ -98,15 +98,21 @@ def test_recip(all_bf16):
     assert vollo_avg <= ref[31][1]
 
 
-def sigmoid_f32(x):
+def sigmoid_bf16_hi(x):
     """
-    Compute sigmoid to approximately:
-        - bf26 precision for bf16 inputs
+    Compute sigmoid to approximately bf26 precision for bf16 inputs.
+
+    WARNING: for general fp32 inputs this is only bf18 precision.
     """
     # Prevent exp -> inf overflow
     x = -torch.clamp(x, min=-20)
 
     with Fp32Activations():
+        # Precision of z is ~ bf25, this is effectively "full precision" for
+        # bf16 inputs so the following reciprocal is exact. However, for fp32
+        # inputs this has ~ 7 bits of error hence, when we do the Newton
+        # iterations this compounds to ~14 bits of error which results in only
+        # 18 bits of precision.
         z = 1.0 + torch.exp(x)
 
     return recip_f32(z)
@@ -114,15 +120,13 @@ def sigmoid_f32(x):
 
 def test_sigmoid(all_bf16):
     # Don't accidentally modify
-    x = torch.cat([all_bf16, torch.linspace(-20, 20, steps=16_000)])
-
-    x = x[x > 0]
+    x = all_bf16.clone()
 
     y_ref_f32 = torch.sigmoid(x)
 
     assert y_ref_f32.isfinite().all()
 
-    for n in [16, 19, 20, 26]:
+    for n in [16, 18, 26]:
         y_ref_bn = round_mantisa(y_ref_f32, n=n - 9)
         ref_max = (y_ref_f32 - y_ref_bn).abs().max()
         ref_avg = (y_ref_f32 - y_ref_bn).abs().sum()
@@ -150,7 +154,7 @@ def test_sigmoid(all_bf16):
 
     # === fp32 sigmoid
 
-    y_vol_f32 = vollo_fn(sigmoid_f32, "V80")(x).to(torch.float32)
+    y_vol_f32 = vollo_fn(sigmoid_bf16_hi, "V80")(x).to(torch.float32)
 
     assert y_vol_f32.isfinite().all()
 
