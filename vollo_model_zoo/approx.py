@@ -115,11 +115,3 @@ def lookup(
 
 def sigmoid(x: torch.Tensor) -> torch.Tensor:
     return 0.5 * (lookup(x * 0.5, fn=F.tanh, f_bits=7, o_bits=23) + 1)
-
-
-def silu(x: torch.Tensor) -> torch.Tensor:
-    return x * sigmoid(x)
-
-
-def softplus(x: torch.Tensor) -> torch.Tensor:
-    return lookup(x, fn=F.softplus, f_bits=7, o_bits=23)

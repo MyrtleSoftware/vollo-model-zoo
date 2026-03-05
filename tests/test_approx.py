@@ -1,3 +1,4 @@
+import pytest
 import torch
 from beartype import beartype
 from vollo_torch import Fp32Activations
@@ -6,8 +7,9 @@ from vollo_model_zoo.approx import round_mantisa, sigmoid
 from vollo_model_zoo.vm import vollo_fn
 
 
+@pytest.fixture(scope="module")
 @beartype
-def gen_all_bf16() -> torch.Tensor:
+def all_bf16() -> torch.Tensor:
     """
     Generate a tensor containing all possible finite bfloat16 values.
     """
@@ -17,13 +19,47 @@ def gen_all_bf16() -> torch.Tensor:
     finite_mask = exponent != 0xFF
     finite_bits = bits[finite_mask]
     bf16s = finite_bits.view(torch.bfloat16)
-    return bf16s.sort()[0]
+    return bf16s.sort()[0].to(torch.float32)
+
+
+def exp_f32(x):
+    with Fp32Activations():
+        return torch.exp(x)
+
+
+def test_exp(all_bf16):
+    """
+    Verify that Vollo's fp32 exp is at-least 24 bits of precision.
+    """
+    x = torch.cat([all_bf16, torch.linspace(-20, 2, steps=16_000)])
+    x = x[x > -20]
+    x = x[x < 2]
+
+    y_ref = torch.exp(x)
+
+    ref = {}
+
+    for n in [24, 25, 26]:
+        y_bn = round_mantisa(y_ref, n=n - 9)
+        bn_max = (y_ref - y_bn).abs().max()
+        bn_avg = (y_ref - y_bn).abs().sum()
+        print(f"Ideal bf{n} error: {bn_max:.5e}, {bn_avg:.5e}")
+        ref[n] = (bn_max, bn_avg)
+
+    y_vol = vollo_fn(exp_f32, "V80")(x).to(torch.float32)
+
+    vollo_max = (y_ref - y_vol).abs().max()
+    vollo_avg = (y_ref - y_vol).abs().sum()
+    print(f"Vollo fpNN error: {vollo_max:.5e}, {vollo_avg:.5e}")
+
+    assert vollo_max < ref[24][0]
+    assert vollo_avg < ref[24][1]
 
 
 def recip_f32(x):
     """
-    Given an f32 x, compute 1/x to full precision. This should
-    be called outside of the Fp32Activation context.
+    Given an f32 x, compute 1/x to almost full precision. This should be called
+    outside of the Fp32Activation context.
     """
     # Now we want to compute 1 / z, this is a bf16 approx
     # hence, ~6 bits of precision
@@ -38,9 +74,34 @@ def recip_f32(x):
     return y
 
 
+def test_recip(all_bf16):
+    x = torch.cat([all_bf16, torch.linspace(0.01, 100, steps=16_000)])
+    x = x[x > 0.01]
+
+    y_ref = 1 / x
+    ref = {}
+
+    for n in [31, 32]:
+        y_bn = round_mantisa(y_ref, n=n - 9)
+        bn_max = (y_ref - y_bn).abs().max()
+        bn_avg = (y_ref - y_bn).abs().sum()
+        print(f"Ideal bf{n} error: {bn_max:.5e}, {bn_avg:.5e}")
+        ref[n] = (bn_max, bn_avg)
+
+    y_vol = vollo_fn(recip_f32, "V80")(x).to(torch.float32)
+
+    vollo_max = (y_ref - y_vol).abs().max()
+    vollo_avg = (y_ref - y_vol).abs().sum()
+    print(f"Vollo fpNN error: {vollo_max:.5e}, {vollo_avg:.5e}")
+
+    assert vollo_max <= ref[31][0]
+    assert vollo_avg <= ref[31][1]
+
+
 def sigmoid_f32(x):
     """
-    Compute sigmoid to approximately bf26 precision
+    Compute sigmoid to approximately:
+        - bf26 precision for bf16 inputs
     """
     # Prevent exp -> inf overflow
     x = -torch.clamp(x, min=-20)
@@ -51,14 +112,17 @@ def sigmoid_f32(x):
     return recip_f32(z)
 
 
-def test_meta():
-    x = gen_all_bf16().to(torch.float32)
+def test_sigmoid(all_bf16):
+    # Don't accidentally modify
+    x = torch.cat([all_bf16, torch.linspace(-20, 20, steps=16_000)])
+
+    x = x[x > 0]
 
     y_ref_f32 = torch.sigmoid(x)
 
     assert y_ref_f32.isfinite().all()
 
-    for n in [16, 26]:
+    for n in [16, 19, 20, 26]:
         y_ref_bn = round_mantisa(y_ref_f32, n=n - 9)
         ref_max = (y_ref_f32 - y_ref_bn).abs().max()
         ref_avg = (y_ref_f32 - y_ref_bn).abs().sum()
