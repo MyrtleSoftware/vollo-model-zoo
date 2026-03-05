@@ -40,7 +40,7 @@ def recip_f32(x):
 
 def sigmoid_f32(x):
     """
-    Compute sigmoid to a similar precision as Vollo's exp32
+    Compute sigmoid to approximately bf26 precision
     """
     # Prevent exp -> inf overflow
     x = torch.clamp(x, min=-20)
