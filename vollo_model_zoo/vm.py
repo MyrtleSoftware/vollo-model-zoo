@@ -120,7 +120,7 @@ def vollo_fn(fn: Activation, config: str) -> Activation:
     When the resultant functions is used the following conversions occur:
         1. Torch tensor -> Numpy array
         2. Array scalar type -> np.float32 (since vollo VM only supports scalar float32)
-        3. Vollo converts the float32 scalar to bf16 then runs the function
+        3. Vollo runs the function
         4. Vollo returns an fp32 which is then cast to a python scalar (fp64)
         5. These are aggregated back into an fp64 numpy array
         6. The numpy array is converted back to an fp64 torch tensor
@@ -133,7 +133,12 @@ def vollo_fn(fn: Activation, config: str) -> Activation:
 
     # Use scalar effective input
     program = _vollo_compile(
-        Model(), torch.tensor([0.0]), time_axis=None, config=_config(config)
+        Model(),
+        torch.tensor([0.0]),
+        time_axis=None,
+        config=_config(config),
+        inputs_precisions=[vc.NumberFormat.FP32],
+        outputs_precisions=[vc.NumberFormat.FP32],
     )
 
     return partial(
@@ -166,13 +171,17 @@ def _vollo_compile(
     time_axis: Optional[int],
     config: vc.Config,
     allow_dynamic_weights: bool = False,
+    **kwargs,
 ) -> vc.Program:
+    """
+    kwargs are forwarded to vt.fx.nnir.to_nnir, e.g. inputs_precisions, outputs_precisions, etc.
+    """
     # This gives nicer error messages as a first pass.
     model(x)
 
     model, _ = vt.fx.prepare_shape(model, x)
 
-    nnir = vt.fx.nnir.to_nnir(model)
+    nnir = vt.fx.nnir.to_nnir(model, **kwargs)
 
     if time_axis is not None:
         nnir, _ = nnir.streaming_transform(time_axis)
