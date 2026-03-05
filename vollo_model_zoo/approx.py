@@ -4,6 +4,7 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 from torch.utils.cpp_extension import load_inline
+from vollo_torch import Fp32Activations
 
 _MANTISSA = 23
 _EXP_SIGN = 9
@@ -114,4 +115,49 @@ def lookup(
 
 
 def sigmoid(x: torch.Tensor) -> torch.Tensor:
+    """
+    A pytorch approximation of Vollo's bf16 sigmoid function. This has a
+    similar average error but slightly lower max error than vollo. This
+    function is not compilable with Vollo.
+    """
     return 0.5 * (lookup(x * 0.5, fn=F.tanh, f_bits=7, o_bits=23) + 1)
+
+
+def sigmoid_bf16_hi(x):
+    """
+    Compute sigmoid to approximately bf26 precision for bf16 inputs. This
+    function _is_ compilable with Vollo. It should be called _outside_ of the
+    Fp32Activations context.
+
+    WARNING: for general fp32 inputs this is only bf18 precision.
+    """
+    # Prevent exp -> inf overflow
+    x = -torch.clamp(x, min=-20)
+
+    with Fp32Activations():
+        # Precision of z is ~ bf25, this is effectively "full precision" for
+        # bf16 inputs so the following reciprocal is exact. However, for fp32
+        # inputs this has ~ 7 bits of error hence, when we do the Newton
+        # iterations this compounds to ~14 bits of error which results in only
+        # 18 bits of precision.
+        z = 1.0 + torch.exp(x)
+
+    return recip_f32(z)
+
+
+def recip_f32(x):
+    """
+    Given an f32 input, x, compute 1/x to almost full precision. This should be
+    called outside of the Fp32Activation context.
+    """
+    # Now we want to compute 1 / z, this is a bf16 approx hence, ~6 bits of
+    # mantissa precision
+    y = 1 / x
+
+    with Fp32Activations():
+        # Newton-Raphson to compute reciprocal in fp32, converges quadratically
+        # so 6 -> 12 -> 24 mantissa bits
+        y = y * (2 - x * y)
+        y = y * (2 - x * y)
+
+    return y
