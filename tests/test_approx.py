@@ -43,8 +43,7 @@ def sigmoid_f32(x):
     Compute sigmoid to approximately bf26 precision
     """
     # Prevent exp -> inf overflow
-    x = torch.clamp(x, min=-20)
-    x = -x
+    x = -torch.clamp(x, min=-20)
 
     with Fp32Activations():
         z = 1.0 + torch.exp(x)
