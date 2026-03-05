@@ -20,7 +20,28 @@ def gen_all_bf16() -> torch.Tensor:
     return bf16s.sort()[0]
 
 
-def fp32sig(x):
+def recip_f32(x):
+    """
+    Given an f32 x, compute 1/x to full precision. This should
+    be called outside of the Fp32Activation context.
+    """
+    # Now we want to compute 1 / z, this is a bf16 approx
+    # hence, ~6 bits of precision
+    y = 1 / x
+
+    with Fp32Activations():
+        # Newton-Raphson to compute reciprocal in fp32,
+        # converges quadratically so 6 -> 12 -> 24 bits
+        y = y * (2 - x * y)
+        y = y * (2 - x * y)
+
+    return y
+
+
+def sigmoid_f32(x):
+    """
+    Compute sigmoid to a similar precision as Vollo's exp32
+    """
     # Prevent exp -> inf overflow
     x = torch.clamp(x, min=-20)
     x = -x
@@ -28,14 +49,7 @@ def fp32sig(x):
     with Fp32Activations():
         z = 1.0 + torch.exp(x)
 
-    # Now we want to compute 1 / z, this is a bf16 approx
-    y = 1 / z
-
-    with Fp32Activations():
-        # Newton-Raphson to compute reciprocal in fp32
-        y = y * (2 - z * y)
-        y = y * (2 - z * y)
-        return y
+    return recip_f32(z)
 
 
 def test_meta():
@@ -73,7 +87,7 @@ def test_meta():
 
     # === fp32 sigmoid
 
-    y_vol_f32 = vollo_fn(fp32sig, "V80")(x).to(torch.float32)
+    y_vol_f32 = vollo_fn(sigmoid_f32, "V80")(x).to(torch.float32)
 
     assert y_vol_f32.isfinite().all()
 
