@@ -7,6 +7,8 @@ import vollo_torch
 from beartype import beartype
 from torch import nn
 
+from vollo_model_zoo.approx import sigmoid_bf16_hi
+
 
 class _Step(nn.Module):
     @beartype
@@ -26,31 +28,27 @@ class _Step(nn.Module):
         self.linear_hh_z = nn.Linear(hidden_size, hidden_size, bias=bias)
 
     def forward(self, x: torch.Tensor, h: torch.Tensor):
+        """
+        x, h -> y, h
+        """
         r = self.linear_ih_r(x) + self.linear_hh_r(h)
-
         z = self.linear_ih_z(x) + self.linear_hh_z(h)
-
         n = self.linear_ih_n(x) + torch.sigmoid(r) * self.linear_hh_n(h)
 
-        if not self.fp32:
-            # Use vollo's bf16 activation functions
-            r = torch.sigmoid(r)
-            z = torch.sigmoid(z)
-            n = torch.tanh(n)
+        # Use vollo's bf16 activation functions
+        r = torch.sigmoid(r)
+        n = torch.tanh(n)
 
+        if self.fp32:
+            # High precsision for component that multiplies h
+            z = sigmoid_bf16_hi(z)
+        else:
+            z = torch.sigmoid(z)
+
+        with self.context():
             h = (1 - z) * n + z * h
 
-            return h, h
-
-
-def _sigmoid32(x: torch.Tensor) -> torch.Tensor:
-    """
-    Compute sigmoid of x (bf16/fp32) to fp32 precision.
-
-    Sigmoid formula:
-
-        s(x) = 1 / ()
-    """
+        return h, h
 
 
 class _Layer(nn.Module):
