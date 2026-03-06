@@ -239,7 +239,6 @@ def _vm(
         input,
         config=config,
         time_axis=0,
-        allow_dynamic_weights=True,
         meta=dict(
             dim=dim,
             state=state,
