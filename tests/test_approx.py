@@ -3,7 +3,7 @@ import torch
 from beartype import beartype
 from vollo_torch import Fp32Activations
 
-from vollo_model_zoo.approx import round_mantisa, sigmoid
+import vollo_model_zoo.approx as approx
 from vollo_model_zoo.vm import vollo_fn
 
 
@@ -40,7 +40,7 @@ def test_exp(all_bf16):
     ref = {}
 
     for n in [24, 25, 26]:
-        y_bn = round_mantisa(y_ref, n=n - 9)
+        y_bn = approx.round_mantisa(y_ref, n=n - 9)
         bn_max = (y_ref - y_bn).abs().max()
         bn_avg = (y_ref - y_bn).abs().sum()
         print(f"Ideal bf{n} error: {bn_max:.5e}, {bn_avg:.5e}")
@@ -56,24 +56,6 @@ def test_exp(all_bf16):
     assert vollo_avg < ref[24][1]
 
 
-def recip_f32(x):
-    """
-    Given an f32 x, compute 1/x to almost full precision. This should be called
-    outside of the Fp32Activation context.
-    """
-    # Now we want to compute 1 / z, this is a bf16 approx hence, ~6 bits of
-    # mantissa precision
-    y = 1 / x
-
-    with Fp32Activations():
-        # Newton-Raphson to compute reciprocal in fp32, converges quadratically
-        # so 6 -> 12 -> 24 mantissa bits
-        y = y * (2 - x * y)
-        y = y * (2 - x * y)
-
-    return y
-
-
 def test_recip(all_bf16):
     x = torch.cat([all_bf16, torch.linspace(100, 100, steps=16_000)])
     x = x[x.abs() > 0.01]
@@ -82,13 +64,13 @@ def test_recip(all_bf16):
     ref = {}
 
     for n in [31, 32]:
-        y_bn = round_mantisa(y_ref, n=n - 9)
+        y_bn = approx.round_mantisa(y_ref, n=n - 9)
         bn_max = (y_ref - y_bn).abs().max()
         bn_avg = (y_ref - y_bn).abs().sum()
         print(f"Ideal bf{n} error: {bn_max:.5e}, {bn_avg:.5e}")
         ref[n] = (bn_max, bn_avg)
 
-    y_vol = vollo_fn(recip_f32, "V80")(x).to(torch.float32)
+    y_vol = vollo_fn(approx.recip_f32, "V80")(x).to(torch.float32)
 
     vollo_max = (y_ref - y_vol).abs().max()
     vollo_avg = (y_ref - y_vol).abs().sum()
@@ -96,26 +78,6 @@ def test_recip(all_bf16):
 
     assert vollo_max <= ref[31][0]
     assert vollo_avg <= ref[31][1]
-
-
-def sigmoid_bf16_hi(x):
-    """
-    Compute sigmoid to approximately bf26 precision for bf16 inputs.
-
-    WARNING: for general fp32 inputs this is only bf18 precision.
-    """
-    # Prevent exp -> inf overflow
-    x = -torch.clamp(x, min=-20)
-
-    with Fp32Activations():
-        # Precision of z is ~ bf25, this is effectively "full precision" for
-        # bf16 inputs so the following reciprocal is exact. However, for fp32
-        # inputs this has ~ 7 bits of error hence, when we do the Newton
-        # iterations this compounds to ~14 bits of error which results in only
-        # 18 bits of precision.
-        z = 1.0 + torch.exp(x)
-
-    return recip_f32(z)
 
 
 def test_sigmoid(all_bf16):
@@ -127,14 +89,14 @@ def test_sigmoid(all_bf16):
     assert y_ref_f32.isfinite().all()
 
     for n in [16, 18, 26]:
-        y_ref_bn = round_mantisa(y_ref_f32, n=n - 9)
+        y_ref_bn = approx.round_mantisa(y_ref_f32, n=n - 9)
         ref_max = (y_ref_f32 - y_ref_bn).abs().max()
         ref_avg = (y_ref_f32 - y_ref_bn).abs().sum()
         print(f"Ideal bf{n} error: {ref_max:.5e}, {ref_avg:.5e}")
 
     # === The python table approximation
 
-    y_vol_approx = sigmoid(x)
+    y_vol_approx = approx.sigmoid(x)
 
     assert y_vol_approx.isfinite().all()
 
@@ -154,7 +116,7 @@ def test_sigmoid(all_bf16):
 
     # === fp32 sigmoid
 
-    y_vol_f32 = vollo_fn(sigmoid_bf16_hi, "V80")(x).to(torch.float32)
+    y_vol_f32 = vollo_fn(approx.sigmoid_bf16_hi, "V80")(x).to(torch.float32)
 
     assert y_vol_f32.isfinite().all()
 
@@ -171,5 +133,3 @@ def test_sigmoid(all_bf16):
 
     assert avg_improvement > 9.5
     assert max_improvement > 10.5
-
-    assert False, "OK"
