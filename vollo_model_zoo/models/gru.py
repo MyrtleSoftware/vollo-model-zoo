@@ -36,11 +36,10 @@ class _Step(nn.Module):
         n = self.linear_ih_n(x) + torch.sigmoid(r) * self.linear_hh_n(h)
 
         # Use vollo's bf16 activation functions
-        r = torch.sigmoid(r)
         n = torch.tanh(n)
 
         if self.fp32:
-            # High precsision for component that multiplies h
+            # High precsision for the update gate (multiplies fp32 h)
             z = sigmoid_bf16_hi(z)
         else:
             z = torch.sigmoid(z)
