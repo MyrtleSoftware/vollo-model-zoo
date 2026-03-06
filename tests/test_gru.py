@@ -54,7 +54,8 @@ def convert_state_dict(torch_gru: nn.GRU, vollo_gru: VolloGRU):
 @pytest.mark.parametrize("hidden_size", [16, 32])
 @pytest.mark.parametrize("num_layers", [1, 2])
 @pytest.mark.parametrize("bias", [True, False])
-def test_gru_equivalence(input_size, hidden_size, num_layers, bias):
+@pytest.mark.parametrize("fp32", [True, False])
+def test_gru_equivalence(input_size, hidden_size, num_layers, bias, fp32):
     # Set seed
     torch.manual_seed(42)
 
@@ -71,6 +72,7 @@ def test_gru_equivalence(input_size, hidden_size, num_layers, bias):
         hidden_size=hidden_size,
         num_layers=num_layers,
         bias=bias,
+        fp32=fp32,
     ).eval()
 
     # Convert and load state dict
