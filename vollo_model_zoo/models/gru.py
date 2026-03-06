@@ -127,10 +127,10 @@ def _vm(
         time_axis=0,
         allow_dynamic_weights=True,
         meta=dict(
+            fp32=fp32,
             input=input_size,
             hidden=hidden_size,
             layers=layers,
-            fp32=fp32,
         ),
     )
 
