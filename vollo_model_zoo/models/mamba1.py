@@ -145,7 +145,7 @@ class Mamba(nn.Module):
 
         Args:
             d_model:    Dimension of the input and output.
-            d_state:    SSM state expansion factor (dimension-1 of the rank-2 hidden state).
+            d_state:    SSM state multiplier factor (i.e. state is [d_state, d_expand * d_model]).
             d_conv:     Local convolution width.
             expand:     Hidden state expansion factor.
             dt_rank:    Generalized delta dimension.
