@@ -271,10 +271,11 @@ If you would like to see example code to convert an
 Vollo Mamba state dict see the [the tests](./tests/test_mamba.py).
 
 Note: when compiled to Vollo the example Mamba will use a `bf16` hidden state,
-if this is not accurate enough for your use-case please see the [GRU
-model](./vollo_model_zoo/models/gru.py) as an example of how to modify a model
-to use an `fp32` hidden state. In addition you can reach out directly to Myrtle
-for support.
+if this is not accurate enough for your use-case please see
+[GRU](./vollo_model_zoo/models/gru.py) or
+[Mamba-2](./vollo_model_zoo/models/mamba2.py) as examples of how to modify a
+model to use an `fp32` hidden state. In addition you can reach out directly to
+Myrtle for support.
 
 ### Mamba 2
 
@@ -289,14 +290,14 @@ Before release:
 - [ ] Do we want the default config to be v80, LL or something else?
 - [ ] Integrate testing with myrtlepkgs
 
-- Show softmax
+- Features:
+  - Show softmax
+  - Demo `if tracing`
+  - FP8 support
 
-- Demo `if tracing`
 - LSTM:
-  - Multilayer
-  - Residuals + normalization + FFN (a.k.a Transformer++)
-    - Mixed precision (float 8) on the FFN
   - **Find a named model**
+
 - Scan:
   - Multi input/output/state
   - Other models:
