@@ -76,7 +76,7 @@ class Mamba2(nn.Module):
 
         # === Vollo specific === #
 
-        self.ssm = vollo_torch.nn.Scan(_MambaStep())
+        self.ssm = vollo_torch.nn.Scan(_Mamba2Step())
 
         self.h0 = torch.nn.Buffer(
             torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
@@ -100,7 +100,7 @@ class Mamba2(nn.Module):
         C = self.conv_C(C)
 
         dt = F.softplus(dt + self.dt_bias)
-        dA = torch.exp(dt * -torch.exp(self.A_log))
+        dA = dt * -torch.exp(self.A_log)
 
         if True:
             state = self.h0.float()
@@ -118,11 +118,10 @@ class Mamba2(nn.Module):
         return self.out_proj(y)
 
 
-class _MambaStep(nn.Module):
+class _Mamba2Step(nn.Module):
     @beartype
     def __init__(self):
         super().__init__()
-        pass
 
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
         """
@@ -137,11 +136,11 @@ class _MambaStep(nn.Module):
 
         # Shapes:
         #
-        #   x: [h! p]
-        #   h: [h p s]
+        #   x:  [h! p]
+        #   h:  [h! p n]
         #
-        #   B: [s!]
-        #   C: [s!]
+        #   B:  [n!]
+        #   C:  [n!]
         #
         #   dt: [h!]
         #   dA: [h!]
@@ -149,11 +148,13 @@ class _MambaStep(nn.Module):
 
         x, B, C, dt, dA = inputs
 
-        print(
-            f"{x.shape=}, {h.shape=}, {B.shape=}, {C.shape=}, {dt.shape=}, {dA.shape=}"
-        )
+        dA = dA.exp()
 
-        return x, state
+        y = dA[:, None] * (h @ C) + dt[:, None] * x * (B * C).sum(0, keepdim=True)
+
+        h = dA[:, None, None] * h + (dt[:, None] * x)[:, :, None] * B
+
+        return y, h
 
 
 class _ShortConv(nn.Module):
@@ -220,9 +221,8 @@ def _vm(
 def main(config: str = "V80") -> Generator:
     for x in [
         dict(dim=32 * 6, state=7),
-        dict(dim=32 * 12, state=6 * 2),
-        dict(dim=32 * 32, state=6 * 2),
-        dict(dim=32 * 32, state=6 * 4),
+        dict(dim=32 * 12, state=128),
+        dict(dim=32 * 32, state=128),
     ]:
         yield _vm(**x, config=config)
 
