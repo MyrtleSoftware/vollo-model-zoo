@@ -139,7 +139,23 @@ class _Mamba2Step(nn.Module):
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
         x, B, C, dt, dA = inputs
 
+        # Shapes:
+        #
+        # x: [h! p]
+        # h: [h p! n]
+
         dA = dA.exp()
+
+        ys = []
+
+        # Manual head unrolling
+        for i in range(self.n_heads):
+            HdA = dA[i : i + 1]
+            Hdt = dt[i : i + 1]
+            Hx = x[i : i + 1]
+            Hh = h[i]
+
+            ys.append(HdA * (Hh @ C) + Hdt * Hx * (B * C).sum(0, keepdim=True))
 
         # dA [h!] -> [h 1!]
         dA = torch.stack([dA[i : i + 1] for i in range(self.n_heads)], dim=0)
@@ -148,7 +164,7 @@ class _Mamba2Step(nn.Module):
         dt = torch.stack([dt[i : i + 1] for i in range(self.n_heads)], dim=0)
 
         # [h p! n] @ [n] -> [h p!]
-        y = dA * (h @ C) + dt * x * (B * C).sum(0, keepdim=True)
+        y = torch.stack(ys, dim=0)
 
         # [h p! 1] * [1 n 1!]
         dB = (dt * x)[:, :, None] * torch.stack(
