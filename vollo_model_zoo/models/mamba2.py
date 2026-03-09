@@ -23,7 +23,6 @@ class Mamba2(nn.Module):
         bias: bool = False,
         conv_bias: bool = True,
         activation: Literal["silu", "relu"] = "silu",
-        rmsnorm: bool = True,
     ):
         """
         See: https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba_simple.py
@@ -75,10 +74,7 @@ class Mamba2(nn.Module):
             case "relu":
                 self.act = nn.ReLU()
 
-        if rmsnorm:
-            self.norm = RMSNorm(self.d_inner, eps=1e-5)
-        else:
-            self.norm = None
+        self.norm = torch.nn.RMSNorm(self.d_inner, eps=1e-5)
 
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=bias)
 
@@ -138,19 +134,6 @@ class Mamba2(nn.Module):
             y = self.norm(y)
 
         return self.out_proj(y)
-
-
-class RMSNorm(nn.Module):
-    def __init__(self, d_model: int, eps: float = 1e-5):
-        super().__init__()
-        self.eps = eps
-        self.weight = nn.Parameter(torch.ones(d_model))
-
-    def forward(self, x):
-        output = (
-            x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps) * self.weight
-        )
-        return output
 
 
 class _Mamba2Step(nn.Module):

@@ -77,7 +77,6 @@ def convert_state_dict(
 @pytest.mark.parametrize("headdim", [8, 16])
 @pytest.mark.parametrize("bias", [True, False])
 @pytest.mark.parametrize("conv_bias", [True, False])
-@pytest.mark.parametrize("rmsnorm", [True])
 def test_mamba2_equivalence(
     d_model,
     d_state,
@@ -105,7 +104,7 @@ def test_mamba2_equivalence(
             use_bias=bias,
             use_conv_bias=conv_bias,
             hidden_act="relu",
-            rms_norm=rmsnorm,
+            rms_norm=True,
             backend="triton",
         )
         .eval()
@@ -121,7 +120,6 @@ def test_mamba2_equivalence(
             expand=expand,
             bias=bias,
             conv_bias=conv_bias,
-            rmsnorm=rmsnorm,
             activation="relu",
         )
         .eval()
