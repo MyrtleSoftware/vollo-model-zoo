@@ -8,9 +8,7 @@ from vollo_model_zoo.models.mamba2 import Mamba2 as VolloMamba2
 
 
 @beartype
-def convert_state_dict(
-    fla_state_dict: dict, n: int, d_state: int, n_heads: int, rmsnorm: bool
-) -> dict:
+def convert_state_dict(fla_state_dict: dict) -> dict:
     """
     Convert the state dict from an FLA Mamba2 block to a Vollo Mamba2 block.
     """
@@ -18,6 +16,19 @@ def convert_state_dict(
 
     # in_proj split: [z, x, B, C, dt]
     weight = fla_state_dict["in_proj.weight"]
+
+    # We need to find d_inner and d_state.
+    # A_log has shape [n_heads]
+    n_heads = fla_state_dict["A_log"].shape[0]
+
+    # out_proj has shape [hidden_size, d_inner]
+    d_inner = fla_state_dict["out_proj.weight"].shape[1]
+
+    # projection_size = 2 * d_inner + 2 * d_state + n_heads
+    projection_size = weight.shape[0]
+    d_state = (projection_size - 2 * d_inner - n_heads) // 2
+
+    n = d_inner
 
     vollo_state_dict["proj_z.weight"] = weight[0:n, :]
     vollo_state_dict["proj_x.weight"] = weight[n : 2 * n, :]
@@ -52,6 +63,7 @@ def convert_state_dict(
     # D mapping: FLA D is [num_heads]
     D = fla_state_dict["D"]
     if D.shape[0] == n_heads:
+        # Vollo D is [d_inner]
         from einops import repeat
 
         vollo_state_dict["D"] = repeat(D, "h -> (h p)", p=n // n_heads)
@@ -59,7 +71,7 @@ def convert_state_dict(
         vollo_state_dict["D"] = D
 
     # Norm
-    if rmsnorm and "norm.weight" in fla_state_dict:
+    if "norm.weight" in fla_state_dict:
         vollo_state_dict["norm.weight"] = fla_state_dict["norm.weight"]
 
     vollo_state_dict["out_proj.weight"] = fla_state_dict["out_proj.weight"]
@@ -69,11 +81,11 @@ def convert_state_dict(
     return vollo_state_dict
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA")
-@pytest.mark.parametrize("d_model", [32])
-@pytest.mark.parametrize("d_state", [16])
-@pytest.mark.parametrize("d_conv", [4])
-@pytest.mark.parametrize("expand", [2])
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA for triton")
+@pytest.mark.parametrize("d_model", [32, 64])
+@pytest.mark.parametrize("d_state", [16, 32])
+@pytest.mark.parametrize("d_conv", [2, 4])
+@pytest.mark.parametrize("expand", [1, 2])
 @pytest.mark.parametrize("headdim", [8, 16])
 @pytest.mark.parametrize("bias", [True, False])
 @pytest.mark.parametrize("conv_bias", [True, False])
@@ -126,30 +138,29 @@ def test_mamba2_equivalence(
     )
 
     # Convert and load state dict
-    vollo_state_dict = convert_state_dict(
-        fla_model.state_dict(), d_inner, d_state, n_heads, True
-    )
+    vollo_state_dict = convert_state_dict(fla_model.state_dict())
+
     vollo_model.load_state_dict(vollo_state_dict, strict=True)
 
-    T = 8
-    batch_size = 1
+    T = 32
 
-    x = torch.randn(batch_size, T, d_model).cuda()
+    x = torch.randn(1, T, d_model).cuda()
 
     with torch.no_grad():
+        # FLA Mamba2 forward
         fla_out = fla_model(x)
-
+        # Vollo implementation expects [time, d_model]
         vollo_out = vollo_model(x.squeeze(0))
         vollo_out = vollo_out.unsqueeze(0)
 
     # Check shapes
     assert fla_out.shape == vollo_out.shape
 
-    # Check values
-    np.testing.assert_allclose(
-        fla_out.cpu().numpy(),
-        vollo_out.cpu().numpy(),
-        rtol=1e-5,
-        atol=1e-5,
-        err_msg="Mamba2 implementations output mismatch",
-    )
+    for i in range(T):
+        np.testing.assert_allclose(
+            fla_out[0, i].cpu().numpy(),
+            vollo_out[0, i].cpu().numpy(),
+            rtol=1e-5,
+            atol=1e-5,
+            err_msg=f"Mamba2 implementations output mismatch at step={i}",
+        )
