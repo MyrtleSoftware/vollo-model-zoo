@@ -75,8 +75,10 @@ class Mamba2(nn.Module):
             case "relu":
                 self.act = nn.ReLU()
 
-        # if rmsnorm:
-        #     self.norm = None  # d_inner
+        if rmsnorm:
+            self.norm = RMSNorm(self.d_inner, eps=1e-5)
+        else:
+            self.norm = None
 
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=bias)
 
@@ -125,13 +127,30 @@ class Mamba2(nn.Module):
 
         y = y.reshape(-1, self.d_inner)
 
-        # Skip connection
+        # Skip connection: D * x (using convoluted x)
         y = y + self.D * x
 
-        # Gating
-        y = y * self.act(z)
+        # Gating (FLA always uses SiLU regardless of hidden_act)
+        y = y * torch.nn.functional.silu(z)
+
+        # Normalization
+        if self.norm is not None:
+            y = self.norm(y)
 
         return self.out_proj(y)
+
+
+class RMSNorm(nn.Module):
+    def __init__(self, d_model: int, eps: float = 1e-5):
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(d_model))
+
+    def forward(self, x):
+        output = (
+            x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps) * self.weight
+        )
+        return output
 
 
 class _Mamba2Step(nn.Module):
