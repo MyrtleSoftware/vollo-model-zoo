@@ -77,7 +77,7 @@ class Mamba2(nn.Module):
         # === Vollo specific === #
 
         self.ssm = vollo_torch.nn.Scan(
-            _Mamba2Step(n_heads=self.n_heads, d_head=self.d_head)
+            _Mamba2Step(n_heads=self.n_heads, d_head=self.d_head, d_state=d_state)
         )
 
         self.h0 = torch.nn.Buffer(
@@ -126,11 +126,12 @@ class Mamba2(nn.Module):
 
 class _Mamba2Step(nn.Module):
     @beartype
-    def __init__(self, n_heads: int, d_head: int):
+    def __init__(self, n_heads: int, d_head: int, d_state: int):
         super().__init__()
 
-        self.n_heads = n_heads
-        self.d_head = d_head
+        self.n_heads = n_heads  # h
+        self.d_head = d_head  # p
+        self.d_state = d_state  # n
 
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
         """
@@ -168,12 +169,10 @@ class _Mamba2Step(nn.Module):
         # [h p! n] @ [n!] -> h p!
         y = dA * (h @ C) + dt * x * (B * C).sum(0, keepdim=True)
 
-        # Assuming h << p <= n, we broadcast p
-        # We want [h 1 1!] * [h p 1!] * [1 1 n!]
+        # We want: [h 1! 1] * [h p! 1] * [1 1! n]
+        C = torch.stack([C[i : i + 1] for i in range(self.d_state)], dim=1)
 
-        # dBx = dt[:, None, :] * C[None, None, :]
-
-        h = dA[:, :, None] * h
+        h = dA[:, :, None] * h + (dt * x)[:, :, None] * C
 
         return y, h
 
@@ -214,15 +213,15 @@ class _ShortConv(nn.Module):
 def _vm(
     dim: int,
     state: int,
+    layers: int,
     config: str,
 ):
     from vollo_model_zoo.vm import vollo_info
 
     input = torch.randn(2, dim)
 
-    model = Mamba2(
-        d_model=dim,
-        d_state=state,
+    model = nn.Sequential().extend(
+        Mamba2(d_model=dim, d_state=state) for _ in range(layers)
     )
 
     return vollo_info(
@@ -234,6 +233,7 @@ def _vm(
         meta=dict(
             dim=dim,
             state=state,
+            layers=layers,
         ),
     )
 
@@ -241,7 +241,7 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=32 * 6, state=16),
+        dict(dim=32 * 6, state=16, layers=1),
         # dict(dim=32 * 12, state=128),
         # dict(dim=32 * 32, state=128),
     ]:
