@@ -36,6 +36,12 @@ Then:
    set -x UV_FIND_LINKS /path/to/sdk/vollo-sdk-<version>/python/
    ```
 
+   Or similarly for `bash`:
+
+   ```bash
+   export UV_FIND_LINKS=/path/to/sdk/vollo-sdk-<version>/python/
+   ```
+
 2. Try a model out:
 
    ```fish
