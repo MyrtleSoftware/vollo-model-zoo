@@ -76,7 +76,7 @@ class Mamba2(nn.Module):
 
         # === Vollo specific === #
 
-        self.ssm = vollo_torch.nn.Scan(_Mamba2Step())
+        self.ssm = vollo_torch.nn.Scan(_Mamba2Step(n_heads=self.n_heads))
 
         self.h0 = torch.nn.Buffer(
             torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
@@ -100,7 +100,7 @@ class Mamba2(nn.Module):
         C = self.conv_C(C)
 
         dt = F.softplus(dt + self.dt_bias)
-        dA = dt * -torch.exp(self.A_log)
+        dA = dt
 
         if True:
             state = self.h0.float()
@@ -109,19 +109,25 @@ class Mamba2(nn.Module):
 
         # TODO: D/skip connections
 
+        # x: [t (h p)] -> (t h p)
+
         x = x.reshape(-1, self.n_heads, self.d_head)
 
         y = self.ssm([x, B, C, dt, dA], state, input_axis=[0] * 5, output_axis=0)
 
-        y = x.reshape(-1, self.d_inner)
+        # [t h! p]
+
+        y = y.reshape(-1, self.d_inner)
 
         return self.out_proj(y)
 
 
 class _Mamba2Step(nn.Module):
     @beartype
-    def __init__(self):
+    def __init__(self, n_heads: int):
         super().__init__()
+
+        self.n_heads = n_heads
 
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
         """
@@ -136,8 +142,8 @@ class _Mamba2Step(nn.Module):
 
         # Shapes:
         #
-        #   x:  [h! p]
-        #   h:  [h! p n]
+        #   x:  [h p!]
+        #   h:  [h p! n]
         #
         #   B:  [n!]
         #   C:  [n!]
@@ -150,9 +156,16 @@ class _Mamba2Step(nn.Module):
 
         dA = dA.exp()
 
-        y = dA[:, None] * (h @ C) + dt[:, None] * x * (B * C).sum(0, keepdim=True)
+        # dA [h!] -> [h 1!]
+        dA = torch.stack([dA[i : i + 1] for i in range(self.n_heads)], dim=0)
 
-        h = dA[:, None, None] * h + (dt[:, None] * x)[:, :, None] * B
+        # dt [h!] -> [h 1!]
+        dt = torch.stack([dt[i : i + 1] for i in range(self.n_heads)], dim=0)
+
+        # [h p! n] @ [n!] -> h p!
+        y = dA * (h @ C) + dt * x * (B * C).sum(0, keepdim=True)
+
+        h = dA[:, :, None] * h
 
         return y, h
 
@@ -197,7 +210,7 @@ def _vm(
 ):
     from vollo_model_zoo.vm import vollo_info
 
-    input = torch.randn(1, dim)
+    input = torch.randn(2, dim)
 
     model = Mamba2(
         d_model=dim,
@@ -220,9 +233,9 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=32 * 6, state=7),
-        dict(dim=32 * 12, state=128),
-        dict(dim=32 * 32, state=128),
+        dict(dim=32 * 6, state=16),
+        # dict(dim=32 * 12, state=128),
+        # dict(dim=32 * 32, state=128),
     ]:
         yield _vm(**x, config=config)
 
