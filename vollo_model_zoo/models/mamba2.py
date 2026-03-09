@@ -137,6 +137,16 @@ class _Mamba2Step(nn.Module):
         self.d_state = d_state  # n
 
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
+        """
+        Inputs:
+                 x: [h p!]
+              B, C: [n!]
+            dA, dt: [h!]
+                 h: [h p! n]
+
+        Returns:
+                 y: [h p!]
+        """
         x, B, C, dt, dA = inputs
 
         dA = dA.exp()
@@ -147,7 +157,7 @@ class _Mamba2Step(nn.Module):
         # dt [h!] -> [h 1!]
         dt = torch.stack([dt[i : i + 1] for i in range(self.n_heads)], dim=0)
 
-        # [h p! n] @ [n] -> [h p!]
+        # [h p! n] @ [n!] -> [h p!]
         y = dA * (h @ C) + dt * x * (B * C).sum(0, keepdim=True)
 
         # [h p! 1] * [1 n 1!]
