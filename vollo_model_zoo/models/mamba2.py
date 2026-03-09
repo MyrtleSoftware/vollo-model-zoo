@@ -120,9 +120,9 @@ class Mamba2(nn.Module):
         y = y + self.D * x
 
         # Gating (FLA always uses SiLU regardless of hidden_act)
+        # This is "norm after gate" configuration.
         y = y * torch.nn.functional.silu(z)
 
-        # Normalization
         y = self.norm(y)
 
         return self.out_proj(y)
@@ -226,7 +226,6 @@ def _vm(
 def main(config: str = "V80") -> Generator:
     for x in [
         dict(dim=32 * 6 * 2, state=32, layers=1),
-        dict(dim=32 * 6 * 2, state=32, layers=2),
         # dict(dim=32 * 6 * 2, state=24, layers=2),
         # dict(dim=32 * 6 * 4, state=24, layers=3),
         # dict(dim=32 * 12, state=128),
