@@ -68,12 +68,6 @@ class Mamba2(nn.Module):
         self.A_log = nn.Parameter(torch.rand(self.n_heads))
         self.D = nn.Parameter(torch.ones(self.d_inner))
 
-        match activation:
-            case "silu":
-                self.act = nn.SiLU()
-            case "relu":
-                self.act = nn.ReLU()
-
         self.norm = torch.nn.RMSNorm(self.d_inner, eps=1e-5)
 
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=bias)
@@ -119,19 +113,17 @@ class Mamba2(nn.Module):
             [x_reshaped, B, C, dt, dA], state, input_axis=[0] * 5, output_axis=0
         )
 
-        # [t h! p]
-
+        # [t h! p] -> [t (h p)!]
         y = y.reshape(-1, self.d_inner)
 
-        # Skip connection: D * x (using convoluted x)
+        # Skip connection
         y = y + self.D * x
 
         # Gating (FLA always uses SiLU regardless of hidden_act)
         y = y * torch.nn.functional.silu(z)
 
         # Normalization
-        if self.norm is not None:
-            y = self.norm(y)
+        y = self.norm(y)
 
         return self.out_proj(y)
 

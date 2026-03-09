@@ -85,7 +85,6 @@ def test_mamba2_equivalence(
     headdim,
     bias,
     conv_bias,
-    rmsnorm,
 ):
     # Set seed
     torch.manual_seed(42)
@@ -128,7 +127,7 @@ def test_mamba2_equivalence(
 
     # Convert and load state dict
     vollo_state_dict = convert_state_dict(
-        fla_model.state_dict(), d_inner, d_state, n_heads, rmsnorm
+        fla_model.state_dict(), d_inner, d_state, n_heads, True
     )
     vollo_model.load_state_dict(vollo_state_dict, strict=True)
 
