@@ -109,7 +109,7 @@ class MobileNet1D(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """ """
         x = self.features(x)
-        # x = self.classifier(x)
+        x = self.classifier(x.transpose(1, 2))
         return x
 
 
