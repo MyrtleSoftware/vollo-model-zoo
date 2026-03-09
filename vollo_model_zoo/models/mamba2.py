@@ -69,6 +69,12 @@ class Mamba2(nn.Module):
         self.A_log = nn.Parameter(torch.rand(self.n_heads))
         self.D = nn.Parameter(torch.ones(self.d_inner))
 
+        match activation:
+            case "silu":
+                self.act = nn.SiLU()
+            case "relu":
+                self.act = nn.ReLU()
+
         # if rmsnorm:
         #     self.norm = None  # d_inner
 
@@ -102,24 +108,28 @@ class Mamba2(nn.Module):
         C = self.conv_C(C)
 
         dt = F.softplus(dt + self.dt_bias)
-        dA = dt
+        dA = dt * (-torch.exp(self.A_log))
 
         if True:
             state = self.h0.float()
         else:
             state = self.h0
 
-        # TODO: D/skip connections
+        x_reshaped = x.reshape(-1, self.n_heads, self.d_head)
 
-        # x: [t (h p)] -> (t h p)
-
-        x = x.reshape(-1, self.n_heads, self.d_head)
-
-        y = self.ssm([x, B, C, dt, dA], state, input_axis=[0] * 5, output_axis=0)
+        y = self.ssm(
+            [x_reshaped, B, C, dt, dA], state, input_axis=[0] * 5, output_axis=0
+        )
 
         # [t h! p]
 
         y = y.reshape(-1, self.d_inner)
+
+        # Skip connection
+        y = y + self.D * x
+
+        # Gating
+        y = y * self.act(z)
 
         return self.out_proj(y)
 
@@ -136,28 +146,6 @@ class _Mamba2Step(nn.Module):
         # print(f"h={n_heads}, p={d_head}, n={d_state}")
 
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
-        """
-        dBx = torch.einsum("bh,bn,bhp->bhpn", dt, B, x)
-        ssm_state.copy_(ssm_state * rearrange(dA, "b h -> b h 1 1") + dBx)
-        y = torch.einsum("bhpn,bn->bhp", ssm_state.to(dtype), C)
-        y = y + rearrange(self.D.to(dtype), "h -> h 1") * x
-        y = rearrange(y, "b h p -> b (h p)")
-        if not self.rmsnorm:
-            y = y * self.act(z)  # (B D)
-        """
-
-        # Shapes:
-        #
-        #   x:  [h p!]
-        #   h:  [h p! n]
-        #
-        #   B:  [n!]
-        #   C:  [n!]
-        #
-        #   dt: [h!]
-        #   dA: [h!]
-        #
-
         x, B, C, dt, dA = inputs
 
         dA = dA.exp()
@@ -168,13 +156,14 @@ class _Mamba2Step(nn.Module):
         # dt [h!] -> [h 1!]
         dt = torch.stack([dt[i : i + 1] for i in range(self.n_heads)], dim=0)
 
-        # [h p! n] @ [n!] -> h p!
+        # Output y = dA * (h @ C) + dt * x * (B @ C).sum()
+        # [h p n] @ [n] -> [h p]
         y = dA * (h @ C) + dt * x * (B * C).sum(0, keepdim=True)
 
-        # We want: [h 1! 1] * [h p! 1] * [1 1! n]
-        C = torch.stack([C[i : i + 1] for i in range(self.d_state)], dim=1)
-
-        h = dA[:, :, None] * h + (dt * x)[:, :, None] * C
+        # Update state h = dA * h + dt * x * B
+        # [h p 1] * [1 n] -> [h p n]
+        B = torch.stack([B[i : i + 1] for i in range(self.d_state)], dim=1)
+        h = dA[:, :, None] * h + (dt * x)[:, :, None] * B
 
         return y, h
 
