@@ -133,6 +133,8 @@ class _Mamba2Step(nn.Module):
         self.d_head = d_head  # p
         self.d_state = d_state  # n
 
+        # print(f"h={n_heads}, p={d_head}, n={d_state}")
+
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
         """
         dBx = torch.einsum("bh,bn,bhp->bhpn", dt, B, x)
@@ -241,7 +243,9 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=32 * 6, state=16, layers=1),
+        dict(dim=32 * 6 * 2, state=32, layers=1),
+        # dict(dim=32 * 6 * 2, state=24, layers=2),
+        # dict(dim=32 * 6 * 4, state=24, layers=3),
         # dict(dim=32 * 12, state=128),
         # dict(dim=32 * 32, state=128),
     ]:
