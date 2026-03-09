@@ -1,4 +1,3 @@
-import math
 from pathlib import Path
 from typing import Literal
 
@@ -205,7 +204,7 @@ def _vm(
     input = torch.randn(2, dim)
 
     model = nn.Sequential().extend(
-        Mamba2(d_model=dim, d_state=state) for _ in range(layers)
+        Mamba2(d_model=dim, d_state=state, d_head=32) for _ in range(layers)
     )
 
     return vollo_info(
@@ -225,11 +224,10 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=32 * 6 * 2, state=32, layers=1),
-        # dict(dim=32 * 6 * 2, state=24, layers=2),
-        # dict(dim=32 * 6 * 4, state=24, layers=3),
-        # dict(dim=32 * 12, state=128),
-        # dict(dim=32 * 32, state=128),
+        dict(dim=400, state=16, layers=1),
+        dict(dim=400, state=16, layers=2),
+        dict(dim=400, state=32, layers=1),
+        dict(dim=1024, state=32, layers=1),
     ]:
         yield _vm(**x, config=config)
 

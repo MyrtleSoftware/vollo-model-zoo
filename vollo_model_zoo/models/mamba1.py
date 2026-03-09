@@ -223,15 +223,19 @@ class Mamba(nn.Module):
 def _vm(
     dim: int,
     state: int,
+    layers: int,
     config: str,
 ):
     from vollo_model_zoo.vm import vollo_info
 
     input = torch.randn(1, dim)
 
-    model = Mamba(
-        d_model=dim,
-        d_state=state,
+    model = torch.nn.Sequential().extend(
+        Mamba(
+            d_model=dim,
+            d_state=state,
+        )
+        for _ in range(layers)
     )
 
     return vollo_info(
@@ -249,10 +253,10 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=32 * 6, state=6),
-        dict(dim=32 * 12, state=6 * 2),
-        dict(dim=32 * 32, state=6 * 2),
-        dict(dim=32 * 32, state=6 * 4),
+        dict(dim=32 * 6, state=6, layers=1),
+        dict(dim=32 * 12, state=6 * 2, layers=1),
+        dict(dim=32 * 12, state=6 * 2, layers=2),
+        dict(dim=32 * 32, state=6 * 4, layers=1),
     ]:
         yield _vm(**x, config=config)
 
