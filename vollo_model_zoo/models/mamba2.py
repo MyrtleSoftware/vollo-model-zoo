@@ -137,8 +137,6 @@ class _Mamba2Step(nn.Module):
         self.d_head = d_head  # p
         self.d_state = d_state  # n
 
-        # print(f"h={n_heads}, p={d_head}, n={d_state}")
-
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
         x, B, C, dt, dA = inputs
 
@@ -150,14 +148,15 @@ class _Mamba2Step(nn.Module):
         # dt [h!] -> [h 1!]
         dt = torch.stack([dt[i : i + 1] for i in range(self.n_heads)], dim=0)
 
-        # Output y = dA * (h @ C) + dt * x * (B @ C).sum()
-        # [h p n] @ [n] -> [h p]
+        # [h p! n] @ [n] -> [h p!]
         y = dA * (h @ C) + dt * x * (B * C).sum(0, keepdim=True)
 
-        # Update state h = dA * h + dt * x * B
-        # [h p 1] * [1 n] -> [h p n]
-        B = torch.stack([B[i : i + 1] for i in range(self.d_state)], dim=1)
-        h = dA[:, :, None] * h + (dt * x)[:, :, None] * B
+        # [h p! 1] * [1 n 1!]
+        dB = (dt * x)[:, :, None] * torch.stack(
+            [B[i : i + 1] for i in range(self.d_state)], dim=1
+        )
+
+        h = dA[:, :, None] * h + dB
 
         return y, h
 
@@ -227,6 +226,7 @@ def _vm(
 def main(config: str = "V80") -> Generator:
     for x in [
         dict(dim=32 * 6 * 2, state=32, layers=1),
+        dict(dim=32 * 6 * 2, state=32, layers=2),
         # dict(dim=32 * 6 * 2, state=24, layers=2),
         # dict(dim=32 * 6 * 4, state=24, layers=3),
         # dict(dim=32 * 12, state=128),
