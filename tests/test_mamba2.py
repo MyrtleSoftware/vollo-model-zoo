@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 from beartype import beartype
-from fla_mamba2 import Mamba2 as FLAMamba2
+from fla.layers.mamba2 import Mamba2 as FLAMamba2
 
 from vollo_model_zoo.models.mamba2 import Mamba2 as VolloMamba2
 
