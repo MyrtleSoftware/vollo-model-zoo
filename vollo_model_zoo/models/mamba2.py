@@ -76,7 +76,9 @@ class Mamba2(nn.Module):
 
         # === Vollo specific === #
 
-        self.ssm = vollo_torch.nn.Scan(_Mamba2Step(n_heads=self.n_heads))
+        self.ssm = vollo_torch.nn.Scan(
+            _Mamba2Step(n_heads=self.n_heads, d_head=self.d_head)
+        )
 
         self.h0 = torch.nn.Buffer(
             torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
@@ -124,10 +126,11 @@ class Mamba2(nn.Module):
 
 class _Mamba2Step(nn.Module):
     @beartype
-    def __init__(self, n_heads: int):
+    def __init__(self, n_heads: int, d_head: int):
         super().__init__()
 
         self.n_heads = n_heads
+        self.d_head = d_head
 
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
         """
@@ -164,6 +167,11 @@ class _Mamba2Step(nn.Module):
 
         # [h p! n] @ [n!] -> h p!
         y = dA * (h @ C) + dt * x * (B * C).sum(0, keepdim=True)
+
+        # Assuming h << p <= n, we broadcast p
+        # We want [h 1 1!] * [h p 1!] * [1 1 n!]
+
+        # dBx = dt[:, None, :] * C[None, None, :]
 
         h = dA[:, :, None] * h
 
