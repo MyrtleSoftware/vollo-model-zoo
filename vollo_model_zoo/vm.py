@@ -78,6 +78,7 @@ def vollo_info(
     config: str,
     meta: Optional[dict[str, Union[int, float, str]]] = None,
     allow_dynamic_weights: bool = False,
+    quick_compile: bool = False,
 ) -> Result:
     """
     For a given model/input compile it to a vollo program and return
@@ -91,6 +92,7 @@ def vollo_info(
             time_axis=time_axis,
             config=_config(config),
             allow_dynamic_weights=allow_dynamic_weights,
+            quick_compile=quick_compile,
         )
     except (AllocationError, SaveError) as e:
         return e
@@ -171,6 +173,7 @@ def _vollo_compile(
     time_axis: Optional[int],
     config: vc.Config,
     allow_dynamic_weights: bool = False,
+    quick_compile: bool = False,
     **kwargs,
 ) -> vc.Program:
     """
@@ -186,7 +189,9 @@ def _vollo_compile(
     if time_axis is not None:
         nnir, _ = nnir.streaming_transform(time_axis)
 
-    program = nnir.to_program(config, allow_dynamic_weights=allow_dynamic_weights)
+    program = nnir.to_program(
+        config, quick_compile=quick_compile, allow_dynamic_weights=allow_dynamic_weights
+    )
 
     program.pack()  # Should raise error if it doesn't fit
 

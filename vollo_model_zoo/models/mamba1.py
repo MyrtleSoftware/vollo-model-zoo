@@ -243,6 +243,7 @@ def _vm(
         input,
         config=config,
         time_axis=0,
+        quick_compile=True,
         meta=dict(
             dim=dim,
             state=state,
