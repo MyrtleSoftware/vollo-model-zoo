@@ -13,6 +13,7 @@ Models in the zoo include:
 |                   | [ResMLP](#resmlp)                                     | [`resmlp.py`](./vollo_model_zoo/models/resmlp.py)                                                                                                     |
 |                   | [Mixture of Experts](#mixture-of-experts-moe-block)   | [`moe.py`](./vollo_model_zoo/models/moe.py)                                                                                                           |
 | **Convolutional** | [Basic CNN](#basic-convolutional-neural-networks-cnn) | [`cnn.py`](./vollo_model_zoo/models/cnn.py)                                                                                                           |
+|                   | [TCN](#tcn)                                           | [`tcn.py`](./vollo_model_zoo/models/tcn.py)                                                                                                           |
 |                   | [WaveNet](#wavenet)                                   | [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)                                                                                                   |
 |                   | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
 | **Recurrent**     | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
@@ -176,6 +177,22 @@ A standard CNN block typically consists of:
 4. Optional residual connection
 
 Vollo has comprehensive first-class support for 1D causal convolutions.
+
+### TCN
+
+Code/model: [tcn.py](./vollo_model_zoo/models/tcn.py)
+
+[Temporal Convolutional Networks (TCN)](https://arxiv.org/pdf/1803.01271) are a
+1D convolutional architecture designed for sequence modeling. It uses:
+
+1. **Causal Convolutions**: Ensuring that there is no information leakage from
+   future to past.
+2. **Dilated Convolutions**: Allowing the network to have a large receptive
+   field with fewer layers.
+3. **Residual Connections**: Helping to train deep networks.
+
+TCNs often outperform RNNs (like LSTMs and GRUs) on a variety of sequence
+modeling tasks while being more parallelizable.
 
 ### WaveNet
 
