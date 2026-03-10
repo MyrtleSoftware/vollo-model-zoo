@@ -6,17 +6,20 @@ to perform low-latency inference on a variety of FPGA accelerators.
 
 Models in the zoo include:
 
-- [Basic multilayer perceptrons (MLP)](#basic-multilayer-perceptrons-mlp)
-- [Transformer++'s SwiGLU feed-forward block](#transformers-swiglu-feed-forward-block)
-- [ResMLP (MLP-mixer)](#resmlp)
-- [Mixture of experts (MoE)](#mixture-of-experts-moe-block)
-- [Basic Convolutional neural networks (CNN)](#basic-convolutional-neural-networks-cnn)
-- [WaveNet](#wavenet)
-- [MobileNet](#mobilenet)
-- [Long short-term memory (LSTM)](#lstm)
-- [Gated recurrent units (GRU)](#gru)
-- [State space models (S3/S4/S5)](#s3s4s5)
-- [Mamba](#mamba)
+| Category              | Model                                                 | Implementation                       |
+| :-------------------- | :---------------------------------------------------- | :----------------------------------- |
+| **MLP & Dense**       | [Basic MLPs](#basic-multilayer-perceptrons-mlp)       | `slp.py`, `mlp.py`, `mlp-res-rms.py` |
+|                       | [SwiGLU FFN](#transformer-swiglu-feed-forward-block)  | `ffn-swiglu.py`                      |
+|                       | [ResMLP](#resmlp)                                     | `resmlp.py`                          |
+|                       | [Mixture of Experts](#mixture-of-experts-moe-block)   | `moe.py`                             |
+| **Convolutional**     | [Basic CNN](#basic-convolutional-neural-networks-cnn) | `cnn.py`                             |
+|                       | [WaveNet](#wavenet)                                   | `wavenet.py`                         |
+|                       | [MobileNet](#mobilenet)                               | `mobilenet.py`                       |
+| **State Space & RNN** | [LSTM](#lstm)                                         | `lstm.py`                            |
+|                       | [GRU](#gru)                                           | `gru.py`                             |
+|                       | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | `ssm.py`                             |
+|                       | [Mamba](#mamba)                                       | `mamba1.py`                          |
+|                       | [Mamba-2](#mamba-2)                                   | `mamba2.py`                          |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM and
 calculate the compute-latency for any of these models.
