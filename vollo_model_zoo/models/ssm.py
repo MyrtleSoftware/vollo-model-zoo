@@ -7,6 +7,26 @@ from beartype.typing import Generator
 from torch import nn
 
 
+class SSM(nn.Module):
+    @beartype
+    def __init__(self, dim: int, hidden: int):
+        super().__init__()
+
+        self.ssm = vollo_torch.nn.Scan(_StepSSM(dim, hidden))
+        self.h0 = torch.nn.Buffer(torch.zeros(hidden), persistent=False)
+
+    def forward(self, x):
+        """
+        Args:
+            x: [time, dim]
+
+        Returns:
+            r: [time, dim]
+        """
+
+        return self.ssm(x, self.h0, input_axis=0, output_axis=0)  # [t, D]
+
+
 class _StepSSM(nn.Module):
     @beartype
     def __init__(self, dim: int, hidden: int, bias: bool = False):
@@ -29,26 +49,6 @@ class _StepSSM(nn.Module):
         y = self.C(h) + self.D(x)
 
         return y, h
-
-
-class SSM(nn.Module):
-    @beartype
-    def __init__(self, dim: int, hidden: int):
-        super().__init__()
-
-        self.ssm = vollo_torch.nn.Scan(_StepSSM(dim, hidden))
-        self.h0 = torch.nn.Buffer(torch.zeros(hidden), persistent=False)
-
-    def forward(self, x):
-        """
-        Args:
-            x: [time, dim]
-
-        Returns:
-            r: [time, dim]
-        """
-
-        return self.ssm(x, self.h0, input_axis=0, output_axis=0)  # [t, D]
 
 
 @beartype

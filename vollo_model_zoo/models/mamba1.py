@@ -9,6 +9,98 @@ from beartype.typing import Generator
 from torch import nn
 
 
+class Mamba(nn.Module):
+    @beartype
+    def __init__(
+        self,
+        d_model: int,
+        d_state: int = 16,
+        d_conv: int = 4,
+        expand: int = 2,
+        dt_rank: int | Literal["auto"] = "auto",
+        bias: bool = False,
+        conv_bias: bool = True,
+        activation: Literal["silu", "relu"] = "silu",
+    ):
+        """
+        See: https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba_simple.py
+
+        Args:
+            d_model:    Dimension of the input and output.
+            d_state:    SSM state multiplier factor (i.e. state is [d_state, d_expand * d_model]).
+            d_conv:     Local convolution width.
+            expand:     Hidden state expansion factor.
+            dt_rank:    Generalized delta dimension.
+            bias:       Input/output projection bias.
+            conv_bias:  Convolutional bias.
+            activation: Activation function to use for convolution/gate.
+        """
+
+        super().__init__()
+
+        self.bias = bias
+
+        step = _MambaStep(
+            d_model=d_model,
+            d_state=d_state,
+            expand=expand,
+            dt_rank=dt_rank,
+        )
+
+        self.ssm = vollo_torch.nn.Scan(step)
+
+        # Not technically a parameter but needed for .to() etc
+        self.h0 = torch.nn.Buffer(step._init_state(), persistent=False)
+
+        # - Mamba parameters
+
+        # These are a single linear layer ("in_proj") in Mamba
+        self.in_proj_x = nn.Linear(step.d_model, step.d_inner, bias=bias)
+        self.in_proj_z = nn.Linear(step.d_model, step.d_inner, bias=bias)
+
+        # Depthwise
+        self.conv1d = vollo_torch.nn.PaddedConv1d(
+            in_channels=step.d_inner,
+            out_channels=step.d_inner,
+            groups=step.d_inner,
+            kernel_size=d_conv,
+            bias=conv_bias,
+        )
+
+        match activation:
+            case "silu":
+                self.act = nn.SiLU()
+            case "relu":
+                self.act = nn.ReLU()
+
+        self.out_proj = nn.Linear(step.d_inner, step.d_model, bias=bias)
+
+    def forward(self, x):
+        """
+        x: [time, d_model]
+
+        Returns r: [time, d_model]
+        """
+
+        # Up projection
+        x, z = self.in_proj_x(x), self.in_proj_z(x)
+
+        # Vollo requires that time is rightmost dimension for convolution
+        x = x.transpose(0, 1)
+        x = self.act(self.conv1d(x))
+        x = x.transpose(0, 1)
+
+        y = self.ssm(x, self.h0, input_axis=0, output_axis=0)  # [t, D]
+
+        # Outer residual/gate
+        y = y * self.act(z)
+
+        # Down projection
+        y = self.out_proj(y)  # [t, d]
+
+        return y
+
+
 class _MambaStep(nn.Module):
     @beartype
     def __init__(
@@ -125,98 +217,6 @@ class _MambaStep(nn.Module):
         y = y + self.D * x[None]
 
         return y.squeeze(), state
-
-
-class Mamba(nn.Module):
-    @beartype
-    def __init__(
-        self,
-        d_model: int,
-        d_state: int = 16,
-        d_conv: int = 4,
-        expand: int = 2,
-        dt_rank: int | Literal["auto"] = "auto",
-        bias: bool = False,
-        conv_bias: bool = True,
-        activation: Literal["silu", "relu"] = "silu",
-    ):
-        """
-        See: https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba_simple.py
-
-        Args:
-            d_model:    Dimension of the input and output.
-            d_state:    SSM state multiplier factor (i.e. state is [d_state, d_expand * d_model]).
-            d_conv:     Local convolution width.
-            expand:     Hidden state expansion factor.
-            dt_rank:    Generalized delta dimension.
-            bias:       Input/output projection bias.
-            conv_bias:  Convolutional bias.
-            activation: Activation function to use for convolution/gate.
-        """
-
-        super().__init__()
-
-        self.bias = bias
-
-        step = _MambaStep(
-            d_model=d_model,
-            d_state=d_state,
-            expand=expand,
-            dt_rank=dt_rank,
-        )
-
-        self.ssm = vollo_torch.nn.Scan(step)
-
-        # Not technically a parameter but needed for .to() etc
-        self.h0 = torch.nn.Buffer(step._init_state(), persistent=False)
-
-        # - Mamba parameters
-
-        # These are a single linear layer ("in_proj") in Mamba
-        self.in_proj_x = nn.Linear(step.d_model, step.d_inner, bias=bias)
-        self.in_proj_z = nn.Linear(step.d_model, step.d_inner, bias=bias)
-
-        # Depthwise
-        self.conv1d = vollo_torch.nn.PaddedConv1d(
-            in_channels=step.d_inner,
-            out_channels=step.d_inner,
-            groups=step.d_inner,
-            kernel_size=d_conv,
-            bias=conv_bias,
-        )
-
-        match activation:
-            case "silu":
-                self.act = nn.SiLU()
-            case "relu":
-                self.act = nn.ReLU()
-
-        self.out_proj = nn.Linear(step.d_inner, step.d_model, bias=bias)
-
-    def forward(self, x):
-        """
-        x: [time, d_model]
-
-        Returns r: [time, d_model]
-        """
-
-        # Up projection
-        x, z = self.in_proj_x(x), self.in_proj_z(x)
-
-        # Vollo requires that time is rightmost dimension for convolution
-        x = x.transpose(0, 1)
-        x = self.act(self.conv1d(x))
-        x = x.transpose(0, 1)
-
-        y = self.ssm(x, self.h0, input_axis=0, output_axis=0)  # [t, D]
-
-        # Outer residual/gate
-        y = y * self.act(z)
-
-        # Down projection
-        y = self.out_proj(y)  # [t, d]
-
-        return y
 
 
 @beartype

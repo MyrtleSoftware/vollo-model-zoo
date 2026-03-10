@@ -7,6 +7,55 @@ from torch import nn
 from vollo_torch.nn import PaddedConv1d
 
 
+class MobileNet1D(nn.Module):
+    @beartype
+    def __init__(
+        self,
+        in_channels: int = 3,
+        num_classes: int = 1000,
+        width_mult: float = 1.0,
+    ):
+        """
+        MobileNet v1 1D variant.
+        """
+        super().__init__()
+
+        def scale(v: int) -> int:
+            return int(v * width_mult)
+
+        # Roughly matching the paper (less the strides)
+
+        self.features = nn.Sequential(
+            _ConvNormAct(in_channels, scale(32), kernel_size=3),
+            # Scale up
+            _DepthwiseSeparableConv1d(scale(32), scale(64)),
+            _DepthwiseSeparableConv1d(scale(64), scale(128)),
+            _DepthwiseSeparableConv1d(scale(128), scale(128)),
+            _DepthwiseSeparableConv1d(scale(128), scale(256)),
+            _DepthwiseSeparableConv1d(scale(256), scale(256)),
+            _DepthwiseSeparableConv1d(scale(256), scale(512)),
+            # 5x block
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            _DepthwiseSeparableConv1d(scale(512), scale(512)),
+            # Final
+            _DepthwiseSeparableConv1d(scale(512), scale(1024)),
+            _DepthwiseSeparableConv1d(scale(1024), scale(1024)),
+        )
+
+        # In standard MobileNet there is avg pool + linear.
+        # For 1D/Streaming, we just predict a class at each time step.
+        self.classifier = nn.Linear(scale(1024), num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """ """
+        x = self.features(x)
+        x = self.classifier(x.transpose(1, 2))
+        return x
+
+
 class _ConvNormAct(nn.Module):
     @beartype
     def __init__(
@@ -61,55 +110,6 @@ class _DepthwiseSeparableConv1d(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.depthwise(x)
         x = self.pointwise(x)
-        return x
-
-
-class MobileNet1D(nn.Module):
-    @beartype
-    def __init__(
-        self,
-        in_channels: int = 3,
-        num_classes: int = 1000,
-        width_mult: float = 1.0,
-    ):
-        """
-        MobileNet v1 1D variant.
-        """
-        super().__init__()
-
-        def scale(v: int) -> int:
-            return int(v * width_mult)
-
-        # Roughly matching the paper (less the strides)
-
-        self.features = nn.Sequential(
-            _ConvNormAct(in_channels, scale(32), kernel_size=3),
-            # Scale up
-            _DepthwiseSeparableConv1d(scale(32), scale(64)),
-            _DepthwiseSeparableConv1d(scale(64), scale(128)),
-            _DepthwiseSeparableConv1d(scale(128), scale(128)),
-            _DepthwiseSeparableConv1d(scale(128), scale(256)),
-            _DepthwiseSeparableConv1d(scale(256), scale(256)),
-            _DepthwiseSeparableConv1d(scale(256), scale(512)),
-            # 5x block
-            _DepthwiseSeparableConv1d(scale(512), scale(512)),
-            _DepthwiseSeparableConv1d(scale(512), scale(512)),
-            _DepthwiseSeparableConv1d(scale(512), scale(512)),
-            _DepthwiseSeparableConv1d(scale(512), scale(512)),
-            _DepthwiseSeparableConv1d(scale(512), scale(512)),
-            # Final
-            _DepthwiseSeparableConv1d(scale(512), scale(1024)),
-            _DepthwiseSeparableConv1d(scale(1024), scale(1024)),
-        )
-
-        # In standard MobileNet there is avg pool + linear.
-        # For 1D/Streaming, we just predict a class at each time step.
-        self.classifier = nn.Linear(scale(1024), num_classes)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """ """
-        x = self.features(x)
-        x = self.classifier(x.transpose(1, 2))
         return x
 
 

@@ -6,56 +6,6 @@ from beartype import beartype
 from torch import nn
 
 
-class _ELU(nn.Module):
-    """
-    Not supported natively in Vollo
-    """
-
-    def forward(self, x: torch.Tensor, alpha=1.0) -> torch.Tensor:
-        return torch.where(x >= 0, x, alpha * (torch.exp(x) - 1))
-
-
-ACTIVATIONS = {
-    "relu": nn.ReLU,
-    "sigmoid": nn.Sigmoid,
-    "tanh": nn.Tanh,
-    "softplus": nn.Softplus,
-    "silu": nn.SiLU,
-    "elu": _ELU,
-}
-
-
-class _MLPResRMSBlock(nn.Module):
-    @beartype
-    def __init__(
-        self,
-        dim: int,
-        hidden_dim: int,
-        activation: str,
-        bias: bool = True,
-    ):
-        super().__init__()
-        self.norm = nn.RMSNorm(dim, eps=1e-5)
-        self.ffn1 = nn.Linear(dim, hidden_dim, bias=bias)
-
-        if activation.lower() not in ACTIVATIONS:
-            raise ValueError(
-                f"Unsupported activation: {activation} not in {list(ACTIVATIONS.keys())}"
-            )
-
-        self.act = ACTIVATIONS[activation.lower()]()
-        self.ffn2 = nn.Linear(hidden_dim, dim, bias=bias)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Pre-norm architecture: x = x + MLP(RMSNorm(x))
-        residual = x
-        x = self.norm(x)
-        x = self.ffn1(x)
-        x = self.act(x)
-        x = self.ffn2(x)
-        return x + residual
-
-
 class MLPResRMS(nn.Module):
     @beartype
     def __init__(
@@ -94,6 +44,56 @@ class MLPResRMS(nn.Module):
             x: Tensor of shape (Batch, Time, dim)
         """
         return self.blocks(x)
+
+
+class _MLPResRMSBlock(nn.Module):
+    @beartype
+    def __init__(
+        self,
+        dim: int,
+        hidden_dim: int,
+        activation: str,
+        bias: bool = True,
+    ):
+        super().__init__()
+        self.norm = nn.RMSNorm(dim, eps=1e-5)
+        self.ffn1 = nn.Linear(dim, hidden_dim, bias=bias)
+
+        if activation.lower() not in ACTIVATIONS:
+            raise ValueError(
+                f"Unsupported activation: {activation} not in {list(ACTIVATIONS.keys())}"
+            )
+
+        self.act = ACTIVATIONS[activation.lower()]()
+        self.ffn2 = nn.Linear(hidden_dim, dim, bias=bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Pre-norm architecture: x = x + MLP(RMSNorm(x))
+        residual = x
+        x = self.norm(x)
+        x = self.ffn1(x)
+        x = self.act(x)
+        x = self.ffn2(x)
+        return x + residual
+
+
+class _ELU(nn.Module):
+    """
+    Not supported natively in Vollo
+    """
+
+    def forward(self, x: torch.Tensor, alpha=1.0) -> torch.Tensor:
+        return torch.where(x >= 0, x, alpha * (torch.exp(x) - 1))
+
+
+ACTIVATIONS = {
+    "relu": nn.ReLU,
+    "sigmoid": nn.Sigmoid,
+    "tanh": nn.Tanh,
+    "softplus": nn.Softplus,
+    "silu": nn.SiLU,
+    "elu": _ELU,
+}
 
 
 @beartype

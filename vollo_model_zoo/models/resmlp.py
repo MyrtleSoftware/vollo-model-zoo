@@ -6,86 +6,6 @@ from beartype import beartype
 from torch import nn
 
 
-class _Aff(nn.Module):
-    @beartype
-    def __init__(self, dim: int):
-        super().__init__()
-        self.alpha = nn.Parameter(torch.ones([1, 1, dim]))
-        self.beta = nn.Parameter(torch.zeros([1, 1, dim]))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x * self.alpha + self.beta
-
-
-class _GELU(nn.Module):
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Approximation, see: https://arxiv.org/pdf/1606.08415
-        """
-        return x * nn.functional.sigmoid(1.702 * x)
-
-
-class _Mixer(nn.Module):
-    @beartype
-    def __init__(self, num_patches: int):
-        super().__init__()
-        self.mixer = nn.Linear(num_patches, num_patches)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Within patches: [B N H!] -> [B N H!]
-        """
-
-        x = x.transpose(1, 2)
-        x = self.mixer(x)
-        x = x.transpose(1, 2)
-
-        return x
-
-
-class _CrossChannel(nn.Module):
-    @beartype
-    def __init__(self, dim: int, activation: str, expansion: int = 4):
-        super().__init__()
-
-        match activation.lower():
-            case "relu":
-                act = nn.ReLU()
-            case "gelu":
-                act = _GELU()
-            case _:
-                raise ValueError(f"Unsupported activation: {activation}")
-
-        self.net = nn.Sequential(
-            _Aff(dim),
-            nn.Linear(dim, dim * expansion),
-            act,
-            nn.Linear(expansion * dim, dim),
-            _Aff(dim),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Within channels: [B N H!] -> [B N H!]
-        """
-        return x + self.net(x)
-
-
-class _CrossPatch(nn.Module):
-    @beartype
-    def __init__(self, dim: int, num_patches: int):
-        super().__init__()
-
-        self.net = nn.Sequential(
-            _Aff(dim),
-            _Mixer(num_patches=num_patches),
-            _Aff(dim),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x + self.net(x)
-
-
 class ResMLP(nn.Module):
     @beartype
     def __init__(
@@ -136,6 +56,86 @@ class ResMLP(nn.Module):
         x = x.sum(dim=1) / self.num_patches
 
         return self.out_proj(x)
+
+
+class _CrossChannel(nn.Module):
+    @beartype
+    def __init__(self, dim: int, activation: str, expansion: int = 4):
+        super().__init__()
+
+        match activation.lower():
+            case "relu":
+                act = nn.ReLU()
+            case "gelu":
+                act = _GELU()
+            case _:
+                raise ValueError(f"Unsupported activation: {activation}")
+
+        self.net = nn.Sequential(
+            _Aff(dim),
+            nn.Linear(dim, dim * expansion),
+            act,
+            nn.Linear(expansion * dim, dim),
+            _Aff(dim),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Within channels: [B N H!] -> [B N H!]
+        """
+        return x + self.net(x)
+
+
+class _CrossPatch(nn.Module):
+    @beartype
+    def __init__(self, dim: int, num_patches: int):
+        super().__init__()
+
+        self.net = nn.Sequential(
+            _Aff(dim),
+            _Mixer(num_patches=num_patches),
+            _Aff(dim),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + self.net(x)
+
+
+class _Mixer(nn.Module):
+    @beartype
+    def __init__(self, num_patches: int):
+        super().__init__()
+        self.mixer = nn.Linear(num_patches, num_patches)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Within patches: [B N H!] -> [B N H!]
+        """
+
+        x = x.transpose(1, 2)
+        x = self.mixer(x)
+        x = x.transpose(1, 2)
+
+        return x
+
+
+class _Aff(nn.Module):
+    @beartype
+    def __init__(self, dim: int):
+        super().__init__()
+        self.alpha = nn.Parameter(torch.ones([1, 1, dim]))
+        self.beta = nn.Parameter(torch.zeros([1, 1, dim]))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x * self.alpha + self.beta
+
+
+class _GELU(nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Approximation, see: https://arxiv.org/pdf/1606.08415
+        """
+        return x * nn.functional.sigmoid(1.702 * x)
 
 
 @beartype

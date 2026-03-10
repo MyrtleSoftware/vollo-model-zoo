@@ -7,6 +7,45 @@ from torch import nn
 from vollo_torch.nn import PaddedConv1d
 
 
+class CNN(nn.Module):
+    @beartype
+    def __init__(
+        self,
+        num_layers: int,
+        channels: int,
+        kernel_size: int = 3,
+        bias: bool = True,
+    ):
+        """
+        Standard CNN with residual blocks.
+
+        Args:
+               num_layers:           Number of CNN blocks
+               channels:             Number of channels in hidden layers
+               kernel_size:          Size of the convolutional kernel
+               bias:                 Whether to use bias in the convolutional layers
+        """
+        super().__init__()
+
+        kwargs = dict(
+            channels=channels,
+            kernel_size=kernel_size,
+            bias=bias,
+        )
+
+        self.blocks = nn.Sequential(*[_CNNBlock(**kwargs) for _ in range(num_layers)])
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: Tensor of shape (Batch, channels, Time)
+
+        Returns:
+            x: Tensor of shape (Batch, channels, Time)
+        """
+        return self.blocks(x)
+
+
 class _CNNBlock(nn.Module):
     @beartype
     def __init__(
@@ -50,45 +89,6 @@ class _CNNBlock(nn.Module):
         x = x + residual
 
         return x
-
-
-class CNN(nn.Module):
-    @beartype
-    def __init__(
-        self,
-        num_layers: int,
-        channels: int,
-        kernel_size: int = 3,
-        bias: bool = True,
-    ):
-        """
-        Standard CNN with residual blocks.
-
-        Args:
-               num_layers:           Number of CNN blocks
-               channels:             Number of channels in hidden layers
-               kernel_size:          Size of the convolutional kernel
-               bias:                 Whether to use bias in the convolutional layers
-        """
-        super().__init__()
-
-        kwargs = dict(
-            channels=channels,
-            kernel_size=kernel_size,
-            bias=bias,
-        )
-
-        self.blocks = nn.Sequential(*[_CNNBlock(**kwargs) for _ in range(num_layers)])
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x: Tensor of shape (Batch, channels, Time)
-
-        Returns:
-            x: Tensor of shape (Batch, channels, Time)
-        """
-        return self.blocks(x)
 
 
 @beartype

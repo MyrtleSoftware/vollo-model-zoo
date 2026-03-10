@@ -7,92 +7,6 @@ from torch import nn
 from vollo_torch.nn import PaddedConv1d
 
 
-class _1x1Conv1d(nn.Module):
-    @beartype
-    def __init__(self, in_channels: int, out_channels: int, bias: bool):
-        super().__init__()
-
-        self.conv = PaddedConv1d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=1,
-            bias=bias,
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.conv(x)
-
-
-class _WaveNetBlock(nn.Module):
-    @beartype
-    def __init__(
-        self,
-        residual_channels: int,
-        dilation_channels: int,
-        skip_channels: int,
-        kernel_size: int,
-        dilation: int,
-        bias: bool,
-    ):
-        super().__init__()
-
-        self.dilation_channels = dilation_channels
-
-        self.dilated_conv = PaddedConv1d(
-            in_channels=residual_channels,
-            out_channels=2 * dilation_channels,
-            kernel_size=kernel_size,
-            dilation=dilation,
-            bias=bias,
-        )
-
-        self.res_conv = _1x1Conv1d(
-            in_channels=dilation_channels,
-            out_channels=residual_channels,
-            bias=bias,
-        )
-
-        self.skip_conv = _1x1Conv1d(
-            in_channels=dilation_channels,
-            out_channels=skip_channels,
-            bias=bias,
-        )
-
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Following:
-            https://github.com/vincentherrmann/pytorch-wavenet/blob/master/wavenet_model.py
-
-
-                   |----------------------------------------|     *residual*
-                   |                                        |
-                   |    |-- conv -- tanh --|                |
-        -> dilate -|----|                  * ----|-- 1x1 -- + -->	*input*
-                        |-- conv -- sigm --|     |
-                                                1x1
-                                                 |
-        ---------------------------------------> + ------------->	*skip*
-        """
-        residual = x
-
-        # Fused dilated convolution
-        xg = self.dilated_conv(x)
-        x = xg[:, : self.dilation_channels, :]
-        g = xg[:, self.dilation_channels :, :]
-
-        # Gated activation unit
-        x = torch.tanh(x) * torch.sigmoid(g)
-
-        # 1x1 for skip
-        s = self.skip_conv(x)
-
-        # 1x1 for residual
-        x = self.res_conv(x)
-        x = x + residual
-
-        return x, s
-
-
 class WaveNet(nn.Module):
     @beartype
     def __init__(
@@ -165,6 +79,92 @@ class WaveNet(nn.Module):
             acc = acc + s
 
         return self.end_conv(acc)
+
+
+class _WaveNetBlock(nn.Module):
+    @beartype
+    def __init__(
+        self,
+        residual_channels: int,
+        dilation_channels: int,
+        skip_channels: int,
+        kernel_size: int,
+        dilation: int,
+        bias: bool,
+    ):
+        super().__init__()
+
+        self.dilation_channels = dilation_channels
+
+        self.dilated_conv = PaddedConv1d(
+            in_channels=residual_channels,
+            out_channels=2 * dilation_channels,
+            kernel_size=kernel_size,
+            dilation=dilation,
+            bias=bias,
+        )
+
+        self.res_conv = _1x1Conv1d(
+            in_channels=dilation_channels,
+            out_channels=residual_channels,
+            bias=bias,
+        )
+
+        self.skip_conv = _1x1Conv1d(
+            in_channels=dilation_channels,
+            out_channels=skip_channels,
+            bias=bias,
+        )
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Following:
+            https://github.com/vincentherrmann/pytorch-wavenet/blob/master/wavenet_model.py
+
+
+                   |----------------------------------------|     *residual*
+                   |                                        |
+                   |    |-- conv -- tanh --|                |
+        -> dilate -|----|                  * ----|-- 1x1 -- + -->	*input*
+                        |-- conv -- sigm --|     |
+                                                1x1
+                                                 |
+        ---------------------------------------> + ------------->	*skip*
+        """
+        residual = x
+
+        # Fused dilated convolution
+        xg = self.dilated_conv(x)
+        x = xg[:, : self.dilation_channels, :]
+        g = xg[:, self.dilation_channels :, :]
+
+        # Gated activation unit
+        x = torch.tanh(x) * torch.sigmoid(g)
+
+        # 1x1 for skip
+        s = self.skip_conv(x)
+
+        # 1x1 for residual
+        x = self.res_conv(x)
+        x = x + residual
+
+        return x, s
+
+
+class _1x1Conv1d(nn.Module):
+    @beartype
+    def __init__(self, in_channels: int, out_channels: int, bias: bool):
+        super().__init__()
+
+        self.conv = PaddedConv1d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=1,
+            bias=bias,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.conv(x)
 
 
 @beartype

@@ -6,20 +6,6 @@ from beartype import beartype
 from torch import nn
 
 
-class _Expert(nn.Module):
-    @beartype
-    def __init__(self, dim: int, hidden_dim: int):
-        super().__init__()
-        self.w1 = nn.Sequential(
-            nn.Linear(dim, hidden_dim, bias=False),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, dim, bias=False),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.w1(x)
-
-
 class MoE(nn.Module):
     @beartype
     def __init__(self, dim: int, hidden_dim: int, log_n_experts: int):
@@ -58,6 +44,20 @@ class MoE(nn.Module):
             xs = [torch.where(mask, xs[j], xs[j + 1]) for j in range(0, len(xs), 2)]
 
         return xs[0]
+
+
+class _Expert(nn.Module):
+    @beartype
+    def __init__(self, dim: int, hidden_dim: int):
+        super().__init__()
+        self.w1 = nn.Sequential(
+            nn.Linear(dim, hidden_dim, bias=False),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, dim, bias=False),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.w1(x)
 
 
 @beartype
