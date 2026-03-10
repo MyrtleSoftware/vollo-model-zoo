@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Literal
 
@@ -15,13 +16,14 @@ class Mamba2(nn.Module):
         self,
         d_model: int,
         *,
-        d_state: int = 128,
+        d_state: int = 32,
         d_conv: int = 4,
-        d_head: int = 64,
+        d_head: int = 32,
         expand: int | float = 2,
         bias: bool = False,
         conv_bias: bool = True,
         activation: Literal["silu", "relu"] = "silu",
+        ssm_fp32: bool = False,
     ):
         """
         See: https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba_simple.py
@@ -35,6 +37,7 @@ class Mamba2(nn.Module):
             bias:       Input/output projection bias.
             conv_bias:  Convolutional bias.
             activation: Activation function to use for convolution/gate.
+            ssm_fp32:   Whether to use fp32 for the ssm hidden state and select activations.
         """
         super().__init__()
 
@@ -74,7 +77,9 @@ class Mamba2(nn.Module):
         # === Vollo specific === #
 
         self.ssm = vollo_torch.nn.Scan(
-            _Mamba2Step(n_heads=self.n_heads, d_head=self.d_head, d_state=d_state)
+            _Mamba2Step(
+                n_heads=self.n_heads, d_head=self.d_head, d_state=d_state, fp32=ssm_fp32
+            )
         )
 
         self.h0 = torch.nn.Buffer(
@@ -129,12 +134,14 @@ class Mamba2(nn.Module):
 
 class _Mamba2Step(nn.Module):
     @beartype
-    def __init__(self, n_heads: int, d_head: int, d_state: int):
+    def __init__(self, n_heads: int, d_head: int, d_state: int, fp32: bool):
         super().__init__()
 
         self.n_heads = n_heads  # h
         self.d_head = d_head  # p
         self.d_state = d_state  # n
+
+        self.fp_context = vollo_torch.Fp32Activations if fp32 else nullcontext
 
     def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
         """
@@ -149,7 +156,8 @@ class _Mamba2Step(nn.Module):
         """
         x, B, C, dt, dA = inputs
 
-        dA = dA.exp()
+        with self.fp_context():
+            dA = dA.exp()
 
         # dA [h!] -> [h 1!]
         dA = torch.stack([dA[i : i + 1] for i in range(self.n_heads)], dim=0)
@@ -165,7 +173,8 @@ class _Mamba2Step(nn.Module):
             [B[i : i + 1] for i in range(self.d_state)], dim=1
         )
 
-        h = dA[:, :, None] * h + dB
+        with self.fp_context():
+            h = dA[:, :, None] * h + dB
 
         return y, h
 
@@ -207,6 +216,7 @@ def _vm(
     dim: int,
     state: int,
     layers: int,
+    fp32: bool,
     config: str,
 ):
     from vollo_model_zoo.vm import vollo_info
@@ -214,7 +224,7 @@ def _vm(
     input = torch.randn(2, dim)
 
     model = nn.Sequential().extend(
-        Mamba2(d_model=dim, d_state=state, d_head=32) for _ in range(layers)
+        Mamba2(d_model=dim, d_state=state, ssm_fp32=fp32) for _ in range(layers)
     )
 
     return vollo_info(
@@ -224,6 +234,7 @@ def _vm(
         time_axis=0,
         allow_dynamic_weights=True,
         meta=dict(
+            fp32=fp32,
             dim=dim,
             state=state,
             layers=layers,
@@ -234,10 +245,10 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=400, state=16, layers=1),
-        dict(dim=400, state=32, layers=1),
-        dict(dim=400, state=16, layers=2),
-        dict(dim=1024, state=32, layers=1),
+        dict(dim=400, state=16, layers=1, fp32=False),
+        dict(dim=400, state=32, layers=1, fp32=False),
+        dict(dim=400, state=16, layers=2, fp32=False),
+        dict(dim=1024, state=32, layers=1, fp32=False),
     ]:
         yield _vm(**x, config=config)
 
