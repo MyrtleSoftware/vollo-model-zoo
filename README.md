@@ -285,6 +285,33 @@ Myrtle for support.
 
 ### Mamba 2
 
+Code/model: [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)
+
+[Mamba-2](https://arxiv.org/abs/2405.21060) is the second generation of the Mamba
+architecture and further develops the selective structured state space model
+(SSM) framework introduced in Mamba. It retains the core idea of replacing
+quadratic self-attention with a linear-time recurrent state update, while
+introducing algorithmic and numerical improvements that make the model easier
+to train, more stable, and more efficient on modern hardware.
+
+Conceptually, Mamba-2 reformulates the selective SSM update to better align with
+matrix multiplication primitives commonly used in deep learning accelerators.
+This allows the recurrent computation to be expressed in a way that improves
+parallelism and throughput without sacrificing the linear scaling with sequence
+length that characterizes the Mamba family.
+
+Like Mamba, Mamba-2 performs **input-dependent state updates**, enabling
+content-aware sequence modeling without explicit attention.
+
+If you would like to see example code to convert an
+[FLA](https://github.com/fla-org/flash-linear-attention) Mamba-2 state-dict to a
+Vollo Mamba-2 state dict, see [the tests](./tests/test_mamba2.py).
+
+Note: the Vollo Mamba-2 implementation uses an `fp32` hidden state by default to
+improve numerical stability during long sequence processing. This mirrors the
+reference implementation and helps avoid precision issues that may arise when
+using reduced-precision recurrent states.
+
 ## TODO
 
 Before release:

@@ -23,7 +23,7 @@ class Mamba2(nn.Module):
         bias: bool = False,
         conv_bias: bool = True,
         activation: Literal["silu", "relu"] = "silu",
-        ssm_fp32: bool = False,
+        ssm_fp32: bool = True,
     ):
         """
         See: https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba_simple.py
@@ -106,15 +106,10 @@ class Mamba2(nn.Module):
         dt = F.softplus(dt + self.dt_bias)
         dA = dt * (-torch.exp(self.A_log))
 
-        if True:
-            state = self.h0.float()
-        else:
-            state = self.h0
-
         x_reshaped = x.reshape(-1, self.n_heads, self.d_head)
 
         y = self.ssm(
-            [x_reshaped, B, C, dt, dA], state, input_axis=[0] * 5, output_axis=0
+            [x_reshaped, B, C, dt, dA], self.h0, input_axis=[0] * 5, output_axis=0
         )
 
         # [t h! p] -> [t (h p)!]
