@@ -6,20 +6,20 @@ to perform low-latency inference on a variety of FPGA accelerators.
 
 Models in the zoo include:
 
-| Category              | Model                                                 | Implementation                                                                                                                                        |
-| :-------------------- | :---------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **MLP & Dense**       | [Basic MLPs](#basic-multilayer-perceptrons-mlp)       | [`slp.py`](./vollo_model_zoo/models/slp.py), [`mlp.py`](./vollo_model_zoo/models/mlp.py), [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py) |
-|                       | [SwiGLU FFN](#transformer-swiglu-feed-forward-block)  | [`ffn-swiglu.py`](./vollo_model_zoo/models/ffn-swiglu.py)                                                                                             |
-|                       | [ResMLP](#resmlp)                                     | [`resmlp.py`](./vollo_model_zoo/models/resmlp.py)                                                                                                     |
-|                       | [Mixture of Experts](#mixture-of-experts-moe-block)   | [`moe.py`](./vollo_model_zoo/models/moe.py)                                                                                                           |
-| **Convolutional**     | [Basic CNN](#basic-convolutional-neural-networks-cnn) | [`cnn.py`](./vollo_model_zoo/models/cnn.py)                                                                                                           |
-|                       | [WaveNet](#wavenet)                                   | [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)                                                                                                   |
-|                       | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
-| **State Space & RNN** | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
-|                       | [GRU](#gru)                                           | [`gru.py`](./vollo_model_zoo/models/gru.py)                                                                                                           |
-|                       | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
-|                       | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
-|                       | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
+| Category          | Model                                                 | Implementation                                                                                                                                        |
+| :---------------- | :---------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dense**         | [Basic MLPs](#basic-multilayer-perceptrons-mlp)       | [`slp.py`](./vollo_model_zoo/models/slp.py), [`mlp.py`](./vollo_model_zoo/models/mlp.py), [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py) |
+|                   | [SwiGLU FFN](#transformer-swiglu-feed-forward-block)  | [`ffn-swiglu.py`](./vollo_model_zoo/models/ffn-swiglu.py)                                                                                             |
+|                   | [ResMLP](#resmlp)                                     | [`resmlp.py`](./vollo_model_zoo/models/resmlp.py)                                                                                                     |
+|                   | [Mixture of Experts](#mixture-of-experts-moe-block)   | [`moe.py`](./vollo_model_zoo/models/moe.py)                                                                                                           |
+| **Convolutional** | [Basic CNN](#basic-convolutional-neural-networks-cnn) | [`cnn.py`](./vollo_model_zoo/models/cnn.py)                                                                                                           |
+|                   | [WaveNet](#wavenet)                                   | [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)                                                                                                   |
+|                   | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
+| **Recurrent**     | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
+|                   | [GRU](#gru)                                           | [`gru.py`](./vollo_model_zoo/models/gru.py)                                                                                                           |
+|                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
+|                   | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
+|                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM and
 calculate the compute-latency for any of these models.
