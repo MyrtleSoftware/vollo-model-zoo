@@ -246,9 +246,13 @@ def _vm(
 def main(config: str = "V80") -> Generator:
     for x in [
         dict(dim=400, state=16, layers=1, fp32=False),
+        dict(dim=400, state=16, layers=1, fp32=True),
         dict(dim=400, state=32, layers=1, fp32=False),
+        dict(dim=400, state=32, layers=1, fp32=True),
         dict(dim=400, state=16, layers=2, fp32=False),
+        dict(dim=400, state=16, layers=2, fp32=True),
         dict(dim=1024, state=32, layers=1, fp32=False),
+        dict(dim=1024, state=32, layers=1, fp32=True),
     ]:
         yield _vm(**x, config=config)
 
