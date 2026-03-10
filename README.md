@@ -25,7 +25,7 @@ calculate the compute-latency for any of these models.
 
 Pre-requisites:
 
-- Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
+- Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for dependency management.
 - Install the [Vollo SDK](https://vollo.myrtle.ai/latest/installation.html).
 
 Then:
@@ -141,7 +141,7 @@ them.
 A MoE block typically consists of:
 
 1. A gating linear layer that produces routing logits
-2. A Top-k selection (usually k=1 or 2)
+2. A Top-k selection (usually `k=1` or `k=2`)
 3. Several independent expert FFNs
 4. A weighted combination of selected expert outputs
 
@@ -332,7 +332,6 @@ Before release:
   - **Find a named model**
 
 - Scan:
-  - Multi input/output/state
   - Other models:
     - RetNet: <https://arxiv.org/abs/2307.08621>
     - xLSTM/mLSTM
