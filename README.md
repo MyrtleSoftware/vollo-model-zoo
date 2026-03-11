@@ -159,9 +159,6 @@ the computational cost per token, by activating only a subset of the experts
 for each input. This allows for more efficient scaling of model capacity
 compared to dense architectures.
 
-TODO: the MoE block's latency in the zoo is a strong function of the number of
-experts, we could improve vollo to fix this?
-
 ### Basic convolutional neural networks (CNN)
 
 Code/models: [cnn.py](./vollo_model_zoo/models/cnn.py)
@@ -362,3 +359,6 @@ Big ideas:
 
 - Strange ensembles?
 - Vector quantizer?
+
+TODO: the MoE block's latency in the zoo is a strong function of the number of
+experts, we could improve vollo to fix this?
