@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from functools import cache, partial
-from typing import Callable, Optional, Union
 
 import numpy as np
 import torch
 import vollo_compiler as vc
 import vollo_torch as vt
 from beartype import beartype
+from beartype.typing import Callable, Optional, Union
 from vollo_compiler import AllocationError, SaveError
 
 CONFIGS = {
