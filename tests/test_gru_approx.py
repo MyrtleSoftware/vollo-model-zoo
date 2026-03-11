@@ -193,6 +193,8 @@ def test_recip(all_bf16):
 
     y_vol = vollo_fn(recip_f32, "V80")(x).to(torch.float32)
 
+    assert y_vol.isfinite().all()
+
     vollo_max = (y_ref - y_vol).abs().max()
     vollo_avg = (y_ref - y_vol).abs().sum()
     print(f"Vollo fpNN error: {vollo_max:.5e}, {vollo_avg:.5e}")

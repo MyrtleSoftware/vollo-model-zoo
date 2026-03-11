@@ -5,8 +5,7 @@ import pytest
 from beartype import beartype
 from vollo_compiler import AllocationError, SaveError
 
-from vollo_model_zoo.main import get_available_models, get_model_results
-from vollo_model_zoo.vm import CONFIGS, Ok
+from vollo_model_zoo.vm import CONFIGS, Ok, get_models, get_results
 
 
 def is_sorted(xs, *, key):
@@ -20,13 +19,13 @@ def idfn(config):
 
 
 @pytest.mark.parametrize("config", [None, *CONFIGS.keys()], ids=idfn)
-@pytest.mark.parametrize("model_name", get_available_models())
+@pytest.mark.parametrize("model_name", get_models())
 @beartype
 def test_models(model_name: str, config: Optional[str]):
     #
     results: list[Ok] = []
 
-    for r in get_model_results(model_name, config=config):
+    for r in get_results(model_name, config=config):
         match r:
             case Ok():
                 results.append(r)
