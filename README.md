@@ -334,30 +334,24 @@ Before release:
 
 - [ ] License (which one)
 - [ ] Can we release the Python SDK as a package (simple execution)
-  - [ ] Then we can add some github actions?
 - [ ] Generating a latency report for all the models in the zoo
 - [ ] Do we want the default config to be v80, LL or something else?
 - [ ] Integrate testing with myrtlepkgs
 
-- Features:
+- Other features we could demo:
   - Show softmax
   - Demo `if tracing`
   - FP8 support
 
-- LSTM:
-  - **Find a named model**
+- Other models:
+  - Ensembles of models
+  - CNN + LSTM
+  - Vector quantizer
+  - RetNet: <https://arxiv.org/abs/2307.08621>
+  - xLSTM/mLSTM
+  - RWKV 6/7
+  - TTT: <https://arxiv.org/pdf/2407.04620>
+  - RNN-T demo?
 
-- Scan:
-  - Other models:
-    - RetNet: <https://arxiv.org/abs/2307.08621>
-    - xLSTM/mLSTM
-    - RWKV 6/7
-    - TTT: <https://arxiv.org/pdf/2407.04620>
-
-Big ideas:
-
-- Strange ensembles?
-- Vector quantizer?
-
-TODO: the MoE block's latency in the zoo is a strong function of the number of
+The MoE block's latency in the zoo is a strong function of the number of
 experts, we could improve vollo to fix this?
