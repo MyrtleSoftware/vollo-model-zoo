@@ -7,15 +7,24 @@ requires-python = ">=3.13"
 dependencies = [
   "beartype>=0.22.9",
   "torch>=2.10.0",
-  "vollo-compiler>=26.1.0",
-  "vollo-torch>=26.1.0",
+  "vollo-compiler>=25.0.0",
+  "vollo-torch>=25.0.0",
+  "matplotlib>=3.10.0",
+  "pandas>=2.2.3",
+  "tqdm>=4.67.1",
+  "packaging>=24.2",
+  "numpy>=2.0.0",
 ]
 
 [project.scripts]
-zoo = "vollo_model_zoo.main:main"
+zoo = "vollo_model_zoo.zoo:main"
+benchmark = "vollo_model_zoo.benchmark:main"
 
 [tool.uv]
 package = true
+
+[tool.setuptools.packages.find]
+include = ["vollo_model_zoo*"]
 
 [tool.pytest.ini_options]
 addopts = "-v"
