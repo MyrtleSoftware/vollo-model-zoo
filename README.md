@@ -124,7 +124,6 @@ A typical ResMLP block consists of two residual sublayers:
 - Token mixing MLP:
   - Operates across the sequence (or patch) dimension.
   - Implemented as a linear projection over tokens.
-  - Often followed by a softmax or affine scaling to stabilise mixing.
 - Channel mixing MLP:
   - Standard per-token feed-forward network:
   - Linear up-projection.
