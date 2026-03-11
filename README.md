@@ -202,7 +202,7 @@ crucial for the high temporal sampling frequency (kHz) for raw audio.
 
 ### MobileNet
 
-Code/model: ['mobilenet.py'](./vollo_model_zoo/models/mobilenet.py)
+Code/model: [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)
 
 MobileNet is a family of efficient convolutional neural networks designed for
 low-latency and resource-constrained environments. The core architectural idea
@@ -257,7 +257,7 @@ accumulating over long sequences.
 
 ### S3/S4/S5
 
-Code/model: ['ssm.py'](./vollo_model_zoo/models/ssm.py)
+Code/model: [ssm.py](./vollo_model_zoo/models/ssm.py)
 
 State space (sequence) models (SSM) (later expanded to _simple_ and
 _structured_) are discretizations of linear time-invariant systems:
@@ -276,7 +276,7 @@ formulation. The Vollo exemplar is fully general in the parameterization of
 
 ### Mamba
 
-Code/model: ['mamba1.py'](./vollo_model_zoo/models/mamba1.py)
+Code/model: [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)
 
 [Mamba](https://arxiv.org/pdf/2312.00752) is a modern selective structured
 SSM that replaces self-attention with a learned, input-dependent recurrent
