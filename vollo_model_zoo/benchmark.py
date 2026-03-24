@@ -47,8 +47,6 @@ def run_benchmark(output_path: str, version: str) -> int:
     configs = list(CONFIGS.keys())
     results = defaultdict(dict)
 
-    models = models[:2]
-
     for model, conf in tqdm(
         product(models, configs),
         desc=f"Benchmarking models (Vollo {version})",
