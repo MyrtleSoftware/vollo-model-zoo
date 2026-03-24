@@ -247,6 +247,7 @@ def _vm(
         meta=dict(
             dim=dim,
             state=state,
+            layers=layers,
         ),
     )
 
