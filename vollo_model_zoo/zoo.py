@@ -64,7 +64,8 @@ def main() -> int:
 
 @beartype
 def run_model(model: str, config: str, use_json: bool) -> int:
-    results = list(get_results(model, config))
+    # This is a generator
+    results = get_results(model, config)
 
     if use_json:
         print(json.dumps({model: [to_dict(r) for r in results]}))
