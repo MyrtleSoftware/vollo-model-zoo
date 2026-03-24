@@ -34,10 +34,6 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    if Path(args.output).exists():
-        print(f"Error: Output file '{args.output}' already exists")
-        return 1
-
     return run_benchmark(args.output, version)
 
 
@@ -46,6 +42,14 @@ def run_benchmark(output_path: str, version: str) -> int:
     models = get_models()
     configs = list(CONFIGS.keys())
     results = defaultdict(dict)
+
+    path = Path(output_path)
+
+    if path.exists():
+        print(f"Error: Output file '{path}' already exists")
+        return 1
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
 
     for model, conf in tqdm(
         product(models, configs),
@@ -59,7 +63,7 @@ def run_benchmark(output_path: str, version: str) -> int:
 
     data = {version: results}
 
-    with open(output_path, "w") as f:
+    with open(path, "w") as f:
         json.dump(data, f, indent=2)
 
     return 0
