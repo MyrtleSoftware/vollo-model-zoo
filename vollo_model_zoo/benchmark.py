@@ -21,7 +21,7 @@ def main() -> int:
     except importlib.metadata.PackageNotFoundError:
         version = "unknown"
 
-    default_output = f"benchmarks_{version}.json"
+    default_output = f"./benchmarks/vollo_{version}.json"
 
     parser = argparse.ArgumentParser(description="Run all models and configurations")
 
