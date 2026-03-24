@@ -32,7 +32,7 @@ for VERSION in $VERSIONS; do
     if [ ! -f "${TMP_DIR}/${SDK_FILE}" ]; then
       URL="https://github.com/MyrtleSoftware/vollo-sdk/releases/download/${VERSION}/${SDK_FILE}"
       echo "Downloading $URL ..."
-      curl -L -o "${TMP_DIR}/${SDK_FILE}" "$URL"
+      curl -L -o "${TMP_DIR}/${SDK_FILE}" "${URL}"
     fi
 
     echo "Extracting $SDK_FILE ..."
@@ -59,11 +59,11 @@ for VERSION in $VERSIONS; do
     echo "Error: Could not find python/ directory in $SDK_DIR"
     # Try to find where it was extracted
     find "$SDK_DIR" -name "python" -type d
+    exit 1
   fi
 
   echo "Completed $VERSION"
   echo ""
 done
 
-echo "Backtesting completed. Results stored in benchmarks.json"
-echo "Generate plots with: uv run plot"
+echo "Backtesting completed"
