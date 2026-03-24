@@ -20,6 +20,7 @@ dependencies = [
 zoo = "vollo_model_zoo.zoo:main"
 benchmark = "vollo_model_zoo.benchmark:main"
 plot = "vollo_model_zoo.plot:main"
+report = "vollo_model_zoo.report:main"
 
 [tool.uv]
 package = true
