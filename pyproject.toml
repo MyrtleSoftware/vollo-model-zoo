@@ -7,8 +7,8 @@ requires-python = ">=3.13"
 dependencies = [
   "beartype>=0.22.9",
   "torch>=2.10.0",
-  "vollo-compiler>=25.0.0",
-  "vollo-torch>=25.0.0",
+  "vollo-compiler>=26.2.0",
+  "vollo-torch>=26.2.0",
   "matplotlib>=3.10.0",
   "pandas>=2.2.3",
   "tqdm>=4.67.1",
@@ -19,6 +19,7 @@ dependencies = [
 [project.scripts]
 zoo = "vollo_model_zoo.zoo:main"
 benchmark = "vollo_model_zoo.benchmark:main"
+plot = "vollo_model_zoo.plot:main"
 
 [tool.uv]
 package = true
@@ -30,8 +31,4 @@ include = ["vollo_model_zoo*"]
 addopts = "-v"
 
 [dependency-groups]
-dev = [
-    "flash-linear-attention>=0.4.1",
-    "pre-commit>=4.5.1",
-    "pytest>=9.0.2",
-]
+dev = ["flash-linear-attention>=0.4.1", "pre-commit>=4.5.1", "pytest>=9.0.2"]
