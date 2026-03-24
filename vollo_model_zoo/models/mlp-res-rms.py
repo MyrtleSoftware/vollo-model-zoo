@@ -121,6 +121,8 @@ def _vm(
         config=config,
         time_axis=1,
         meta=dict(
+            dim=dim,
+            hidden=hidden_dim,
             activation=activation,
         ),
     )
