@@ -22,8 +22,10 @@ Models in the zoo include:
 |                   | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
 
-See the [quick-start](#-quick-start) section to find out how to run the VM and
-calculate the compute-latency for any of these models.
+See the [quick-start](#-quick-start) section to find out how to run the VM
+and calculate the compute-latency for any of these models. Alternatively, have
+a read of the [benchmarks](./benchmarks/README.md) for a quick latency
+reference.
 
 ## ⚡ Quick start
 
