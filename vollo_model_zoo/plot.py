@@ -7,6 +7,8 @@ import pandas as pd
 from beartype import beartype
 from packaging.version import parse as parse_version
 
+from vollo_model_zoo.parse import parse_records_from_json
+
 
 @beartype
 def main() -> int:
@@ -39,7 +41,7 @@ def _generate_plots(input_files: list[str], output_dir: str):
 
     records = []
     for input_file in input_files:
-        records.extend(_parse_records_from_json(input_file))
+        records.extend(parse_records_from_json(input_file))
 
     if not records:
         print("No valid benchmark results found.")
@@ -55,49 +57,6 @@ def _generate_plots(input_files: list[str], output_dir: str):
         _plot_config(model, config, group, output_dir)
 
     print(f"Generated {len(df.groupby(['model', 'config']))} plots in '{output_dir}'.")
-
-
-def _parse_records_from_json(input_file: str) -> list[dict]:
-    """
-    Extract benchmark records from a single JSON file.
-    """
-    records = []
-    try:
-        with open(input_file, "r") as f:
-            data = json.load(f)
-
-        for version, model, config, res in _iter_results(data):
-            if "Ok" not in res:
-                continue
-
-            ok = res["Ok"]
-            meta = ok.get("meta", {})
-            meta_str = ", ".join(f"{k}={v}" for k, v in meta.items())
-            records.append(
-                {
-                    "version": version,
-                    "model": model,
-                    "config": config,
-                    "latency_spaced": ok["latency_spaced"]["microseconds"],
-                    "latency_contiguous": ok["latency_contiguous"]["microseconds"],
-                    "meta": meta_str,
-                }
-            )
-    except Exception as e:
-        print(f"Warning: Failed to process '{input_file}': {e}")
-
-    return records
-
-
-def _iter_results(data: dict):
-    """
-    Generator to flatten the nested benchmark JSON structure.
-    """
-    for version, models in data.items():
-        for model, configs in models.items():
-            for config, results in configs.items():
-                for res in results:
-                    yield version, model, config, res
 
 
 def _plot_config(model: str, config: str, group: pd.DataFrame, output_dir: str):
