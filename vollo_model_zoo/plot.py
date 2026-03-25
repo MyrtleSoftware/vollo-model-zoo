@@ -136,7 +136,7 @@ def _plot_config(model: str, config: str, group: pd.DataFrame, output_dir: str):
         return s.replace("-", "_").replace(" ", "_")
 
     plt.savefig(
-        os.path.join(output_dir, f"{safe_name(model)}_{safe_name(config)}.png"),
+        os.path.join(output_dir, f"{safe_name(model)}_{safe_name(config)}.svg"),
         bbox_inches="tight",
     )
     plt.close()
