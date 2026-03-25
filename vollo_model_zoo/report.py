@@ -33,6 +33,7 @@ def main() -> int:
         "--plots",
         type=Path,
         nargs="+",
+        help="Optional plot image files to include in the report (relative paths)",
     )
 
     args = parser.parse_args()
