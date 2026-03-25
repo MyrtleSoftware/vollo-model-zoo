@@ -3,6 +3,7 @@ from itertools import groupby
 from pathlib import Path
 
 from beartype import beartype
+from beartype.typing import Optional
 
 from vollo_model_zoo.parse import parse_records_from_json
 
@@ -28,13 +29,19 @@ def main() -> int:
         help=f"Markdown output file for summary table (default: {mk_default_output})",
     )
 
+    parser.add_argument(
+        "--plots",
+        type=Path,
+        nargs="+",
+    )
+
     args = parser.parse_args()
 
-    return _generate_report(args.input, args.output)
+    return _generate_report(args.input, args.output, args.plots)
 
 
 @beartype
-def _generate_report(input: Path, output: Path) -> int:
+def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> int:
     """
     Generate performance plots from benchmark JSON files.
     """
@@ -59,7 +66,7 @@ def _generate_report(input: Path, output: Path) -> int:
             print(x, file=f)
 
         # Format as markdown
-        write(f"#Vollo Model Zoo Benchmarks (version {versions[0]})")
+        write(f"# Vollo Model Zoo Benchmarks (version {versions[0]})")
         write("")
         write("Compute latency for an approximately 1-million parameter model.")
 
@@ -79,6 +86,16 @@ def _generate_report(input: Path, output: Path) -> int:
                 mt = chosen["meta"]
 
                 print(f"| {model} | {l1:.2f} | {l2:.2f} | {mt} |", file=f)
+
+        if not plots:
+            return 0
+
+        write("")
+        write("## Performance over time")
+
+        for plot in plots:
+            write("")
+            write(f"![{plot.stem}](../{plot})")
 
     return 0
 
