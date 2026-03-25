@@ -37,9 +37,6 @@ for VERSION in $VERSIONS; do
 
     echo "Extracting $SDK_FILE ..."
     # The .run file is a self-extracting archive.
-    # Usually they support --target or similar, but we can also just run it
-    # and hope it doesn't try to install globally.
-    # Based on common practices, --target <dir> or --extract <dir> might work.
     chmod +x "${TMP_DIR}/${SDK_FILE}"
 
     # We try to extract it into its own directory.
@@ -57,8 +54,6 @@ for VERSION in $VERSIONS; do
     uv run benchmark
   else
     echo "Error: Could not find python/ directory in $SDK_DIR"
-    # Try to find where it was extracted
-    find "$SDK_DIR" -name "python" -type d
     exit 1
   fi
 
