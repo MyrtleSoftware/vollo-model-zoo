@@ -44,7 +44,7 @@ def run_benchmark(json_output: Path, version: str) -> int:
 
     if json_output.exists():
         print(f"Error: JSON output file '{json_output}' already exists")
-        # return 1
+        return 1
     else:
         json_output.parent.mkdir(parents=True, exist_ok=True)
 
