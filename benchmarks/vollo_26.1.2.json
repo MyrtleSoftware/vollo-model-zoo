@@ -1,0 +1,5434 @@
+{
+  "26.1.2": {
+    "cnn": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 131584,
+            "cycle_count": 475,
+            "latency_spaced": {
+              "microseconds": 1.5833333730697632
+            },
+            "latency_contiguous": {
+              "microseconds": 1.846666693687439
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 524800,
+            "cycle_count": 475,
+            "latency_spaced": {
+              "microseconds": 1.5833333730697632
+            },
+            "latency_contiguous": {
+              "microseconds": 3.126666784286499
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1049088,
+            "cycle_count": 475,
+            "latency_spaced": {
+              "microseconds": 1.5833333730697632
+            },
+            "latency_contiguous": {
+              "microseconds": 4.833333492279053
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 8390656,
+            "cycle_count": 637,
+            "latency_spaced": {
+              "microseconds": 2.123333215713501
+            },
+            "latency_contiguous": {
+              "microseconds": 8.626667022705078
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 256,
+              "kernel_size": 32
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 131584,
+            "cycle_count": 475,
+            "latency_spaced": {
+              "microseconds": 1.4393939971923828
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6787878274917603
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 524800,
+            "cycle_count": 475,
+            "latency_spaced": {
+              "microseconds": 1.4393939971923828
+            },
+            "latency_contiguous": {
+              "microseconds": 2.842424154281616
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1049088,
+            "cycle_count": 475,
+            "latency_spaced": {
+              "microseconds": 1.4393939971923828
+            },
+            "latency_contiguous": {
+              "microseconds": 4.39393949508667
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 8390656,
+            "cycle_count": 637,
+            "latency_spaced": {
+              "microseconds": 1.9303029775619507
+            },
+            "latency_contiguous": {
+              "microseconds": 7.842424392700195
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 256,
+              "kernel_size": 32
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 131584,
+            "cycle_count": 515,
+            "latency_spaced": {
+              "microseconds": 1.609375
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8562500476837158
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 524800,
+            "cycle_count": 517,
+            "latency_spaced": {
+              "microseconds": 1.615625023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 3.049999952316284
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1049088,
+            "cycle_count": 521,
+            "latency_spaced": {
+              "microseconds": 1.6281249523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 3.0625
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 131584,
+            "cycle_count": 514,
+            "latency_spaced": {
+              "microseconds": 1.6062500476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.665624976158142
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 524800,
+            "cycle_count": 514,
+            "latency_spaced": {
+              "microseconds": 1.6062500476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 2.265625
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1049088,
+            "cycle_count": 514,
+            "latency_spaced": {
+              "microseconds": 1.6062500476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 3.065624952316284
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 131584,
+            "cycle_count": 515,
+            "latency_spaced": {
+              "microseconds": 1.609375
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8562500476837158
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 524800,
+            "cycle_count": 517,
+            "latency_spaced": {
+              "microseconds": 1.615625023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 3.049999952316284
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1049088,
+            "cycle_count": 521,
+            "latency_spaced": {
+              "microseconds": 1.6281249523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 3.0625
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "ffn-swiglu": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 442560,
+            "cycle_count": 459,
+            "latency_spaced": {
+              "microseconds": 1.5299999713897705
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5333333015441895
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 442560,
+            "cycle_count": 410,
+            "latency_spaced": {
+              "microseconds": 1.3666666746139526
+            },
+            "latency_contiguous": {
+              "microseconds": 1.3700000047683716
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 995616,
+            "cycle_count": 563,
+            "latency_spaced": {
+              "microseconds": 1.8766666650772095
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8799999952316284
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 995616,
+            "cycle_count": 509,
+            "latency_spaced": {
+              "microseconds": 1.6966667175292969
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7000000476837158
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1769856,
+            "cycle_count": 689,
+            "latency_spaced": {
+              "microseconds": 2.2966666221618652
+            },
+            "latency_contiguous": {
+              "microseconds": 2.299999952316284
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1769856,
+            "cycle_count": 626,
+            "latency_spaced": {
+              "microseconds": 2.0866665840148926
+            },
+            "latency_contiguous": {
+              "microseconds": 2.0899999141693115
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 442560,
+            "cycle_count": 459,
+            "latency_spaced": {
+              "microseconds": 1.3909090757369995
+            },
+            "latency_contiguous": {
+              "microseconds": 1.3939393758773804
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 442560,
+            "cycle_count": 410,
+            "latency_spaced": {
+              "microseconds": 1.2424242496490479
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2454545497894287
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 995616,
+            "cycle_count": 563,
+            "latency_spaced": {
+              "microseconds": 1.7060606479644775
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7090909481048584
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 995616,
+            "cycle_count": 509,
+            "latency_spaced": {
+              "microseconds": 1.542424201965332
+            },
+            "latency_contiguous": {
+              "microseconds": 1.545454502105713
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1769856,
+            "cycle_count": 689,
+            "latency_spaced": {
+              "microseconds": 2.087878704071045
+            },
+            "latency_contiguous": {
+              "microseconds": 2.090909004211426
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1769856,
+            "cycle_count": 626,
+            "latency_spaced": {
+              "microseconds": 1.8969696760177612
+            },
+            "latency_contiguous": {
+              "microseconds": 1.899999976158142
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 442560,
+            "cycle_count": 484,
+            "latency_spaced": {
+              "microseconds": 1.5125000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.515625
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 442560,
+            "cycle_count": 430,
+            "latency_spaced": {
+              "microseconds": 1.34375
+            },
+            "latency_contiguous": {
+              "microseconds": 1.3468749523162842
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 995616,
+            "cycle_count": 588,
+            "latency_spaced": {
+              "microseconds": 1.837499976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8406250476837158
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 995616,
+            "cycle_count": 529,
+            "latency_spaced": {
+              "microseconds": 1.6531250476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.65625
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1769856,
+            "cycle_count": 709,
+            "latency_spaced": {
+              "microseconds": 2.215625047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 2.21875
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1769856,
+            "cycle_count": 646,
+            "latency_spaced": {
+              "microseconds": 2.018749952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 2.0218749046325684
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 442560,
+            "cycle_count": 389,
+            "latency_spaced": {
+              "microseconds": 1.2156250476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.21875
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 442560,
+            "cycle_count": 338,
+            "latency_spaced": {
+              "microseconds": 1.056249976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0593750476837158
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 995616,
+            "cycle_count": 456,
+            "latency_spaced": {
+              "microseconds": 1.4249999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.428125023841858
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 995616,
+            "cycle_count": 414,
+            "latency_spaced": {
+              "microseconds": 1.2937500476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.296875
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1769856,
+            "cycle_count": 530,
+            "latency_spaced": {
+              "microseconds": 1.65625
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6593749523162842
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1769856,
+            "cycle_count": 504,
+            "latency_spaced": {
+              "microseconds": 1.5750000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.578125
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 442560,
+            "cycle_count": 484,
+            "latency_spaced": {
+              "microseconds": 1.5125000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.515625
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 442560,
+            "cycle_count": 430,
+            "latency_spaced": {
+              "microseconds": 1.34375
+            },
+            "latency_contiguous": {
+              "microseconds": 1.3468749523162842
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 995616,
+            "cycle_count": 588,
+            "latency_spaced": {
+              "microseconds": 1.837499976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8406250476837158
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 995616,
+            "cycle_count": 529,
+            "latency_spaced": {
+              "microseconds": 1.6531250476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.65625
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1769856,
+            "cycle_count": 709,
+            "latency_spaced": {
+              "microseconds": 2.215625047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 2.21875
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1769856,
+            "cycle_count": 646,
+            "latency_spaced": {
+              "microseconds": 2.018749952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 2.0218749046325684
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ]
+    },
+    "gru": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1034496,
+            "cycle_count": 281,
+            "latency_spaced": {
+              "microseconds": 0.9366666674613953
+            },
+            "latency_contiguous": {
+              "microseconds": 1.3033332824707031
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1575936,
+            "cycle_count": 329,
+            "latency_spaced": {
+              "microseconds": 1.096666693687439
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6633332967758179
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 4727808,
+            "cycle_count": 895,
+            "latency_spaced": {
+              "microseconds": 2.9833333492279053
+            },
+            "latency_contiguous": {
+              "microseconds": 4.37333345413208
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 3
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1034496,
+            "cycle_count": 281,
+            "latency_spaced": {
+              "microseconds": 0.8515151739120483
+            },
+            "latency_contiguous": {
+              "microseconds": 1.184848427772522
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1575936,
+            "cycle_count": 329,
+            "latency_spaced": {
+              "microseconds": 0.9969696998596191
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5121212005615234
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 4727808,
+            "cycle_count": 895,
+            "latency_spaced": {
+              "microseconds": 2.7121212482452393
+            },
+            "latency_contiguous": {
+              "microseconds": 3.975757598876953
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 3
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1034496,
+            "cycle_count": 291,
+            "latency_spaced": {
+              "microseconds": 0.909375011920929
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2687499523162842
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1575936,
+            "cycle_count": 339,
+            "latency_spaced": {
+              "microseconds": 1.0593750476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6062500476837158
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1034496,
+            "cycle_count": 257,
+            "latency_spaced": {
+              "microseconds": 0.8031250238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0750000476837158
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1575936,
+            "cycle_count": 282,
+            "latency_spaced": {
+              "microseconds": 0.8812500238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1593749523162842
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 4727808,
+            "cycle_count": 757,
+            "latency_spaced": {
+              "microseconds": 2.3656249046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 3.0718750953674316
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 3
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1034496,
+            "cycle_count": 291,
+            "latency_spaced": {
+              "microseconds": 0.909375011920929
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2687499523162842
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1575936,
+            "cycle_count": 339,
+            "latency_spaced": {
+              "microseconds": 1.0593750476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6062500476837158
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "ValueError": "\n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n\n  Traceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1543, in call_module\n    ).run()\n      ~~~^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 327, in run\n    raise ValueError(err_string)\nValueError: \n\nValue errors encountered:\nTraceback (most recent call last):\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 277, in run\n    self.handle_node(node)\n    ~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 349, in handle_node\n    getattr(self, node.op)(node)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 439, in call_function\n    self.lower_exp(node)\n    ~~~~~~~~~~~~~~^^^^^^\n  File \"/home/conor/vollo-model-zoo/.venv/lib/python3.13/site-packages/vollo_torch/fx/nnir.py\", line 1732, in lower_exp\n    t = self.nnir.add_exp(\n        self.node_env[input],\n        node.meta[VOLLO_ACTIVATION_PRECISION_META],\n        make_unique_name(self.name_counter, \"exp\"),\n    )\nValueError: exp does not support f32 precision\n\n\n\n"
+        }
+      ]
+    },
+    "lstm": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 132096,
+            "cycle_count": 96,
+            "latency_spaced": {
+              "microseconds": 0.3199999928474426
+            },
+            "latency_contiguous": {
+              "microseconds": 0.3333333432674408
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1005360,
+            "cycle_count": 183,
+            "latency_spaced": {
+              "microseconds": 0.6100000143051147
+            },
+            "latency_contiguous": {
+              "microseconds": 0.8533333539962769
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1004000,
+            "cycle_count": 247,
+            "latency_spaced": {
+              "microseconds": 0.8233333230018616
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0666667222976685
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1008192,
+            "cycle_count": 322,
+            "latency_spaced": {
+              "microseconds": 1.0733333826065063
+            },
+            "latency_contiguous": {
+              "microseconds": 1.3300000429153442
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 14174208,
+            "cycle_count": 1302,
+            "latency_spaced": {
+              "microseconds": 4.340000152587891
+            },
+            "latency_contiguous": {
+              "microseconds": 7.943333148956299
+            },
+            "meta": {
+              "layers": 3,
+              "hidden_size": 768
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 132096,
+            "cycle_count": 96,
+            "latency_spaced": {
+              "microseconds": 0.290909081697464
+            },
+            "latency_contiguous": {
+              "microseconds": 0.3030303120613098
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1005360,
+            "cycle_count": 183,
+            "latency_spaced": {
+              "microseconds": 0.5545454621315002
+            },
+            "latency_contiguous": {
+              "microseconds": 0.7757575511932373
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1004000,
+            "cycle_count": 247,
+            "latency_spaced": {
+              "microseconds": 0.7484848499298096
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9696969985961914
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1008192,
+            "cycle_count": 322,
+            "latency_spaced": {
+              "microseconds": 0.9757575988769531
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2090909481048584
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 14174208,
+            "cycle_count": 1302,
+            "latency_spaced": {
+              "microseconds": 3.9454545974731445
+            },
+            "latency_contiguous": {
+              "microseconds": 7.221211910247803
+            },
+            "meta": {
+              "layers": 3,
+              "hidden_size": 768
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 132096,
+            "cycle_count": 101,
+            "latency_spaced": {
+              "microseconds": 0.31562501192092896
+            },
+            "latency_contiguous": {
+              "microseconds": 0.328125
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1005360,
+            "cycle_count": 188,
+            "latency_spaced": {
+              "microseconds": 0.5874999761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.815625011920929
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1004000,
+            "cycle_count": 257,
+            "latency_spaced": {
+              "microseconds": 0.8031250238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 1.015625
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1008192,
+            "cycle_count": 342,
+            "latency_spaced": {
+              "microseconds": 1.068750023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2937500476837158
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 132096,
+            "cycle_count": 93,
+            "latency_spaced": {
+              "microseconds": 0.2906250059604645
+            },
+            "latency_contiguous": {
+              "microseconds": 0.29374998807907104
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1005360,
+            "cycle_count": 136,
+            "latency_spaced": {
+              "microseconds": 0.42500001192092896
+            },
+            "latency_contiguous": {
+              "microseconds": 0.5218750238418579
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1004000,
+            "cycle_count": 185,
+            "latency_spaced": {
+              "microseconds": 0.578125
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6000000238418579
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1008192,
+            "cycle_count": 303,
+            "latency_spaced": {
+              "microseconds": 0.9468749761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9781249761581421
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 132096,
+            "cycle_count": 101,
+            "latency_spaced": {
+              "microseconds": 0.31562501192092896
+            },
+            "latency_contiguous": {
+              "microseconds": 0.328125
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1005360,
+            "cycle_count": 188,
+            "latency_spaced": {
+              "microseconds": 0.5874999761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.815625011920929
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1004000,
+            "cycle_count": 257,
+            "latency_spaced": {
+              "microseconds": 0.8031250238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 1.015625
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1008192,
+            "cycle_count": 342,
+            "latency_spaced": {
+              "microseconds": 1.068750023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2937500476837158
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "mamba1": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 240000,
+            "cycle_count": 533,
+            "latency_spaced": {
+              "microseconds": 1.7766666412353516
+            },
+            "latency_contiguous": {
+              "microseconds": 1.9833333492279053
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 954624,
+            "cycle_count": 952,
+            "latency_spaced": {
+              "microseconds": 3.1733334064483643
+            },
+            "latency_contiguous": {
+              "microseconds": 3.609999895095825
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1909248,
+            "cycle_count": 1898,
+            "latency_spaced": {
+              "microseconds": 6.326666831970215
+            },
+            "latency_contiguous": {
+              "microseconds": 7.236666679382324
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 6715392,
+            "cycle_count": 3247,
+            "latency_spaced": {
+              "microseconds": 10.823333740234375
+            },
+            "latency_contiguous": {
+              "microseconds": 12.726666450500488
+            },
+            "meta": {
+              "dim": 1024,
+              "state": 24,
+              "layers": 1
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 240000,
+            "cycle_count": 533,
+            "latency_spaced": {
+              "microseconds": 1.6151515245437622
+            },
+            "latency_contiguous": {
+              "microseconds": 1.803030252456665
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 954624,
+            "cycle_count": 952,
+            "latency_spaced": {
+              "microseconds": 2.8848485946655273
+            },
+            "latency_contiguous": {
+              "microseconds": 3.281818151473999
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1909248,
+            "cycle_count": 1898,
+            "latency_spaced": {
+              "microseconds": 5.7515153884887695
+            },
+            "latency_contiguous": {
+              "microseconds": 6.578787803649902
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 6715392,
+            "cycle_count": 3247,
+            "latency_spaced": {
+              "microseconds": 9.839393615722656
+            },
+            "latency_contiguous": {
+              "microseconds": 11.569697380065918
+            },
+            "meta": {
+              "dim": 1024,
+              "state": 24,
+              "layers": 1
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 240000,
+            "cycle_count": 576,
+            "latency_spaced": {
+              "microseconds": 1.7999999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.993749976158142
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 954624,
+            "cycle_count": 991,
+            "latency_spaced": {
+              "microseconds": 3.096874952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 3.5062499046325684
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1909248,
+            "cycle_count": 1919,
+            "latency_spaced": {
+              "microseconds": 5.996874809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 6.784375190734863
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 240000,
+            "cycle_count": 538,
+            "latency_spaced": {
+              "microseconds": 1.681249976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8312499523162842
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 954624,
+            "cycle_count": 752,
+            "latency_spaced": {
+              "microseconds": 2.3499999046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7437500953674316
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1909248,
+            "cycle_count": 1459,
+            "latency_spaced": {
+              "microseconds": 4.559374809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 5.34375
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 240000,
+            "cycle_count": 576,
+            "latency_spaced": {
+              "microseconds": 1.7999999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.993749976158142
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 954624,
+            "cycle_count": 991,
+            "latency_spaced": {
+              "microseconds": 3.096874952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 3.5062499046325684
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1909248,
+            "cycle_count": 1919,
+            "latency_spaced": {
+              "microseconds": 5.996874809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 6.784375190734863
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "mamba2": {
+      "V80": [
+        {
+          "Error": "streaming transformation failed at node Id(22) : (exp) Pointwise(op: Exp, inputs: (Id(21), Id(21))) - [25]\n\nCaused by:\n   0: at node inputs {\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25],\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25]\n      }\n   1: failed to infer time axis for constant input Id(21)\n\nLocation:\n    /source/src/nnir/streaming.rs:162:36"
+        }
+      ],
+      "V80LL": [
+        {
+          "Error": "streaming transformation failed at node Id(22) : (exp) Pointwise(op: Exp, inputs: (Id(21), Id(21))) - [25]\n\nCaused by:\n   0: at node inputs {\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25],\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25]\n      }\n   1: failed to infer time axis for constant input Id(21)\n\nLocation:\n    /source/src/nnir/streaming.rs:162:36"
+        }
+      ],
+      "IA-420f": [
+        {
+          "Error": "streaming transformation failed at node Id(22) : (exp) Pointwise(op: Exp, inputs: (Id(21), Id(21))) - [25]\n\nCaused by:\n   0: at node inputs {\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25],\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25]\n      }\n   1: failed to infer time axis for constant input Id(21)\n\nLocation:\n    /source/src/nnir/streaming.rs:162:36"
+        }
+      ],
+      "IA-840f": [
+        {
+          "Error": "streaming transformation failed at node Id(22) : (exp) Pointwise(op: Exp, inputs: (Id(21), Id(21))) - [25]\n\nCaused by:\n   0: at node inputs {\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25],\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25]\n      }\n   1: failed to infer time axis for constant input Id(21)\n\nLocation:\n    /source/src/nnir/streaming.rs:162:36"
+        }
+      ],
+      "NT400D11": [
+        {
+          "Error": "streaming transformation failed at node Id(22) : (exp) Pointwise(op: Exp, inputs: (Id(21), Id(21))) - [25]\n\nCaused by:\n   0: at node inputs {\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25],\n        Id(21) : (constant_1) Constant(data: [25], expanded to: [25]) - [25]\n      }\n   1: failed to infer time axis for constant input Id(21)\n\nLocation:\n    /source/src/nnir/streaming.rs:162:36"
+        }
+      ]
+    },
+    "mlp": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 525312,
+            "cycle_count": 203,
+            "latency_spaced": {
+              "microseconds": 0.6766666769981384
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6800000071525574
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1034880,
+            "cycle_count": 429,
+            "latency_spaced": {
+              "microseconds": 1.4299999475479126
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4333332777023315
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1050624,
+            "cycle_count": 354,
+            "latency_spaced": {
+              "microseconds": 1.1799999475479126
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1833332777023315
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3148800,
+            "cycle_count": 714,
+            "latency_spaced": {
+              "microseconds": 2.380000114440918
+            },
+            "latency_contiguous": {
+              "microseconds": 2.383333444595337
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 525312,
+            "cycle_count": 203,
+            "latency_spaced": {
+              "microseconds": 0.6151515245437622
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6181818246841431
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1034880,
+            "cycle_count": 429,
+            "latency_spaced": {
+              "microseconds": 1.2999999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.303030252456665
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1050624,
+            "cycle_count": 354,
+            "latency_spaced": {
+              "microseconds": 1.0727273225784302
+            },
+            "latency_contiguous": {
+              "microseconds": 1.075757622718811
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3148800,
+            "cycle_count": 714,
+            "latency_spaced": {
+              "microseconds": 2.1636364459991455
+            },
+            "latency_contiguous": {
+              "microseconds": 2.1666667461395264
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 525312,
+            "cycle_count": 213,
+            "latency_spaced": {
+              "microseconds": 0.6656249761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.668749988079071
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1034880,
+            "cycle_count": 464,
+            "latency_spaced": {
+              "microseconds": 1.4500000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.453125
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1050624,
+            "cycle_count": 374,
+            "latency_spaced": {
+              "microseconds": 1.1687500476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.171875
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 3148800,
+            "cycle_count": 740,
+            "latency_spaced": {
+              "microseconds": 2.3125
+            },
+            "latency_contiguous": {
+              "microseconds": 2.315624952316284
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 525312,
+            "cycle_count": 161,
+            "latency_spaced": {
+              "microseconds": 0.503125011920929
+            },
+            "latency_contiguous": {
+              "microseconds": 0.5062500238418579
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1034880,
+            "cycle_count": 388,
+            "latency_spaced": {
+              "microseconds": 1.212499976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2156250476837158
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1050624,
+            "cycle_count": 283,
+            "latency_spaced": {
+              "microseconds": 0.8843749761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.887499988079071
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 3148800,
+            "cycle_count": 427,
+            "latency_spaced": {
+              "microseconds": 1.334375023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.337499976158142
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 525312,
+            "cycle_count": 213,
+            "latency_spaced": {
+              "microseconds": 0.6656249761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.668749988079071
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1034880,
+            "cycle_count": 464,
+            "latency_spaced": {
+              "microseconds": 1.4500000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.453125
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1050624,
+            "cycle_count": 374,
+            "latency_spaced": {
+              "microseconds": 1.1687500476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.171875
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 3148800,
+            "cycle_count": 740,
+            "latency_spaced": {
+              "microseconds": 2.3125
+            },
+            "latency_contiguous": {
+              "microseconds": 2.315624952316284
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ]
+    },
+    "mlp-res-rms": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 546,
+            "latency_spaced": {
+              "microseconds": 1.8200000524520874
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8233333826065063
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 601,
+            "latency_spaced": {
+              "microseconds": 2.003333330154419
+            },
+            "latency_contiguous": {
+              "microseconds": 2.006666660308838
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 601,
+            "latency_spaced": {
+              "microseconds": 2.003333330154419
+            },
+            "latency_contiguous": {
+              "microseconds": 2.006666660308838
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 601,
+            "latency_spaced": {
+              "microseconds": 2.003333330154419
+            },
+            "latency_contiguous": {
+              "microseconds": 2.006666660308838
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 725,
+            "latency_spaced": {
+              "microseconds": 2.4166667461395264
+            },
+            "latency_contiguous": {
+              "microseconds": 2.4200000762939453
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 838,
+            "latency_spaced": {
+              "microseconds": 2.7933332920074463
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7966666221618652
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 821,
+            "latency_spaced": {
+              "microseconds": 2.736666679382324
+            },
+            "latency_contiguous": {
+              "microseconds": 2.740000009536743
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 865,
+            "latency_spaced": {
+              "microseconds": 2.883333444595337
+            },
+            "latency_contiguous": {
+              "microseconds": 2.886666774749756
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 865,
+            "latency_spaced": {
+              "microseconds": 2.883333444595337
+            },
+            "latency_contiguous": {
+              "microseconds": 2.886666774749756
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 865,
+            "latency_spaced": {
+              "microseconds": 2.883333444595337
+            },
+            "latency_contiguous": {
+              "microseconds": 2.886666774749756
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 985,
+            "latency_spaced": {
+              "microseconds": 3.2833333015441895
+            },
+            "latency_contiguous": {
+              "microseconds": 3.2866666316986084
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 1155,
+            "latency_spaced": {
+              "microseconds": 3.8499999046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 3.8533332347869873
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "elu"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 546,
+            "latency_spaced": {
+              "microseconds": 1.6545454263687134
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6575757265090942
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 601,
+            "latency_spaced": {
+              "microseconds": 1.8212121725082397
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8242424726486206
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 601,
+            "latency_spaced": {
+              "microseconds": 1.8212121725082397
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8242424726486206
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 601,
+            "latency_spaced": {
+              "microseconds": 1.8212121725082397
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8242424726486206
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 725,
+            "latency_spaced": {
+              "microseconds": 2.196969747543335
+            },
+            "latency_contiguous": {
+              "microseconds": 2.200000047683716
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 838,
+            "latency_spaced": {
+              "microseconds": 2.539393901824951
+            },
+            "latency_contiguous": {
+              "microseconds": 2.542424201965332
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 821,
+            "latency_spaced": {
+              "microseconds": 2.4878787994384766
+            },
+            "latency_contiguous": {
+              "microseconds": 2.4909090995788574
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 865,
+            "latency_spaced": {
+              "microseconds": 2.6212120056152344
+            },
+            "latency_contiguous": {
+              "microseconds": 2.6242423057556152
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 865,
+            "latency_spaced": {
+              "microseconds": 2.6212120056152344
+            },
+            "latency_contiguous": {
+              "microseconds": 2.6242423057556152
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 865,
+            "latency_spaced": {
+              "microseconds": 2.6212120056152344
+            },
+            "latency_contiguous": {
+              "microseconds": 2.6242423057556152
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 985,
+            "latency_spaced": {
+              "microseconds": 2.9848484992980957
+            },
+            "latency_contiguous": {
+              "microseconds": 2.9878787994384766
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 1155,
+            "latency_spaced": {
+              "microseconds": 3.5
+            },
+            "latency_contiguous": {
+              "microseconds": 3.503030300140381
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "elu"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 576,
+            "latency_spaced": {
+              "microseconds": 1.7999999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.803125023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 631,
+            "latency_spaced": {
+              "microseconds": 1.9718749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.975000023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 631,
+            "latency_spaced": {
+              "microseconds": 1.9718749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.975000023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 631,
+            "latency_spaced": {
+              "microseconds": 1.9718749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.975000023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 765,
+            "latency_spaced": {
+              "microseconds": 2.390625
+            },
+            "latency_contiguous": {
+              "microseconds": 2.393749952316284
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 877,
+            "latency_spaced": {
+              "microseconds": 2.7406249046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7437500953674316
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 851,
+            "latency_spaced": {
+              "microseconds": 2.659374952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 2.6624999046325684
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 895,
+            "latency_spaced": {
+              "microseconds": 2.796875
+            },
+            "latency_contiguous": {
+              "microseconds": 2.799999952316284
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 895,
+            "latency_spaced": {
+              "microseconds": 2.796875
+            },
+            "latency_contiguous": {
+              "microseconds": 2.799999952316284
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 895,
+            "latency_spaced": {
+              "microseconds": 2.796875
+            },
+            "latency_contiguous": {
+              "microseconds": 2.799999952316284
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 1025,
+            "latency_spaced": {
+              "microseconds": 3.203125
+            },
+            "latency_contiguous": {
+              "microseconds": 3.206249952316284
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 483,
+            "latency_spaced": {
+              "microseconds": 1.509374976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5125000476837158
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 521,
+            "latency_spaced": {
+              "microseconds": 1.6281249523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.631250023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 521,
+            "latency_spaced": {
+              "microseconds": 1.6281249523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.631250023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 521,
+            "latency_spaced": {
+              "microseconds": 1.6281249523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.631250023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 614,
+            "latency_spaced": {
+              "microseconds": 1.9187500476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.921875
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 661,
+            "latency_spaced": {
+              "microseconds": 2.065624952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 2.0687499046325684
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 582,
+            "latency_spaced": {
+              "microseconds": 1.818750023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.821874976158142
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 623,
+            "latency_spaced": {
+              "microseconds": 1.946874976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.9500000476837158
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 623,
+            "latency_spaced": {
+              "microseconds": 1.946874976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.9500000476837158
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 623,
+            "latency_spaced": {
+              "microseconds": 1.946874976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.9500000476837158
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 717,
+            "latency_spaced": {
+              "microseconds": 2.2406249046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.2437500953674316
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 839,
+            "latency_spaced": {
+              "microseconds": 2.621875047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 2.625
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "elu"
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 576,
+            "latency_spaced": {
+              "microseconds": 1.7999999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.803125023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 631,
+            "latency_spaced": {
+              "microseconds": 1.9718749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.975000023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 631,
+            "latency_spaced": {
+              "microseconds": 1.9718749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.975000023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 631,
+            "latency_spaced": {
+              "microseconds": 1.9718749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.975000023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 765,
+            "latency_spaced": {
+              "microseconds": 2.390625
+            },
+            "latency_contiguous": {
+              "microseconds": 2.393749952316284
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 877,
+            "latency_spaced": {
+              "microseconds": 2.7406249046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7437500953674316
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 851,
+            "latency_spaced": {
+              "microseconds": 2.659374952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 2.6624999046325684
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 895,
+            "latency_spaced": {
+              "microseconds": 2.796875
+            },
+            "latency_contiguous": {
+              "microseconds": 2.799999952316284
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 895,
+            "latency_spaced": {
+              "microseconds": 2.796875
+            },
+            "latency_contiguous": {
+              "microseconds": 2.799999952316284
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 895,
+            "latency_spaced": {
+              "microseconds": 2.796875
+            },
+            "latency_contiguous": {
+              "microseconds": 2.799999952316284
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 1025,
+            "latency_spaced": {
+              "microseconds": 3.203125
+            },
+            "latency_contiguous": {
+              "microseconds": 3.206249952316284
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "mobilenet": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 136629,
+            "cycle_count": 2647,
+            "latency_spaced": {
+              "microseconds": 8.823333740234375
+            },
+            "latency_contiguous": {
+              "microseconds": 8.826666831970215
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 995067,
+            "cycle_count": 3200,
+            "latency_spaced": {
+              "microseconds": 10.666666984558105
+            },
+            "latency_contiguous": {
+              "microseconds": 10.670000076293945
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 4190696,
+            "cycle_count": 4224,
+            "latency_spaced": {
+              "microseconds": 14.079999923706055
+            },
+            "latency_contiguous": {
+              "microseconds": 14.616666793823242
+            },
+            "meta": {
+              "width_mult": 1.0
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 136629,
+            "cycle_count": 2647,
+            "latency_spaced": {
+              "microseconds": 8.021212577819824
+            },
+            "latency_contiguous": {
+              "microseconds": 8.024242401123047
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 995067,
+            "cycle_count": 3200,
+            "latency_spaced": {
+              "microseconds": 9.696969985961914
+            },
+            "latency_contiguous": {
+              "microseconds": 9.699999809265137
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 4190696,
+            "cycle_count": 4224,
+            "latency_spaced": {
+              "microseconds": 12.800000190734863
+            },
+            "latency_contiguous": {
+              "microseconds": 13.28787899017334
+            },
+            "meta": {
+              "width_mult": 1.0
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 136629,
+            "cycle_count": 2922,
+            "latency_spaced": {
+              "microseconds": 9.131250381469727
+            },
+            "latency_contiguous": {
+              "microseconds": 9.134374618530273
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 995067,
+            "cycle_count": 3475,
+            "latency_spaced": {
+              "microseconds": 10.859375
+            },
+            "latency_contiguous": {
+              "microseconds": 10.862500190734863
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 136629,
+            "cycle_count": 2914,
+            "latency_spaced": {
+              "microseconds": 9.106249809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 9.109375
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 995067,
+            "cycle_count": 3237,
+            "latency_spaced": {
+              "microseconds": 10.115625381469727
+            },
+            "latency_contiguous": {
+              "microseconds": 10.225000381469727
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 4190696,
+            "cycle_count": 3692,
+            "latency_spaced": {
+              "microseconds": 11.537500381469727
+            },
+            "latency_contiguous": {
+              "microseconds": 11.609375
+            },
+            "meta": {
+              "width_mult": 1.0
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 136629,
+            "cycle_count": 2922,
+            "latency_spaced": {
+              "microseconds": 9.131250381469727
+            },
+            "latency_contiguous": {
+              "microseconds": 9.134374618530273
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 995067,
+            "cycle_count": 3475,
+            "latency_spaced": {
+              "microseconds": 10.859375
+            },
+            "latency_contiguous": {
+              "microseconds": 10.862500190734863
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "moe": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 983808,
+            "cycle_count": 365,
+            "latency_spaced": {
+              "microseconds": 1.2166666984558105
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2200000286102295
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1967616,
+            "cycle_count": 493,
+            "latency_spaced": {
+              "microseconds": 1.6433333158493042
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6466666460037231
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3935232,
+            "cycle_count": 867,
+            "latency_spaced": {
+              "microseconds": 2.890000104904175
+            },
+            "latency_contiguous": {
+              "microseconds": 2.8933334350585938
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 16
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 983808,
+            "cycle_count": 365,
+            "latency_spaced": {
+              "microseconds": 1.1060606241226196
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1090909242630005
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1967616,
+            "cycle_count": 493,
+            "latency_spaced": {
+              "microseconds": 1.4939393997192383
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4969696998596191
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3935232,
+            "cycle_count": 867,
+            "latency_spaced": {
+              "microseconds": 2.627272844314575
+            },
+            "latency_contiguous": {
+              "microseconds": 2.630303144454956
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 16
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 983808,
+            "cycle_count": 375,
+            "latency_spaced": {
+              "microseconds": 1.171875
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1749999523162842
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1967616,
+            "cycle_count": 503,
+            "latency_spaced": {
+              "microseconds": 1.571874976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5750000476837158
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 983808,
+            "cycle_count": 220,
+            "latency_spaced": {
+              "microseconds": 0.6875
+            },
+            "latency_contiguous": {
+              "microseconds": 0.690625011920929
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1967616,
+            "cycle_count": 329,
+            "latency_spaced": {
+              "microseconds": 1.0281250476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.03125
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 3935232,
+            "cycle_count": 526,
+            "latency_spaced": {
+              "microseconds": 1.6437499523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.646875023841858
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 16
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 983808,
+            "cycle_count": 375,
+            "latency_spaced": {
+              "microseconds": 1.171875
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1749999523162842
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1967616,
+            "cycle_count": 503,
+            "latency_spaced": {
+              "microseconds": 1.571874976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5750000476837158
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "resmlp": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 140378,
+            "cycle_count": 1530,
+            "latency_spaced": {
+              "microseconds": 5.099999904632568
+            },
+            "latency_contiguous": {
+              "microseconds": 5.103333473205566
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 140378,
+            "cycle_count": 2500,
+            "latency_spaced": {
+              "microseconds": 8.333333015441895
+            },
+            "latency_contiguous": {
+              "microseconds": 8.33666706085205
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1036460,
+            "cycle_count": 2262,
+            "latency_spaced": {
+              "microseconds": 7.539999961853027
+            },
+            "latency_contiguous": {
+              "microseconds": 7.543333530426025
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1036460,
+            "cycle_count": 3570,
+            "latency_spaced": {
+              "microseconds": 11.899999618530273
+            },
+            "latency_contiguous": {
+              "microseconds": 11.90333366394043
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 140378,
+            "cycle_count": 1530,
+            "latency_spaced": {
+              "microseconds": 4.636363506317139
+            },
+            "latency_contiguous": {
+              "microseconds": 4.6393938064575195
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 140378,
+            "cycle_count": 2500,
+            "latency_spaced": {
+              "microseconds": 7.5757575035095215
+            },
+            "latency_contiguous": {
+              "microseconds": 7.578787803649902
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1036460,
+            "cycle_count": 2262,
+            "latency_spaced": {
+              "microseconds": 6.854545593261719
+            },
+            "latency_contiguous": {
+              "microseconds": 6.8575758934021
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1036460,
+            "cycle_count": 3570,
+            "latency_spaced": {
+              "microseconds": 10.818181991577148
+            },
+            "latency_contiguous": {
+              "microseconds": 10.821211814880371
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 140378,
+            "cycle_count": 1580,
+            "latency_spaced": {
+              "microseconds": 4.9375
+            },
+            "latency_contiguous": {
+              "microseconds": 4.940625190734863
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 140378,
+            "cycle_count": 2550,
+            "latency_spaced": {
+              "microseconds": 7.96875
+            },
+            "latency_contiguous": {
+              "microseconds": 7.971875190734863
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1036460,
+            "cycle_count": 4960,
+            "latency_spaced": {
+              "microseconds": 15.5
+            },
+            "latency_contiguous": {
+              "microseconds": 15.503125190734863
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1036460,
+            "cycle_count": 6303,
+            "latency_spaced": {
+              "microseconds": 19.696874618530273
+            },
+            "latency_contiguous": {
+              "microseconds": 19.700000762939453
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 140378,
+            "cycle_count": 1207,
+            "latency_spaced": {
+              "microseconds": 3.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 3.7750000953674316
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 140378,
+            "cycle_count": 1981,
+            "latency_spaced": {
+              "microseconds": 6.190625190734863
+            },
+            "latency_contiguous": {
+              "microseconds": 6.193749904632568
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1036460,
+            "cycle_count": 1596,
+            "latency_spaced": {
+              "microseconds": 4.987500190734863
+            },
+            "latency_contiguous": {
+              "microseconds": 4.990624904632568
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1036460,
+            "cycle_count": 2610,
+            "latency_spaced": {
+              "microseconds": 8.15625
+            },
+            "latency_contiguous": {
+              "microseconds": 8.159375190734863
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 140378,
+            "cycle_count": 1580,
+            "latency_spaced": {
+              "microseconds": 4.9375
+            },
+            "latency_contiguous": {
+              "microseconds": 4.940625190734863
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 140378,
+            "cycle_count": 2550,
+            "latency_spaced": {
+              "microseconds": 7.96875
+            },
+            "latency_contiguous": {
+              "microseconds": 7.971875190734863
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1036460,
+            "cycle_count": 4960,
+            "latency_spaced": {
+              "microseconds": 15.5
+            },
+            "latency_contiguous": {
+              "microseconds": 15.503125190734863
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1036460,
+            "cycle_count": 6303,
+            "latency_spaced": {
+              "microseconds": 19.696874618530273
+            },
+            "latency_contiguous": {
+              "microseconds": 19.700000762939453
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ]
+    },
+    "slp": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 16512,
+            "cycle_count": 75,
+            "latency_spaced": {
+              "microseconds": 0.25
+            },
+            "latency_contiguous": {
+              "microseconds": 0.25333333015441895
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 263168,
+            "cycle_count": 152,
+            "latency_spaced": {
+              "microseconds": 0.5066666603088379
+            },
+            "latency_contiguous": {
+              "microseconds": 0.5099999904632568
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1049600,
+            "cycle_count": 283,
+            "latency_spaced": {
+              "microseconds": 0.9433333277702332
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9466666579246521
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 16512,
+            "cycle_count": 75,
+            "latency_spaced": {
+              "microseconds": 0.22727273404598236
+            },
+            "latency_contiguous": {
+              "microseconds": 0.23030303418636322
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 263168,
+            "cycle_count": 152,
+            "latency_spaced": {
+              "microseconds": 0.46060606837272644
+            },
+            "latency_contiguous": {
+              "microseconds": 0.4636363685131073
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1049600,
+            "cycle_count": 283,
+            "latency_spaced": {
+              "microseconds": 0.8575757741928101
+            },
+            "latency_contiguous": {
+              "microseconds": 0.8606060743331909
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 16512,
+            "cycle_count": 80,
+            "latency_spaced": {
+              "microseconds": 0.25
+            },
+            "latency_contiguous": {
+              "microseconds": 0.25312501192092896
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 263168,
+            "cycle_count": 157,
+            "latency_spaced": {
+              "microseconds": 0.4906249940395355
+            },
+            "latency_contiguous": {
+              "microseconds": 0.4937500059604645
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1049600,
+            "cycle_count": 288,
+            "latency_spaced": {
+              "microseconds": 0.8999999761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.903124988079071
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 16512,
+            "cycle_count": 76,
+            "latency_spaced": {
+              "microseconds": 0.23749999701976776
+            },
+            "latency_contiguous": {
+              "microseconds": 0.24062499403953552
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 263168,
+            "cycle_count": 113,
+            "latency_spaced": {
+              "microseconds": 0.3531250059604645
+            },
+            "latency_contiguous": {
+              "microseconds": 0.35624998807907104
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1049600,
+            "cycle_count": 178,
+            "latency_spaced": {
+              "microseconds": 0.5562499761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.559374988079071
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 16512,
+            "cycle_count": 80,
+            "latency_spaced": {
+              "microseconds": 0.25
+            },
+            "latency_contiguous": {
+              "microseconds": 0.25312501192092896
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 263168,
+            "cycle_count": 157,
+            "latency_spaced": {
+              "microseconds": 0.4906249940395355
+            },
+            "latency_contiguous": {
+              "microseconds": 0.4937500059604645
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1049600,
+            "cycle_count": 288,
+            "latency_spaced": {
+              "microseconds": 0.8999999761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.903124988079071
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ]
+    },
+    "ssm": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 589824,
+            "cycle_count": 200,
+            "latency_spaced": {
+              "microseconds": 0.6666666865348816
+            },
+            "latency_contiguous": {
+              "microseconds": 0.7099999785423279
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1048576,
+            "cycle_count": 264,
+            "latency_spaced": {
+              "microseconds": 0.8799999952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9700000286102295
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 5308416,
+            "cycle_count": 665,
+            "latency_spaced": {
+              "microseconds": 2.2166666984558105
+            },
+            "latency_contiguous": {
+              "microseconds": 3.573333263397217
+            },
+            "meta": {
+              "dim": 768,
+              "hidden": 1536
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 21233664,
+            "cycle_count": 2417,
+            "latency_spaced": {
+              "microseconds": 8.056666374206543
+            },
+            "latency_contiguous": {
+              "microseconds": 13.359999656677246
+            },
+            "meta": {
+              "dim": 1536,
+              "hidden": 3072
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 589824,
+            "cycle_count": 200,
+            "latency_spaced": {
+              "microseconds": 0.6060606241226196
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6454545259475708
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1048576,
+            "cycle_count": 264,
+            "latency_spaced": {
+              "microseconds": 0.800000011920929
+            },
+            "latency_contiguous": {
+              "microseconds": 0.8818181753158569
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 5308416,
+            "cycle_count": 665,
+            "latency_spaced": {
+              "microseconds": 2.0151515007019043
+            },
+            "latency_contiguous": {
+              "microseconds": 3.2484848499298096
+            },
+            "meta": {
+              "dim": 768,
+              "hidden": 1536
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 21233664,
+            "cycle_count": 2417,
+            "latency_spaced": {
+              "microseconds": 7.32424259185791
+            },
+            "latency_contiguous": {
+              "microseconds": 12.145454406738281
+            },
+            "meta": {
+              "dim": 1536,
+              "hidden": 3072
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 589824,
+            "cycle_count": 210,
+            "latency_spaced": {
+              "microseconds": 0.65625
+            },
+            "latency_contiguous": {
+              "microseconds": 0.7124999761581421
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1048576,
+            "cycle_count": 274,
+            "latency_spaced": {
+              "microseconds": 0.856249988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 0.956250011920929
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 589824,
+            "cycle_count": 184,
+            "latency_spaced": {
+              "microseconds": 0.574999988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6000000238418579
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1048576,
+            "cycle_count": 201,
+            "latency_spaced": {
+              "microseconds": 0.628125011920929
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6812499761581421
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 5308416,
+            "cycle_count": 374,
+            "latency_spaced": {
+              "microseconds": 1.1687500476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.818750023841858
+            },
+            "meta": {
+              "dim": 768,
+              "hidden": 1536
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 589824,
+            "cycle_count": 210,
+            "latency_spaced": {
+              "microseconds": 0.65625
+            },
+            "latency_contiguous": {
+              "microseconds": 0.7124999761581421
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1048576,
+            "cycle_count": 274,
+            "latency_spaced": {
+              "microseconds": 0.856249988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 0.956250011920929
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "tcn": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 247168,
+            "cycle_count": 291,
+            "latency_spaced": {
+              "microseconds": 0.9700000286102295
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4199999570846558
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 378,
+            "latency_spaced": {
+              "microseconds": 1.2599999904632568
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6833332777023315
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3937792,
+            "cycle_count": 534,
+            "latency_spaced": {
+              "microseconds": 1.7799999713897705
+            },
+            "latency_contiguous": {
+              "microseconds": 3.2699999809265137
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[512, 512, 512]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 6992928,
+            "cycle_count": 1072,
+            "latency_spaced": {
+              "microseconds": 3.573333263397217
+            },
+            "latency_contiguous": {
+              "microseconds": 5.883333206176758
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[32, 64, 128, 256, 512, 1024]"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 247168,
+            "cycle_count": 291,
+            "latency_spaced": {
+              "microseconds": 0.8818181753158569
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2909090518951416
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 378,
+            "latency_spaced": {
+              "microseconds": 1.1454545259475708
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5303030014038086
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3937792,
+            "cycle_count": 534,
+            "latency_spaced": {
+              "microseconds": 1.618181824684143
+            },
+            "latency_contiguous": {
+              "microseconds": 2.9727272987365723
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[512, 512, 512]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 6992928,
+            "cycle_count": 1072,
+            "latency_spaced": {
+              "microseconds": 3.2484848499298096
+            },
+            "latency_contiguous": {
+              "microseconds": 5.348484992980957
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[32, 64, 128, 256, 512, 1024]"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 247168,
+            "cycle_count": 321,
+            "latency_spaced": {
+              "microseconds": 1.0031249523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4249999523162842
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 408,
+            "latency_spaced": {
+              "microseconds": 1.274999976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.671875
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 247168,
+            "cycle_count": 281,
+            "latency_spaced": {
+              "microseconds": 0.878125011920929
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9125000238418579
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 333,
+            "latency_spaced": {
+              "microseconds": 1.040624976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.462499976158142
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 3937792,
+            "cycle_count": 442,
+            "latency_spaced": {
+              "microseconds": 1.381250023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 2.028125047683716
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[512, 512, 512]"
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 247168,
+            "cycle_count": 321,
+            "latency_spaced": {
+              "microseconds": 1.0031249523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4249999523162842
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 408,
+            "latency_spaced": {
+              "microseconds": 1.274999976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.671875
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "wavenet": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 984459,
+            "cycle_count": 1095,
+            "latency_spaced": {
+              "microseconds": 3.6500000953674316
+            },
+            "latency_contiguous": {
+              "microseconds": 3.740000009536743
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3694851,
+            "cycle_count": 1264,
+            "latency_spaced": {
+              "microseconds": 4.2133331298828125
+            },
+            "latency_contiguous": {
+              "microseconds": 4.823333263397217
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 25824003,
+            "cycle_count": 2868,
+            "latency_spaced": {
+              "microseconds": 9.5600004196167
+            },
+            "latency_contiguous": {
+              "microseconds": 13.416666984558105
+            },
+            "meta": {
+              "layers": 1,
+              "blocks": 1,
+              "hidden": 1920
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 23501187,
+            "cycle_count": 3057,
+            "latency_spaced": {
+              "microseconds": 10.1899995803833
+            },
+            "latency_contiguous": {
+              "microseconds": 13.966666221618652
+            },
+            "meta": {
+              "layers": 2,
+              "blocks": 1,
+              "hidden": 1344
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 23061123,
+            "cycle_count": 3559,
+            "latency_spaced": {
+              "microseconds": 11.863333702087402
+            },
+            "latency_contiguous": {
+              "microseconds": 15.720000267028809
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 960
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 984459,
+            "cycle_count": 1095,
+            "latency_spaced": {
+              "microseconds": 3.3181817531585693
+            },
+            "latency_contiguous": {
+              "microseconds": 3.4000000953674316
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3694851,
+            "cycle_count": 1264,
+            "latency_spaced": {
+              "microseconds": 3.8303029537200928
+            },
+            "latency_contiguous": {
+              "microseconds": 4.384848594665527
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 25824003,
+            "cycle_count": 2868,
+            "latency_spaced": {
+              "microseconds": 8.690909385681152
+            },
+            "latency_contiguous": {
+              "microseconds": 12.196969985961914
+            },
+            "meta": {
+              "layers": 1,
+              "blocks": 1,
+              "hidden": 1920
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 23501187,
+            "cycle_count": 3057,
+            "latency_spaced": {
+              "microseconds": 9.263636589050293
+            },
+            "latency_contiguous": {
+              "microseconds": 12.696969985961914
+            },
+            "meta": {
+              "layers": 2,
+              "blocks": 1,
+              "hidden": 1344
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 23061123,
+            "cycle_count": 3559,
+            "latency_spaced": {
+              "microseconds": 10.7848482131958
+            },
+            "latency_contiguous": {
+              "microseconds": 14.290908813476562
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 960
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 984459,
+            "cycle_count": 1190,
+            "latency_spaced": {
+              "microseconds": 3.71875
+            },
+            "latency_contiguous": {
+              "microseconds": 3.7874999046325684
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 984459,
+            "cycle_count": 1058,
+            "latency_spaced": {
+              "microseconds": 3.3062500953674316
+            },
+            "latency_contiguous": {
+              "microseconds": 3.325000047683716
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 3694851,
+            "cycle_count": 1207,
+            "latency_spaced": {
+              "microseconds": 3.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 3.9156250953674316
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 984459,
+            "cycle_count": 1190,
+            "latency_spaced": {
+              "microseconds": 3.71875
+            },
+            "latency_contiguous": {
+              "microseconds": 3.7874999046325684
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    }
+  }
+}
