@@ -13,7 +13,8 @@ from beartype.typing import Callable, Optional, Union
 from vollo_compiler import AllocationError, SaveError
 
 
-def _get_configs():
+@beartype
+def _get_configs() -> dict[str, vc.Config]:
     """
     Older vollo versions may not have all the configs.
     """

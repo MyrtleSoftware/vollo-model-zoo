@@ -38,6 +38,7 @@ def parse_records_from_json(json_file: str | Path) -> list[dict]:
     return records
 
 
+@beartype
 def _iter_results(data: dict):
     """
     Generator to flatten the nested benchmark JSON structure.

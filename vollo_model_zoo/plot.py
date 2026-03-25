@@ -34,6 +34,7 @@ def main() -> int:
     return 0
 
 
+@beartype
 def _generate_plots(input_files: list[str], output_dir: str):
     """
     Generate performance plots from benchmark JSON files.
@@ -59,6 +60,7 @@ def _generate_plots(input_files: list[str], output_dir: str):
     print(f"Generated {len(df.groupby(['model', 'config']))} plots in '{output_dir}'.")
 
 
+@beartype
 def _plot_config(model: str, config: str, group: pd.DataFrame, output_dir: str):
     """
     Generate a single plot for a given model and config.
