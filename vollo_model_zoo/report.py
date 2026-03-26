@@ -93,10 +93,17 @@ def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> 
 
         write("")
         write("## Performance over time")
+        write("")
+        write("Click to expand each plot:")
 
         for plot in plots:
             write("")
+            write("<details>")
+            write(f"<summary>{plot.stem}</summary>")
+            write("")
             write(f"![{plot.stem}](../{plot})")
+            write("")
+            write("</details>")
 
     return 0
 
