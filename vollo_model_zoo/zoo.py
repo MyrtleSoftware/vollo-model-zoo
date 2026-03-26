@@ -57,7 +57,21 @@ def main() -> int:
         help="Output results in JSON format",
     )
 
+    parser.add_argument(
+        "--experimental",
+        action="store_true",
+        help="Allow running experimental models",
+    )
+
     args = parser.parse_args()
+
+    if args.model.lower() == "moe":
+        print("This model is experimental and requires the --experimental flag")
+        print(f"If you are intested in {args.model} please contact Myrtle to find out")
+        print("about upcoming improvements")
+
+        if not args.experimental:
+            return 1
 
     return run_model(args.model, args.config, args.json)
 

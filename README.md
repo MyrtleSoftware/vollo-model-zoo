@@ -139,6 +139,9 @@ via the common `tanh` approximation.
 
 Code/model: [moe.py](./vollo_model_zoo/models/moe.py)
 
+**⚠️ This model is currently experimental, if you are interested in MoE please
+contact Myrtle to find out about improvements coming to this model**
+
 Mixture-of-Experts replaces a single feed-forward block with multiple parallel
 experts, and a learned gating network that routes tokens to a sparse subset of
 them.
@@ -360,14 +363,8 @@ this repo:
 
 Before release:
 
-- Can we release the Python SDK as a package (simple execution)
 - Do we want the default config to be v80, LL or something else?
 - Integrate testing with myrtlepkgs
-
-- Other features we could demo:
-  - Show softmax
-  - Demo `if tracing`
-  - FP8 support
 
 - Other models:
   - Ensembles of models
@@ -378,6 +375,3 @@ Before release:
   - RWKV 6/7
   - TTT: <https://arxiv.org/pdf/2407.04620>
   - RNN-T demo?
-
-The MoE block's latency in the zoo is a strong function of the number of
-experts, we could improve vollo to fix this?
