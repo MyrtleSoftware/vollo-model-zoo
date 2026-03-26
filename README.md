@@ -347,7 +347,7 @@ this repo:
   in the zoo run:
 
   ```fish
-  uv run benchmark output.json
+  uv run benchmark --json_output ./benchmarks/my-benchmark.json
   ```
 
 - To plot multiple benchmark JSON files run:
@@ -359,7 +359,7 @@ this repo:
 - To generate a markdown report from the benchmarks and (optionally) plots run:
 
   ```fish
-  uv run report ./benchmarks/*.json --plots ./plots/*.svg
+  uv run report ./benchmarks/my-benchmark.json --plots ./plots/*.svg
   ```
 
   This is used to generate the [benchmark README](./benchmarks/README.md).
