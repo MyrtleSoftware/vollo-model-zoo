@@ -1,0 +1,100 @@
+name: Update Benchmarks
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # Weekly on Sunday at midnight
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-benchmarks:
+    runs-on: ubuntu-latest
+    env:
+      UV_FIND_LINKS: ${{ github.workspace }}/build/vollo-sdk/python/
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Get latest Vollo SDK version
+        id: vollo-version
+        run: |
+          VERSION=$(curl -s https://api.github.com/repos/MyrtleSoftware/vollo-sdk/releases/latest | jq -r .tag_name)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "latest version is ${VERSION}"
+
+      - name: Check if benchmark already exists
+        id: check-version
+        run: |
+          VERSION=${{ steps.vollo-version.outputs.version }}
+          VER_NUM=${VERSION#v}
+          BENCHMARK_FILE="benchmarks/vollo_${VER_NUM}.json"
+          if [ -f "$BENCHMARK_FILE" ]; then
+            echo "Benchmark for $VERSION already exists. Skipping update."
+            echo "should_update=false" >> $GITHUB_OUTPUT
+          else
+            echo "Benchmark for $VERSION does not exist. Proceeding with update."
+            echo "should_update=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download and extract Vollo SDK
+        if: steps.check-version.outputs.should_update == 'true'
+        run: |
+          VERSION=${{ steps.vollo-version.outputs.version }}
+          VER_NUM=${VERSION#v}
+          SDK_FILE="vollo-sdk-${VER_NUM}.run"
+          URL="https://github.com/MyrtleSoftware/vollo-sdk/releases/download/${VERSION}/${SDK_FILE}"
+
+          mkdir -p build
+          echo "Downloading $URL ..."
+          curl -L -o "build/${SDK_FILE}" "${URL}"
+
+          echo "Extracting $SDK_FILE ..."
+          chmod +x "build/${SDK_FILE}"
+          ./build/${SDK_FILE} --target build/vollo-sdk --noexec --accept > /dev/null
+
+      - name: Install dependencies
+        if: steps.check-version.outputs.should_update == 'true'
+        run: uv sync --all-extras --dev --reinstall-package vollo-compiler --reinstall-package vollo-torch
+
+      - name: Run benchmarks
+        if: steps.check-version.outputs.should_update == 'true'
+        run: |
+          VERSION=${{ steps.vollo-version.outputs.version }}
+          VER_NUM=${VERSION#v}
+          uv run benchmark "benchmarks/vollo_${VER_NUM}.json"
+
+      - name: Update plots
+        if: steps.check-version.outputs.should_update == 'true'
+        run: uv run plot ./benchmarks/*.json
+
+      - name: Update report
+        if: steps.check-version.outputs.should_update == 'true'
+        run: uv run report ./benchmarks/*.json --plots ./plots/*.svg
+
+      - name: Create Pull Request
+        if: steps.check-version.outputs.should_update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "benchmarks: update for Vollo SDK ${{ steps.vollo-version.outputs.version }}"
+          title: "Update Benchmarks: Vollo SDK ${{ steps.vollo-version.outputs.version }}"
+          body: |
+            This is an automated PR to update the benchmarks, plots, and report for the latest Vollo SDK version: ${{ steps.vollo-version.outputs.version }}.
+
+            - Updated `benchmarks/vollo_${{ steps.vollo-version.outputs.version }}.json`
+            - Regenerated plots in `plots/`
+            - Updated benchmark report in `benchmarks/README.md`
+          branch: "automation/update-benchmarks-${{ steps.vollo-version.outputs.version }}"
+          base: main
+          delete-branch: true
