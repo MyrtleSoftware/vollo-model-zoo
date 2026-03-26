@@ -90,8 +90,8 @@ def run_model(model: str, config: str, use_json: bool) -> int:
     headers = [
         "Parameters (M)",
         "Cycles",
-        "Latency/us",
-        "Latency/us (contiguous)",
+        "Latency (us)",
+        "Latency contiguous (us)",
         " ".join("" for _ in range(50)) + "Metadata",
     ]
 
