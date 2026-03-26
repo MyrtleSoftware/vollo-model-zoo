@@ -139,8 +139,13 @@ via the common `tanh` approximation.
 
 Code/model: [moe.py](./vollo_model_zoo/models/moe.py)
 
-**⚠️ This model is currently experimental, if you are interested in MoE please
-contact Myrtle to find out about improvements coming to this model**
+<p align="center">
+  **⚠️ This model is currently experimental ⚠️**
+</p>
+
+<p align="center">
+  **If you are interested in MoE please contact Myrtle to find out about upcoming improvements**
+</p>
 
 Mixture-of-Experts replaces a single feed-forward block with multiple parallel
 experts, and a learned gating network that routes tokens to a sparse subset of
