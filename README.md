@@ -360,7 +360,6 @@ this repo:
 
 Before release:
 
-- License (which one)
 - Can we release the Python SDK as a package (simple execution)
 - Do we want the default config to be v80, LL or something else?
 - Integrate testing with myrtlepkgs
