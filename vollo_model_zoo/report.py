@@ -75,8 +75,8 @@ def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> 
             write("")
             write(f"## Configuration: {config}")
             write("")
-            write("| Model | Latency/us | Latency/us (contiguous) | Metadata |")
-            write("| ----- | ---------- | ----------------------- | -------- |")
+            write("| Model | Latency (us) | Latency contiguous (us)  | Metadata |")
+            write("| ----- | ------------ | ------------------------ | -------- |")
 
             for model, group in groupby(config_group, key=lambda x: x["model"]):
                 # The one closest to 1-mil parameters
