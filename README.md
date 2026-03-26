@@ -300,7 +300,7 @@ each time step, allowing content-based reasoning without explicit attention.
 
 If you would like to see example code to convert an
 [FLA](https://github.com/fla-org/flash-linear-attention) Mamba state-dict to a
-Vollo Mamba state dict see the [the tests](./tests/test_mamba.py).
+Vollo Mamba state dict see the [the tests](./tests/test_mamba1.py).
 
 Note: when compiled to Vollo the example Mamba will use a `bf16` hidden state,
 if this is not accurate enough for your use-case please see
