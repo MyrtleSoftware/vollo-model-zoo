@@ -330,15 +330,40 @@ improve numerical stability during long sequence processing. This mirrors the
 reference implementation and helps avoid precision issues that may arise when
 using reduced-precision recurrent states.
 
+## Other utilities
+
+Alongside the primary `zoo` command a few utilities are available to run in
+this repo:
+
+- To generate a JSON file containing all the model/configuration combinations
+  in the zoo run:
+
+  ```fish
+  uv run benchmark output.json
+  ```
+
+- To plot multiple benchmark JSON files run:
+
+  ```fish
+  uv run plot ./benchmarks/*.json
+  ```
+
+- To generate a markdown report from the benchmarks and (optionally) plots run:
+
+  ```fish
+  uv run report ./benchmarks/*.json --plots ./plots/*.svg
+  ```
+
+  This is used to generate the [benchmark README](./benchmarks/README.md).
+
 ## TODO
 
 Before release:
 
-- [ ] License (which one)
-- [ ] Can we release the Python SDK as a package (simple execution)
-- [ ] Generating a latency report for all the models in the zoo
-- [ ] Do we want the default config to be v80, LL or something else?
-- [ ] Integrate testing with myrtlepkgs
+- License (which one)
+- Can we release the Python SDK as a package (simple execution)
+- Do we want the default config to be v80, LL or something else?
+- Integrate testing with myrtlepkgs
 
 - Other features we could demo:
   - Show softmax
