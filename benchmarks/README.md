@@ -84,27 +84,32 @@ Compute latency for an approximately 1-million parameter model.
 
 ## Configuration: IA-420f
 
-| Model       | Latency/us | Latency/us (contiguous) | Metadata                                            |
-| ----------- | ---------- | ----------------------- | --------------------------------------------------- |
-| wavenet     | 3.68       | 3.79                    | layers=4, blocks=1, hidden=198                      |
-| tcn         | 1.27       | 1.68                    | inputs=1, kernel=3, channels=[256, 256, 256]        |
-| ssm         | 0.86       | 0.96                    | dim=576, hidden=448                                 |
-| slp         | 0.90       | 0.90                    | input=1024, output=1024, activation=ReLU            |
-| resmlp      | 15.50      | 15.50                   | dim=160, patches=9, layers=5, activation=ReLU       |
-| moe         | 1.14       | 1.15                    | dim=192, hidden=640, n_experts=4                    |
-| mobilenet   | 10.86      | 10.86                   | width_mult=0.42                                     |
-| mlp-res-rms | 1.80       | 1.80                    | dim=320, hidden=768, activation=relu                |
-| mlp         | 1.45       | 1.45                    | layers=7, n_features=384, activation=ReLU           |
-| mamba2      | 3.02       | 5.12                    | fp32=False, dim=400, state=32, layers=1             |
-| mamba1      | 3.10       | 3.51                    | dim=384, state=12, layers=1                         |
-| lstm        | 0.80       | 1.02                    | layers=2, hidden_size=250                           |
-| gru         | 0.91       | 1.27                    | fp32=False, input=512, hidden=384, layers=1         |
-| ffn-swiglu  | 1.84       | 1.84                    | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn         | 1.63       | 3.06                    | layers=4, channels=64, kernel_size=64               |
+| Model       | Latency/us                                                                               | Latency/us (contiguous) | Metadata                                            |
+| ----------- | ---------------------------------------------------------------------------------------- | ----------------------- | --------------------------------------------------- |
+| wavenet     | 3.68                                                                                     | 3.79                    | layers=4, blocks=1, hidden=198                      |
+| tcn         | 1.27                                                                                     | 1.68                    | inputs=1, kernel=3, channels=[256, 256, 256]        |
+| ssm         | 0.86                                                                                     | 0.96                    | dim=576, hidden=448                                 |
+| slp         | 0.90                                                                                     | 0.90                    | input=1024, output=1024, activation=ReLU            |
+| resmlp      | 15.50                                                                                    | 15.50                   | dim=160, patches=9, layers=5, activation=ReLU       |
+| moe         | 1.14                                                                                     | 1.15                    | dim=192, hidden=640, n_experts=4                    |
+| mobilenet   | 10.86                                                                                    | 10.86                   | width_mult=0.42                                     |
+| mlp-res-rms | 1.80                                                                                     | 1.80                    | dim=320, hidden=768, activation=relu                |
+| mlp         | 1.45                                                                                     | 1.45                    | layers=7, n_features=384, activation=ReLU           |
+| mamba2      | 3.02                                                                                     | 5.12                    | fp32=False, dim=400, state=32, layers=1             |
+| mamba1      | 3.10                                                                                     | 3.51                    | dim=384, state=12, layers=1                         |
+| lstm        | 0.80                                                                                     | 1.02                    | layers=2, hidden_size=250                           |
+| gru         | 0.91                                                                                     | 1.27                    | fp32=False, input=512, hidden=384, layers=1         |
+| ffn-swiglu  | 1.84                                                                                     | 1.84                    | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| cnn         | <details><summary>1</summary><img src="../plots/cnn_IA_420f.svg" width="1000"></details> | 3.06                    | layers=4, channels=64, kernel_size=64               |
 
 ## Performance over time
 
+<details>
+<summary>IA-420f</summary>
+
 ![cnn_IA_420f](../plots/cnn_IA_420f.svg)
+
+</details>
 
 ![cnn_IA_840f](../plots/cnn_IA_840f.svg)
 
