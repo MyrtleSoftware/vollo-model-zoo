@@ -80,7 +80,10 @@ jobs:
 
       - name: Update report
         if: steps.check-version.outputs.should_update == 'true'
-        run: uv run report "benchmarks/vollo_${VER_NUM}.json" --plots ./plots/*.svg
+        run: |
+          VERSION=${{ steps.vollo-version.outputs.version }}
+          VER_NUM=${VERSION#v}
+          uv run report "benchmarks/vollo_${VER_NUM}.json" --plots ./plots/*.svg
 
       - name: Create Pull Request
         if: steps.check-version.outputs.should_update == 'true'
