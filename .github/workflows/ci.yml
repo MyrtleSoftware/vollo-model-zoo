@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      UV_FIND_LINKS: ${{ github.workspace }}/build/vollo-sdk/python/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Get latest Vollo SDK version
+        id: vollo-version
+        run: |
+          VERSION=$(curl -s https://api.github.com/repos/MyrtleSoftware/vollo-sdk/releases/latest | jq -r .tag_name)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "latest version is ${VERSION}"
+
+      - name: Download and extract Vollo SDK
+        run: |
+          VERSION=${{ steps.vollo-version.outputs.version }}
+          VER_NUM=${VERSION#v}
+          SDK_FILE="vollo-sdk-${VER_NUM}.run"
+          URL="https://github.com/MyrtleSoftware/vollo-sdk/releases/download/${VERSION}/${SDK_FILE}"
+
+          mkdir -p build
+          echo "Downloading $URL ..."
+          curl -L -o "build/${SDK_FILE}" "${URL}"
+
+          echo "Extracting $SDK_FILE ..."
+          chmod +x "build/${SDK_FILE}"
+          ./build/${SDK_FILE} --target build/vollo-sdk --noexec --accept > /dev/null
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev --reinstall-package vollo-compiler --reinstall-package vollo-torch
+
+      - name: Run linting
+        run: uv run pre-commit run --all-files
+
+      - name: Run tests
+        run: uv run pytest
