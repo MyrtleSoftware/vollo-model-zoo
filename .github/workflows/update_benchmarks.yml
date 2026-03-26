@@ -72,7 +72,7 @@ jobs:
         run: |
           VERSION=${{ steps.vollo-version.outputs.version }}
           VER_NUM=${VERSION#v}
-          uv run benchmark "benchmarks/vollo_${VER_NUM}.json"
+          uv run benchmark --json_output "benchmarks/vollo_${VER_NUM}.json"
 
       - name: Update plots
         if: steps.check-version.outputs.should_update == 'true'
@@ -80,7 +80,7 @@ jobs:
 
       - name: Update report
         if: steps.check-version.outputs.should_update == 'true'
-        run: uv run report ./benchmarks/*.json --plots ./plots/*.svg
+        run: uv run report "benchmarks/vollo_${VER_NUM}.json" --plots ./plots/*.svg
 
       - name: Create Pull Request
         if: steps.check-version.outputs.should_update == 'true'
