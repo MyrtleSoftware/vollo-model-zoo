@@ -2,6 +2,8 @@
 
 Compute latency for an approximately 1-million parameter model.
 
+Note: These latencies are from a (near cycle-accurate) software model but without IO (not negligible for some models)
+
 ## Configuration: V80LL
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |

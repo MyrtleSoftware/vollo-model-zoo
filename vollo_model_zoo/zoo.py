@@ -120,6 +120,10 @@ def run_model(model: str, config: str, use_json: bool) -> int:
         print_table_row(row)
 
     print(
+        "\nNote: These latencies are from a (near cycle-accurate) software model but without IO (not negligible for some models)"
+    )
+
+    print(
         "\nTip: this is human readable output; use -j/--json for machine-readable output."
     )
 
