@@ -70,6 +70,11 @@ def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> 
         write(f"# Vollo Model Zoo Benchmarks (version {versions[0]})")
         write("")
         write("Compute latency for an approximately 1-million parameter model.")
+        write("")
+        write(
+            "Note: These latencies are from a (near cycle-accurate) software "
+            "model but without IO (not negligible for some models)"
+        )
 
         for config, config_group in groupby(records, key=lambda x: x["config"]):
             write("")
