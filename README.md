@@ -363,20 +363,3 @@ this repo:
   ```
 
   This is used to generate the [benchmark README](./benchmarks/README.md).
-
-## TODO
-
-Before release:
-
-- Do we want the default config to be v80, LL or something else?
-- Integrate testing with myrtlepkgs
-
-- Other models:
-  - Ensembles of models
-  - CNN + LSTM
-  - Vector quantizer
-  - RetNet: <https://arxiv.org/abs/2307.08621>
-  - xLSTM/mLSTM
-  - RWKV 6/7
-  - TTT: <https://arxiv.org/pdf/2407.04620>
-  - RNN-T demo?
