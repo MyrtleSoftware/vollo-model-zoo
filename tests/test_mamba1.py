@@ -129,6 +129,10 @@ def test_mamba_equivalence(
         vollo_out = vollo_model(x.squeeze(0))
         vollo_out = vollo_out.unsqueeze(0)
 
+    if isinstance(fla_out, tuple):
+        # Some FLA versions return a tuple that needs destructuring
+        fla_out, _, _ = fla_out
+
     # Check shapes
     assert fla_out.shape == vollo_out.shape
 
