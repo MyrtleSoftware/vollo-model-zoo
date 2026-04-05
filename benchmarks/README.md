@@ -1,108 +1,108 @@
-# Vollo Model Zoo Benchmarks (version 26.2.0)
+# Vollo Model Zoo Benchmarks (version 27.0.0)
 
 Compute latency for an approximately 1-million parameter model.
 
-Note: These latencies are from a (near cycle-accurate) software model but without IO (not negligible for some models)
+Note: These latencies are from a (near cycle-accurate) software model but without IO (non-negligible for some models)
 
 ## Configuration: V80LL
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 3.12 | 3.23 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.11 | 1.50 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.80 | 0.88 | dim=576, hidden=448 |
-| slp | 0.86 | 0.86 | input=1024, output=1024, activation=ReLU |
-| resmlp | 6.84 | 6.85 | dim=160, patches=9, layers=5, activation=ReLU |
-| moe | 0.85 | 0.85 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 9.22 | 9.30 | width_mult=0.42 |
-| mlp-res-rms | 1.61 | 1.61 | dim=320, hidden=768, activation=relu |
-| mlp | 1.30 | 1.30 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.75 | 4.65 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 2.82 | 3.21 | dim=384, state=12, layers=1 |
-| lstm | 0.75 | 0.97 | layers=2, hidden_size=250 |
-| gru | 0.85 | 1.18 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.68 | 1.68 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| wavenet | 2.64 | 2.76 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.14 | 1.52 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| ssm | 0.81 | 0.89 | dim=576, hidden=448 |
+| slp | 0.86 | 0.87 | input=1024, output=1024, activation=ReLU |
+| resmlp | 6.83 | 6.83 | dim=160, patches=9, layers=5, activation=ReLU |
+| moe | 0.89 | 0.89 | dim=192, hidden=640, n_experts=4 |
+| mobilenet | 9.26 | 9.27 | width_mult=0.42 |
+| mlp-res-rms | 1.62 | 1.62 | dim=320, hidden=768, activation=relu |
+| mlp | 1.31 | 1.31 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 2.14 | 5.58 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 2.71 | 3.11 | dim=384, state=12, layers=1 |
+| lstm | 0.75 | 0.96 | layers=2, hidden_size=250 |
+| gru | 0.82 | 1.15 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.49 | 1.49 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.43 | 4.38 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: V80
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 3.44 | 3.55 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.22 | 1.65 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.88 | 0.97 | dim=576, hidden=448 |
-| slp | 0.94 | 0.95 | input=1024, output=1024, activation=ReLU |
-| resmlp | 7.53 | 7.53 | dim=160, patches=9, layers=5, activation=ReLU |
-| moe | 0.94 | 0.94 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.15 | 10.23 | width_mult=0.42 |
-| mlp-res-rms | 1.77 | 1.77 | dim=320, hidden=768, activation=relu |
-| mlp | 1.43 | 1.43 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 3.03 | 5.12 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 3.10 | 3.53 | dim=384, state=12, layers=1 |
-| lstm | 0.82 | 1.07 | layers=2, hidden_size=250 |
-| gru | 0.94 | 1.30 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.84 | 1.85 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn | 1.57 | 4.82 | layers=4, channels=64, kernel_size=64 |
+| wavenet | 2.90 | 3.04 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.25 | 1.67 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| ssm | 0.89 | 0.98 | dim=576, hidden=448 |
+| slp | 0.95 | 0.95 | input=1024, output=1024, activation=ReLU |
+| resmlp | 7.51 | 7.52 | dim=160, patches=9, layers=5, activation=ReLU |
+| moe | 0.98 | 0.98 | dim=192, hidden=640, n_experts=4 |
+| mobilenet | 10.19 | 10.19 | width_mult=0.42 |
+| mlp-res-rms | 1.78 | 1.78 | dim=320, hidden=768, activation=relu |
+| mlp | 1.44 | 1.44 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 2.35 | 6.14 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 2.98 | 3.42 | dim=384, state=12, layers=1 |
+| lstm | 0.82 | 1.06 | layers=2, hidden_size=250 |
+| gru | 0.90 | 1.27 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.64 | 1.64 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| cnn | 1.58 | 4.82 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: NT400D11
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 3.68 | 3.79 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.27 | 1.68 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.86 | 0.96 | dim=576, hidden=448 |
-| slp | 0.90 | 0.90 | input=1024, output=1024, activation=ReLU |
-| resmlp | 15.50 | 15.50 | dim=160, patches=9, layers=5, activation=ReLU |
-| moe | 1.14 | 1.15 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.86 | 10.86 | width_mult=0.42 |
-| mlp-res-rms | 1.80 | 1.80 | dim=320, hidden=768, activation=relu |
-| mlp | 1.45 | 1.45 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 3.02 | 5.12 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 3.10 | 3.51 | dim=384, state=12, layers=1 |
-| lstm | 0.80 | 1.02 | layers=2, hidden_size=250 |
-| gru | 0.91 | 1.27 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.84 | 1.84 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn | 1.63 | 3.06 | layers=4, channels=64, kernel_size=64 |
+| wavenet | 3.06 | 3.12 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.31 | 1.70 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| ssm | 0.87 | 0.96 | dim=576, hidden=448 |
+| slp | 0.91 | 0.91 | input=1024, output=1024, activation=ReLU |
+| resmlp | 12.40 | 12.40 | dim=160, patches=9, layers=5, activation=ReLU |
+| moe | 1.18 | 1.19 | dim=192, hidden=640, n_experts=4 |
+| mobilenet | 10.90 | 10.91 | width_mult=0.42 |
+| mlp-res-rms | 1.82 | 1.83 | dim=320, hidden=768, activation=relu |
+| mlp | 1.48 | 1.48 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 2.39 | 6.90 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 2.94 | 3.35 | dim=384, state=12, layers=1 |
+| lstm | 0.81 | 1.02 | layers=2, hidden_size=250 |
+| gru | 0.86 | 2.16 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.62 | 1.62 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| cnn | 1.63 | 3.07 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: IA-840f
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 3.31 | 3.33 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.04 | 1.46 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.63 | 0.68 | dim=576, hidden=448 |
-| slp | 0.56 | 0.56 | input=1024, output=1024, activation=ReLU |
-| resmlp | 4.99 | 4.99 | dim=160, patches=9, layers=5, activation=ReLU |
-| moe | 0.69 | 0.69 | dim=192, hidden=640, n_experts=4 |
+| wavenet | 2.55 | 2.56 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.03 | 1.58 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| ssm | 0.64 | 0.69 | dim=576, hidden=448 |
+| slp | 0.56 | 0.57 | input=1024, output=1024, activation=ReLU |
+| resmlp | 5.05 | 5.06 | dim=160, patches=9, layers=5, activation=ReLU |
+| moe | 0.69 | 0.70 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.12 | 10.23 | width_mult=0.42 |
-| mlp-res-rms | 1.51 | 1.51 | dim=320, hidden=768, activation=relu |
-| mlp | 1.21 | 1.22 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 3.63 | 6.83 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 2.35 | 2.74 | dim=384, state=12, layers=1 |
-| lstm | 0.58 | 0.60 | layers=2, hidden_size=250 |
-| gru | 0.80 | 1.08 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.42 | 1.43 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| mlp-res-rms | 1.53 | 1.53 | dim=320, hidden=768, activation=relu |
+| mlp | 1.27 | 1.28 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 2.11 | 8.96 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 2.17 | 2.57 | dim=384, state=12, layers=1 |
+| lstm | 0.59 | 0.61 | layers=2, hidden_size=250 |
+| gru | 0.70 | 1.09 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.23 | 1.24 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.61 | 3.07 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: IA-420f
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 3.68 | 3.79 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.27 | 1.68 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.86 | 0.96 | dim=576, hidden=448 |
-| slp | 0.90 | 0.90 | input=1024, output=1024, activation=ReLU |
-| resmlp | 15.50 | 15.50 | dim=160, patches=9, layers=5, activation=ReLU |
-| moe | 1.14 | 1.15 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.86 | 10.86 | width_mult=0.42 |
-| mlp-res-rms | 1.80 | 1.80 | dim=320, hidden=768, activation=relu |
-| mlp | 1.45 | 1.45 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 3.02 | 5.12 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 3.10 | 3.51 | dim=384, state=12, layers=1 |
-| lstm | 0.80 | 1.02 | layers=2, hidden_size=250 |
-| gru | 0.91 | 1.27 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.84 | 1.84 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn | 1.63 | 3.06 | layers=4, channels=64, kernel_size=64 |
+| wavenet | 3.06 | 3.12 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.31 | 1.70 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| ssm | 0.87 | 0.96 | dim=576, hidden=448 |
+| slp | 0.91 | 0.91 | input=1024, output=1024, activation=ReLU |
+| resmlp | 12.40 | 12.40 | dim=160, patches=9, layers=5, activation=ReLU |
+| moe | 1.18 | 1.19 | dim=192, hidden=640, n_experts=4 |
+| mobilenet | 10.90 | 10.91 | width_mult=0.42 |
+| mlp-res-rms | 1.82 | 1.83 | dim=320, hidden=768, activation=relu |
+| mlp | 1.48 | 1.48 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 2.39 | 6.90 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 2.94 | 3.35 | dim=384, state=12, layers=1 |
+| lstm | 0.81 | 1.02 | layers=2, hidden_size=250 |
+| gru | 0.86 | 2.16 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.62 | 1.62 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| cnn | 1.63 | 3.07 | layers=4, channels=64, kernel_size=64 |
 
 ## Performance over time
 
@@ -130,16 +130,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>cnn_V80</summary>
+<summary>cnn_V80LL</summary>
 
-![cnn_V80](../plots/cnn_V80.svg)
+![cnn_V80LL](../plots/cnn_V80LL.svg)
 
 </details>
 
 <details>
-<summary>cnn_V80LL</summary>
+<summary>cnn_V80</summary>
 
-![cnn_V80LL](../plots/cnn_V80LL.svg)
+![cnn_V80](../plots/cnn_V80.svg)
 
 </details>
 
@@ -165,16 +165,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>ffn_swiglu_V80</summary>
+<summary>ffn_swiglu_V80LL</summary>
 
-![ffn_swiglu_V80](../plots/ffn_swiglu_V80.svg)
+![ffn_swiglu_V80LL](../plots/ffn_swiglu_V80LL.svg)
 
 </details>
 
 <details>
-<summary>ffn_swiglu_V80LL</summary>
+<summary>ffn_swiglu_V80</summary>
 
-![ffn_swiglu_V80LL](../plots/ffn_swiglu_V80LL.svg)
+![ffn_swiglu_V80](../plots/ffn_swiglu_V80.svg)
 
 </details>
 
@@ -200,16 +200,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>gru_V80</summary>
+<summary>gru_V80LL</summary>
 
-![gru_V80](../plots/gru_V80.svg)
+![gru_V80LL](../plots/gru_V80LL.svg)
 
 </details>
 
 <details>
-<summary>gru_V80LL</summary>
+<summary>gru_V80</summary>
 
-![gru_V80LL](../plots/gru_V80LL.svg)
+![gru_V80](../plots/gru_V80.svg)
 
 </details>
 
@@ -235,16 +235,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>lstm_V80</summary>
+<summary>lstm_V80LL</summary>
 
-![lstm_V80](../plots/lstm_V80.svg)
+![lstm_V80LL](../plots/lstm_V80LL.svg)
 
 </details>
 
 <details>
-<summary>lstm_V80LL</summary>
+<summary>lstm_V80</summary>
 
-![lstm_V80LL](../plots/lstm_V80LL.svg)
+![lstm_V80](../plots/lstm_V80.svg)
 
 </details>
 
@@ -270,16 +270,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>mamba1_V80</summary>
+<summary>mamba1_V80LL</summary>
 
-![mamba1_V80](../plots/mamba1_V80.svg)
+![mamba1_V80LL](../plots/mamba1_V80LL.svg)
 
 </details>
 
 <details>
-<summary>mamba1_V80LL</summary>
+<summary>mamba1_V80</summary>
 
-![mamba1_V80LL](../plots/mamba1_V80LL.svg)
+![mamba1_V80](../plots/mamba1_V80.svg)
 
 </details>
 
@@ -305,16 +305,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>mamba2_V80</summary>
+<summary>mamba2_V80LL</summary>
 
-![mamba2_V80](../plots/mamba2_V80.svg)
+![mamba2_V80LL](../plots/mamba2_V80LL.svg)
 
 </details>
 
 <details>
-<summary>mamba2_V80LL</summary>
+<summary>mamba2_V80</summary>
 
-![mamba2_V80LL](../plots/mamba2_V80LL.svg)
+![mamba2_V80](../plots/mamba2_V80.svg)
 
 </details>
 
@@ -361,13 +361,6 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>mlp_res_rms_V80</summary>
-
-![mlp_res_rms_V80](../plots/mlp_res_rms_V80.svg)
-
-</details>
-
-<details>
 <summary>mlp_res_rms_V80LL</summary>
 
 ![mlp_res_rms_V80LL](../plots/mlp_res_rms_V80LL.svg)
@@ -375,9 +368,9 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>mlp_V80</summary>
+<summary>mlp_res_rms_V80</summary>
 
-![mlp_V80](../plots/mlp_V80.svg)
+![mlp_res_rms_V80](../plots/mlp_res_rms_V80.svg)
 
 </details>
 
@@ -385,6 +378,13 @@ Click to expand each plot:
 <summary>mlp_V80LL</summary>
 
 ![mlp_V80LL](../plots/mlp_V80LL.svg)
+
+</details>
+
+<details>
+<summary>mlp_V80</summary>
+
+![mlp_V80](../plots/mlp_V80.svg)
 
 </details>
 
@@ -410,16 +410,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>mobilenet_V80</summary>
+<summary>mobilenet_V80LL</summary>
 
-![mobilenet_V80](../plots/mobilenet_V80.svg)
+![mobilenet_V80LL](../plots/mobilenet_V80LL.svg)
 
 </details>
 
 <details>
-<summary>mobilenet_V80LL</summary>
+<summary>mobilenet_V80</summary>
 
-![mobilenet_V80LL](../plots/mobilenet_V80LL.svg)
+![mobilenet_V80](../plots/mobilenet_V80.svg)
 
 </details>
 
@@ -445,16 +445,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>moe_V80</summary>
+<summary>moe_V80LL</summary>
 
-![moe_V80](../plots/moe_V80.svg)
+![moe_V80LL](../plots/moe_V80LL.svg)
 
 </details>
 
 <details>
-<summary>moe_V80LL</summary>
+<summary>moe_V80</summary>
 
-![moe_V80LL](../plots/moe_V80LL.svg)
+![moe_V80](../plots/moe_V80.svg)
 
 </details>
 
@@ -480,16 +480,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>resmlp_V80</summary>
+<summary>resmlp_V80LL</summary>
 
-![resmlp_V80](../plots/resmlp_V80.svg)
+![resmlp_V80LL](../plots/resmlp_V80LL.svg)
 
 </details>
 
 <details>
-<summary>resmlp_V80LL</summary>
+<summary>resmlp_V80</summary>
 
-![resmlp_V80LL](../plots/resmlp_V80LL.svg)
+![resmlp_V80](../plots/resmlp_V80.svg)
 
 </details>
 
@@ -515,16 +515,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>slp_V80</summary>
+<summary>slp_V80LL</summary>
 
-![slp_V80](../plots/slp_V80.svg)
+![slp_V80LL](../plots/slp_V80LL.svg)
 
 </details>
 
 <details>
-<summary>slp_V80LL</summary>
+<summary>slp_V80</summary>
 
-![slp_V80LL](../plots/slp_V80LL.svg)
+![slp_V80](../plots/slp_V80.svg)
 
 </details>
 
@@ -550,16 +550,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>ssm_V80</summary>
+<summary>ssm_V80LL</summary>
 
-![ssm_V80](../plots/ssm_V80.svg)
+![ssm_V80LL](../plots/ssm_V80LL.svg)
 
 </details>
 
 <details>
-<summary>ssm_V80LL</summary>
+<summary>ssm_V80</summary>
 
-![ssm_V80LL](../plots/ssm_V80LL.svg)
+![ssm_V80](../plots/ssm_V80.svg)
 
 </details>
 
@@ -585,16 +585,16 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>tcn_V80</summary>
+<summary>tcn_V80LL</summary>
 
-![tcn_V80](../plots/tcn_V80.svg)
+![tcn_V80LL](../plots/tcn_V80LL.svg)
 
 </details>
 
 <details>
-<summary>tcn_V80LL</summary>
+<summary>tcn_V80</summary>
 
-![tcn_V80LL](../plots/tcn_V80LL.svg)
+![tcn_V80](../plots/tcn_V80.svg)
 
 </details>
 
@@ -620,15 +620,15 @@ Click to expand each plot:
 </details>
 
 <details>
-<summary>wavenet_V80</summary>
+<summary>wavenet_V80LL</summary>
 
-![wavenet_V80](../plots/wavenet_V80.svg)
+![wavenet_V80LL](../plots/wavenet_V80LL.svg)
 
 </details>
 
 <details>
-<summary>wavenet_V80LL</summary>
+<summary>wavenet_V80</summary>
 
-![wavenet_V80LL](../plots/wavenet_V80LL.svg)
+![wavenet_V80](../plots/wavenet_V80.svg)
 
 </details>
