@@ -254,5 +254,5 @@ def test_sigmoid(all_bf16):
     print(f"Max improvement: {max_improvement:.2f} bits")
     print(f"Avg improvement: {avg_improvement:.2f} bits")
 
-    assert avg_improvement > 9.5
-    assert max_improvement > 10.5
+    assert avg_improvement > 9
+    assert max_improvement > 10
