@@ -91,12 +91,14 @@ class _Step(nn.Module):
         n = torch.tanh(n)
 
         if self.fp32:
-            # High precsision for the update gate (multiplies fp32 h)
-            z = sigmoid_bf16_hi(z)
+            # Using: sigmoid(-x) = 1 - sigmoid(x)
+
+            one_minus_z = torch.sigmoid(-z)
+
+            with vollo_torch.Fp32Activations():
+                h = one_minus_z * n + (1 - one_minus_z) * h
         else:
             z = torch.sigmoid(z)
-
-        with self.context():
             h = (1 - z) * n + z * h
 
         return h, h
