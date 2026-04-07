@@ -1,14 +1,11 @@
 from functools import cache
-from typing import Optional
 
 import pytest
 import torch
-import torch.nn.functional as F
 from beartype import beartype
 from torch.utils.cpp_extension import load_inline
 from vollo_torch import Fp32Activations
 
-from vollo_model_zoo.models.gru import recip_f32, sigmoid_bf16_hi
 from vollo_model_zoo.vm import vollo_fn
 
 _MANTISSA = 23
@@ -79,55 +76,6 @@ def round_mantisa(x: torch.Tensor, n: int, trunc=False):
     return x.to(device=device)
 
 
-def lookup(
-    x: torch.Tensor, fn, i_bits: Optional[int] = None, f_bits: int = 7, o_bits: int = 23
-) -> torch.Tensor:
-    """
-    Evaluate fn on x emulating a vollo-esc lookup table.
-
-    - Arguments:
-
-        fn: is (Tensor -> Tensor), input is float64, output will be cast to float32.
-
-        i_bits: number of bits for the integer part
-        f_bits: number of bits for the fractional part
-        o_bits: number of bits for the output mantissa (max 23)
-    """
-
-    kwargs = dict(
-        dtype=x.dtype,
-        device=x.device,
-    )
-
-    # Emulate n-bit fractional representation
-    x = x.to(device="cpu", dtype=torch.float64)
-    x = x * (2**f_bits)
-    x = x.round()
-    x = x / (2**f_bits)
-
-    if i_bits is not None:
-        assert torch.all(x.abs() < 2**i_bits)
-
-    # Full precision fn on emulated fixed point
-    x = fn(x)
-
-    # Post-rounding (emulate bfN in look up table)
-    x = x.to(torch.float32)
-    x = round_mantisa(x, n=o_bits)
-    x = x.to(**kwargs)
-
-    return x
-
-
-def sigmoid(x: torch.Tensor) -> torch.Tensor:
-    """
-    A pytorch approximation of Vollo's bf16 sigmoid function. This has a
-    similar average error but slightly lower max error than vollo. This
-    function is not compilable with Vollo.
-    """
-    return 0.5 * (lookup(x * 0.5, fn=F.tanh, f_bits=7, o_bits=23) + 1)
-
-
 @pytest.fixture(scope="module")
 @beartype
 def all_bf16() -> torch.Tensor:
@@ -177,6 +125,24 @@ def test_exp(all_bf16):
     assert vollo_avg < ref[24][1]
 
 
+def recip_f32(x):
+    """
+    Given an f32 input, x, compute 1/x to almost full precision. This should be
+    called outside of the Fp32Activation context.
+    """
+    # Now we want to compute 1 / z, this is a bf16 approx hence, ~6 bits of
+    # mantissa precision
+    y = 1 / x
+
+    with Fp32Activations():
+        # Newton-Raphson to compute reciprocal in fp32, converges quadratically
+        # so 6 -> 12 -> 24 mantissa bits
+        y = y * (2 - x * y)
+        y = y * (2 - x * y)
+
+    return y
+
+
 def test_recip(all_bf16):
     x = torch.cat([all_bf16, torch.linspace(100, 100, steps=16_000)])
     x = x[x.abs() > 0.01]
@@ -203,6 +169,28 @@ def test_recip(all_bf16):
     assert vollo_avg <= ref[31][1]
 
 
+def sigmoid_bf16_hi(x):
+    """
+    Compute sigmoid to approximately bf26 precision for bf16 inputs. This
+    function _is_ compilable with Vollo. It should be called _outside_ of the
+    Fp32Activations context.
+
+    WARNING: for general fp32 inputs this is only bf18 precision.
+    """
+    # Prevent exp -> inf overflow
+    x = -torch.clamp(x, min=-20)
+
+    with Fp32Activations():
+        # Precision of z is ~ bf25, this is effectively "full precision" for
+        # bf16 inputs so the following reciprocal is exact. However, for fp32
+        # inputs this has ~ 7 bits of error hence, when we do the Newton
+        # iterations this compounds to ~14 bits of error which results in only
+        # 18 bits of precision.
+        z = 1.0 + torch.exp(x)
+
+    return recip_f32(z)
+
+
 def test_sigmoid(all_bf16):
     # Don't accidentally modify
     x = all_bf16.clone()
@@ -217,17 +205,7 @@ def test_sigmoid(all_bf16):
         ref_avg = (y_ref_f32 - y_ref_bn).abs().sum()
         print(f"Ideal bf{n} error: {ref_max:.5e}, {ref_avg:.5e}")
 
-    # === The python table approximation
-
-    y_vol_approx = sigmoid(x)
-
-    assert y_vol_approx.isfinite().all()
-
-    approx_max = (y_ref_f32 - y_vol_approx).abs().max()
-    approx_avg = (y_ref_f32 - y_vol_approx).abs().sum()
-    print(f"LuT'd bf16 error: {approx_max:.5e}, {approx_avg:.5e}")
-
-    # === bf16 sigmoid
+    # === bf16 sigmoid on vollo
 
     y_vol_b16 = vollo_fn(torch.sigmoid, "V80")(x).to(torch.float32)
 
