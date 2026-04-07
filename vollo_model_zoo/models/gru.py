@@ -91,7 +91,8 @@ class _Step(nn.Module):
         n = torch.tanh(n)
 
         if self.fp32:
-            # Using: sigmoid(-x) = 1 - sigmoid(x)
+            # Using: sigmoid(-x) = 1 - sigmoid(x), we prioritise accuracy of h
+            # when z is close to 1.
 
             one_minus_z = torch.sigmoid(-z)
 
