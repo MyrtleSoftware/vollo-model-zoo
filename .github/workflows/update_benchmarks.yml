@@ -65,7 +65,16 @@ jobs:
 
       - name: Install dependencies
         if: steps.check-version.outputs.should_update == 'true'
-        run: uv sync --all-extras --dev --reinstall-package vollo-compiler --reinstall-package vollo-torch
+        run: |
+          uv sync --all-extras --dev \
+            --upgrade-package vollo-compiler \
+            --upgrade-package vollo-torch \
+            --reinstall-package vollo-compiler \
+            --reinstall-package vollo-torch
+
+      - name: Check versions
+        if: steps.check-version.outputs.should_update == 'true'
+        run: uv pip list
 
       - name: Run benchmarks
         if: steps.check-version.outputs.should_update == 'true'
@@ -101,3 +110,7 @@ jobs:
           branch: "automation/update-benchmarks-${{ steps.vollo-version.outputs.version }}"
           base: main
           delete-branch: true
+          add-paths: |
+            benchmarks/README.md
+            benchmarks/*.json
+            plots/*.svg
