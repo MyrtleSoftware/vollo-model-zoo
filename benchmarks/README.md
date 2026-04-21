@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (version 27.0.0)
+# Vollo Model Zoo Benchmarks (version 27.0.1)
 
 Compute latency for an approximately 1-million parameter model.
 
@@ -8,8 +8,8 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 2.64 | 2.76 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.14 | 1.52 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| wavenet | 2.60 | 2.70 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.12 | 1.51 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | ssm | 0.81 | 0.89 | dim=576, hidden=448 |
 | slp | 0.86 | 0.87 | input=1024, output=1024, activation=ReLU |
 | resmlp | 6.83 | 6.83 | dim=160, patches=9, layers=5, activation=ReLU |
@@ -28,8 +28,8 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 2.90 | 3.04 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.25 | 1.67 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| wavenet | 2.86 | 2.97 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.24 | 1.66 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | ssm | 0.89 | 0.98 | dim=576, hidden=448 |
 | slp | 0.95 | 0.95 | input=1024, output=1024, activation=ReLU |
 | resmlp | 7.51 | 7.52 | dim=160, patches=9, layers=5, activation=ReLU |
@@ -48,8 +48,8 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 3.06 | 3.12 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.31 | 1.70 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| wavenet | 3.02 | 3.13 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.30 | 1.70 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | ssm | 0.87 | 0.96 | dim=576, hidden=448 |
 | slp | 0.91 | 0.91 | input=1024, output=1024, activation=ReLU |
 | resmlp | 12.40 | 12.40 | dim=160, patches=9, layers=5, activation=ReLU |
@@ -82,14 +82,14 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | lstm | 0.59 | 0.61 | layers=2, hidden_size=250 |
 | gru | 0.70 | 1.09 | fp32=False, input=512, hidden=384, layers=1 |
 | ffn-swiglu | 1.23 | 1.24 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn | 1.61 | 3.07 | layers=4, channels=64, kernel_size=64 |
+| cnn | 1.61 | 3.06 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: IA-420f
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 3.06 | 3.12 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.31 | 1.70 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| wavenet | 3.02 | 3.13 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.30 | 1.70 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | ssm | 0.87 | 0.96 | dim=576, hidden=448 |
 | slp | 0.91 | 0.91 | input=1024, output=1024, activation=ReLU |
 | resmlp | 12.40 | 12.40 | dim=160, patches=9, layers=5, activation=ReLU |
