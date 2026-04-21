@@ -66,12 +66,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.check-version.outputs.should_update == 'true'
-        run: |
-          VERSION=${{ steps.vollo-version.outputs.version }}
-          VER_NUM=${VERSION#v}
-          uv sync --all-extras --dev \
-            --reinstall-package "vollo-compiler==${VER_NUM}" \
-            --reinstall-package "vollo-torch==${VER_NUM}"
+        run: uv sync --all-extras --dev --reinstall-package vollo-compiler --reinstall-package vollo-torch
 
       - name: Check versions
         if: steps.check-version.outputs.should_update == 'true'
