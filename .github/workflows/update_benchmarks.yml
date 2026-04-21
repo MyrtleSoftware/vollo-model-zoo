@@ -110,3 +110,7 @@ jobs:
           branch: "automation/update-benchmarks-${{ steps.vollo-version.outputs.version }}"
           base: main
           delete-branch: true
+          add-paths: |
+            benchmarks/README.md
+            benchmarks/*.json
+            plots/*.svg
