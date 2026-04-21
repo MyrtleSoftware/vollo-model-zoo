@@ -73,6 +73,10 @@ jobs:
             --reinstall-package "vollo-compiler==${VER_NUM}" \
             --reinstall-package "vollo-torch==${VER_NUM}"
 
+      - name: Check versions
+        if: steps.check-version.outputs.should_update == 'true'
+        run: uv pip list
+
       - name: Run benchmarks
         if: steps.check-version.outputs.should_update == 'true'
         run: |
