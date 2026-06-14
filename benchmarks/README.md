@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (version 27.1.0)
+# Vollo Model Zoo Benchmarks (version 28.0.0)
 
 Compute latency for an approximately 1-million parameter model.
 
@@ -8,60 +8,60 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 2.60 | 2.70 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.12 | 1.51 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.81 | 0.89 | dim=576, hidden=448 |
+| wavenet | 2.51 | 2.63 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.12 | 1.47 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| ssm | 0.70 | 0.71 | dim=576, hidden=448 |
 | slp | 0.86 | 0.87 | input=1024, output=1024, activation=ReLU |
 | resmlp | 6.77 | 6.78 | dim=160, patches=9, layers=5, activation=ReLU |
 | moe | 0.89 | 0.89 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 9.26 | 9.27 | width_mult=0.42 |
+| mobilenet | 9.30 | 9.31 | width_mult=0.42 |
 | mlp-res-rms | 1.62 | 1.62 | dim=320, hidden=768, activation=relu |
 | mlp | 1.31 | 1.31 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.13 | 10.30 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 2.63 | 3.03 | dim=384, state=12, layers=1 |
+| mamba2 | 2.09 | 5.34 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 2.83 | 3.23 | dim=384, state=12, layers=1 |
 | lstm | 0.75 | 0.96 | layers=2, hidden_size=250 |
-| gru | 0.82 | 1.15 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.47 | 1.48 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| gru | 0.83 | 1.09 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.30 | 1.30 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.43 | 4.38 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: V80
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 2.86 | 2.97 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.24 | 1.66 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.89 | 0.98 | dim=576, hidden=448 |
+| wavenet | 2.76 | 2.89 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.23 | 1.62 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| ssm | 0.77 | 0.78 | dim=576, hidden=448 |
 | slp | 0.95 | 0.95 | input=1024, output=1024, activation=ReLU |
 | resmlp | 7.45 | 7.45 | dim=160, patches=9, layers=5, activation=ReLU |
 | moe | 0.98 | 0.98 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.19 | 10.19 | width_mult=0.42 |
+| mobilenet | 10.23 | 10.24 | width_mult=0.42 |
 | mlp-res-rms | 1.78 | 1.78 | dim=320, hidden=768, activation=relu |
 | mlp | 1.44 | 1.44 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.34 | 11.33 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 2.90 | 3.34 | dim=384, state=12, layers=1 |
+| mamba2 | 2.30 | 5.87 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 3.11 | 3.55 | dim=384, state=12, layers=1 |
 | lstm | 0.82 | 1.06 | layers=2, hidden_size=250 |
-| gru | 0.90 | 1.27 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.62 | 1.62 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| gru | 0.92 | 1.20 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.43 | 1.43 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.58 | 4.82 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: NT400D11
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 3.02 | 3.13 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.30 | 1.70 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.87 | 0.96 | dim=576, hidden=448 |
+| wavenet | 2.93 | 3.02 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.24 | 1.62 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| ssm | 0.74 | 0.74 | dim=576, hidden=448 |
 | slp | 0.91 | 0.91 | input=1024, output=1024, activation=ReLU |
-| resmlp | 12.40 | 12.40 | dim=160, patches=9, layers=5, activation=ReLU |
+| resmlp | 16.09 | 16.10 | dim=160, patches=9, layers=5, activation=ReLU |
 | moe | 1.18 | 1.19 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.90 | 10.91 | width_mult=0.42 |
+| mobilenet | 10.90 | 10.96 | width_mult=0.42 |
 | mlp-res-rms | 1.82 | 1.83 | dim=320, hidden=768, activation=relu |
 | mlp | 1.48 | 1.48 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.34 | 10.87 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 2.91 | 3.33 | dim=384, state=12, layers=1 |
+| mamba2 | 2.25 | 6.76 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 3.04 | 3.52 | dim=384, state=12, layers=1 |
 | lstm | 0.81 | 1.02 | layers=2, hidden_size=250 |
-| gru | 0.86 | 2.16 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.60 | 1.60 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| gru | 0.88 | 1.17 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.45 | 1.46 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.63 | 3.07 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: IA-840f
@@ -70,38 +70,38 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | ----- | ------------ | ------------------------ | -------- |
 | wavenet | 2.55 | 2.56 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.03 | 1.58 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.64 | 0.69 | dim=576, hidden=448 |
+| ssm | 0.52 | 0.53 | dim=576, hidden=448 |
 | slp | 0.56 | 0.57 | input=1024, output=1024, activation=ReLU |
 | resmlp | 5.03 | 5.04 | dim=160, patches=9, layers=5, activation=ReLU |
 | moe | 0.69 | 0.70 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.12 | 10.23 | width_mult=0.42 |
 | mlp-res-rms | 1.53 | 1.53 | dim=320, hidden=768, activation=relu |
 | mlp | 1.27 | 1.28 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.04 | 7.78 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 2.13 | 2.53 | dim=384, state=12, layers=1 |
+| mamba2 | 2.06 | 7.79 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 2.33 | 2.77 | dim=384, state=12, layers=1 |
 | lstm | 0.59 | 0.61 | layers=2, hidden_size=250 |
-| gru | 0.70 | 1.09 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.18 | 1.18 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| gru | 0.68 | 0.88 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.16 | 1.16 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.61 | 3.06 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: IA-420f
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 3.02 | 3.13 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.30 | 1.70 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| ssm | 0.87 | 0.96 | dim=576, hidden=448 |
+| wavenet | 2.93 | 3.02 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.24 | 1.62 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| ssm | 0.74 | 0.74 | dim=576, hidden=448 |
 | slp | 0.91 | 0.91 | input=1024, output=1024, activation=ReLU |
-| resmlp | 12.40 | 12.40 | dim=160, patches=9, layers=5, activation=ReLU |
+| resmlp | 16.09 | 16.10 | dim=160, patches=9, layers=5, activation=ReLU |
 | moe | 1.18 | 1.19 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.90 | 10.91 | width_mult=0.42 |
+| mobilenet | 10.90 | 10.96 | width_mult=0.42 |
 | mlp-res-rms | 1.82 | 1.83 | dim=320, hidden=768, activation=relu |
 | mlp | 1.48 | 1.48 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.34 | 10.87 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 2.91 | 3.33 | dim=384, state=12, layers=1 |
+| mamba2 | 2.25 | 6.76 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 3.04 | 3.52 | dim=384, state=12, layers=1 |
 | lstm | 0.81 | 1.02 | layers=2, hidden_size=250 |
-| gru | 0.86 | 2.16 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.60 | 1.60 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| gru | 0.88 | 1.17 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.45 | 1.46 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.63 | 3.07 | layers=4, channels=64, kernel_size=64 |
 
 ## Performance over time
