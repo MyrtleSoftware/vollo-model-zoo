@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (version 28.0.0)
+# Vollo Model Zoo Benchmarks (version 28.1.0)
 
 Compute latency for an approximately 1-million parameter model.
 
