@@ -1,0 +1,6337 @@
+{
+  "28.1.0": {
+    "cnn": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 131584,
+            "cycle_count": 473,
+            "latency_spaced": {
+              "microseconds": 1.5766667127609253
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8366667032241821
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 524800,
+            "cycle_count": 473,
+            "latency_spaced": {
+              "microseconds": 1.5766667127609253
+            },
+            "latency_contiguous": {
+              "microseconds": 3.116666555404663
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1049088,
+            "cycle_count": 473,
+            "latency_spaced": {
+              "microseconds": 1.5766667127609253
+            },
+            "latency_contiguous": {
+              "microseconds": 4.823333263397217
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 8390656,
+            "cycle_count": 603,
+            "latency_spaced": {
+              "microseconds": 2.009999990463257
+            },
+            "latency_contiguous": {
+              "microseconds": 8.510000228881836
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 256,
+              "kernel_size": 32
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 131584,
+            "cycle_count": 473,
+            "latency_spaced": {
+              "microseconds": 1.4333332777023315
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6696969270706177
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 524800,
+            "cycle_count": 473,
+            "latency_spaced": {
+              "microseconds": 1.4333332777023315
+            },
+            "latency_contiguous": {
+              "microseconds": 2.8333332538604736
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1049088,
+            "cycle_count": 473,
+            "latency_spaced": {
+              "microseconds": 1.4333332777023315
+            },
+            "latency_contiguous": {
+              "microseconds": 4.384848594665527
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 8390656,
+            "cycle_count": 603,
+            "latency_spaced": {
+              "microseconds": 1.8272727727890015
+            },
+            "latency_contiguous": {
+              "microseconds": 7.736363410949707
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 256,
+              "kernel_size": 32
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 131584,
+            "cycle_count": 517,
+            "latency_spaced": {
+              "microseconds": 1.615625023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.859375
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 524800,
+            "cycle_count": 519,
+            "latency_spaced": {
+              "microseconds": 1.6218750476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 3.0531249046325684
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1049088,
+            "cycle_count": 523,
+            "latency_spaced": {
+              "microseconds": 1.634374976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 3.065624952316284
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 131584,
+            "cycle_count": 516,
+            "latency_spaced": {
+              "microseconds": 1.6124999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.65625
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 524800,
+            "cycle_count": 516,
+            "latency_spaced": {
+              "microseconds": 1.6124999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 2.2562499046325684
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1049088,
+            "cycle_count": 516,
+            "latency_spaced": {
+              "microseconds": 1.6124999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 3.0562500953674316
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 131584,
+            "cycle_count": 517,
+            "latency_spaced": {
+              "microseconds": 1.615625023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.859375
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 524800,
+            "cycle_count": 519,
+            "latency_spaced": {
+              "microseconds": 1.6218750476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 3.0531249046325684
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 32
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1049088,
+            "cycle_count": 523,
+            "latency_spaced": {
+              "microseconds": 1.634374976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 3.065624952316284
+            },
+            "meta": {
+              "layers": 4,
+              "channels": 64,
+              "kernel_size": 64
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "ffn-swiglu": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 442560,
+            "cycle_count": 346,
+            "latency_spaced": {
+              "microseconds": 1.153333306312561
+            },
+            "latency_contiguous": {
+              "microseconds": 1.15666663646698
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 442560,
+            "cycle_count": 306,
+            "latency_spaced": {
+              "microseconds": 1.0199999809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0233333110809326
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 995616,
+            "cycle_count": 429,
+            "latency_spaced": {
+              "microseconds": 1.4299999475479126
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4333332777023315
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 995616,
+            "cycle_count": 408,
+            "latency_spaced": {
+              "microseconds": 1.3600000143051147
+            },
+            "latency_contiguous": {
+              "microseconds": 1.3633333444595337
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1769856,
+            "cycle_count": 552,
+            "latency_spaced": {
+              "microseconds": 1.840000033378601
+            },
+            "latency_contiguous": {
+              "microseconds": 1.84333336353302
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1769856,
+            "cycle_count": 518,
+            "latency_spaced": {
+              "microseconds": 1.7266666889190674
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7300000190734863
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 442560,
+            "cycle_count": 346,
+            "latency_spaced": {
+              "microseconds": 1.0484848022460938
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0515151023864746
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 442560,
+            "cycle_count": 306,
+            "latency_spaced": {
+              "microseconds": 0.9272727370262146
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9303030371665955
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 995616,
+            "cycle_count": 429,
+            "latency_spaced": {
+              "microseconds": 1.2999999523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.303030252456665
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 995616,
+            "cycle_count": 408,
+            "latency_spaced": {
+              "microseconds": 1.2363636493682861
+            },
+            "latency_contiguous": {
+              "microseconds": 1.239393949508667
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1769856,
+            "cycle_count": 552,
+            "latency_spaced": {
+              "microseconds": 1.6727272272109985
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6757575273513794
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1769856,
+            "cycle_count": 518,
+            "latency_spaced": {
+              "microseconds": 1.5696970224380493
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5727273225784302
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 442560,
+            "cycle_count": 389,
+            "latency_spaced": {
+              "microseconds": 1.2156250476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.21875
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 442560,
+            "cycle_count": 345,
+            "latency_spaced": {
+              "microseconds": 1.078125
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0812499523162842
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 995616,
+            "cycle_count": 465,
+            "latency_spaced": {
+              "microseconds": 1.453125
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4562499523162842
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 995616,
+            "cycle_count": 431,
+            "latency_spaced": {
+              "microseconds": 1.3468749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.350000023841858
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1769856,
+            "cycle_count": 578,
+            "latency_spaced": {
+              "microseconds": 1.806249976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8093750476837158
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1769856,
+            "cycle_count": 544,
+            "latency_spaced": {
+              "microseconds": 1.7000000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.703125
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 442560,
+            "cycle_count": 316,
+            "latency_spaced": {
+              "microseconds": 0.987500011920929
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9906250238418579
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 442560,
+            "cycle_count": 292,
+            "latency_spaced": {
+              "microseconds": 0.9125000238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9156249761581421
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 995616,
+            "cycle_count": 371,
+            "latency_spaced": {
+              "microseconds": 1.1593749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.162500023841858
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 995616,
+            "cycle_count": 343,
+            "latency_spaced": {
+              "microseconds": 1.071874976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0750000476837158
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1769856,
+            "cycle_count": 426,
+            "latency_spaced": {
+              "microseconds": 1.3312499523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.334375023841858
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1769856,
+            "cycle_count": 388,
+            "latency_spaced": {
+              "microseconds": 1.212499976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2156250476837158
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 442560,
+            "cycle_count": 389,
+            "latency_spaced": {
+              "microseconds": 1.2156250476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.21875
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 442560,
+            "cycle_count": 345,
+            "latency_spaced": {
+              "microseconds": 1.078125
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0812499523162842
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 768,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 995616,
+            "cycle_count": 465,
+            "latency_spaced": {
+              "microseconds": 1.453125
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4562499523162842
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 995616,
+            "cycle_count": 431,
+            "latency_spaced": {
+              "microseconds": 1.3468749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.350000023841858
+            },
+            "meta": {
+              "dim": 288,
+              "hidden": 1152,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1769856,
+            "cycle_count": 578,
+            "latency_spaced": {
+              "microseconds": 1.806249976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8093750476837158
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": true
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1769856,
+            "cycle_count": 544,
+            "latency_spaced": {
+              "microseconds": 1.7000000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.703125
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 1536,
+              "activation": "SwiGLU",
+              "fused": false
+            }
+          }
+        }
+      ]
+    },
+    "gru": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1034496,
+            "cycle_count": 275,
+            "latency_spaced": {
+              "microseconds": 0.9166666865348816
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2000000476837158
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1034496,
+            "cycle_count": 312,
+            "latency_spaced": {
+              "microseconds": 1.0399999618530273
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2366666793823242
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1575936,
+            "cycle_count": 324,
+            "latency_spaced": {
+              "microseconds": 1.0800000429153442
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5533332824707031
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1575936,
+            "cycle_count": 359,
+            "latency_spaced": {
+              "microseconds": 1.1966667175292969
+            },
+            "latency_contiguous": {
+              "microseconds": 1.653333306312561
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 4727808,
+            "cycle_count": 836,
+            "latency_spaced": {
+              "microseconds": 2.7866666316986084
+            },
+            "latency_contiguous": {
+              "microseconds": 4.083333492279053
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 3
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 4727808,
+            "cycle_count": 961,
+            "latency_spaced": {
+              "microseconds": 3.2033333778381348
+            },
+            "latency_contiguous": {
+              "microseconds": 4.539999961853027
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 512,
+              "layers": 3
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1034496,
+            "cycle_count": 275,
+            "latency_spaced": {
+              "microseconds": 0.8333333134651184
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0909091234207153
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1034496,
+            "cycle_count": 312,
+            "latency_spaced": {
+              "microseconds": 0.9454545378684998
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1242424249649048
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1575936,
+            "cycle_count": 324,
+            "latency_spaced": {
+              "microseconds": 0.9818181991577148
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4121211767196655
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1575936,
+            "cycle_count": 359,
+            "latency_spaced": {
+              "microseconds": 1.0878788232803345
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5030303001403809
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 4727808,
+            "cycle_count": 836,
+            "latency_spaced": {
+              "microseconds": 2.5333333015441895
+            },
+            "latency_contiguous": {
+              "microseconds": 3.7121212482452393
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 3
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 4727808,
+            "cycle_count": 961,
+            "latency_spaced": {
+              "microseconds": 2.912121295928955
+            },
+            "latency_contiguous": {
+              "microseconds": 4.127272605895996
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 512,
+              "layers": 3
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1034496,
+            "cycle_count": 282,
+            "latency_spaced": {
+              "microseconds": 0.8812500238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1687500476837158
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1034496,
+            "cycle_count": 318,
+            "latency_spaced": {
+              "microseconds": 0.9937499761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 1.178125023841858
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1575936,
+            "cycle_count": 329,
+            "latency_spaced": {
+              "microseconds": 1.0281250476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4874999523162842
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1575936,
+            "cycle_count": 365,
+            "latency_spaced": {
+              "microseconds": 1.140625
+            },
+            "latency_contiguous": {
+              "microseconds": 1.568750023841858
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1034496,
+            "cycle_count": 218,
+            "latency_spaced": {
+              "microseconds": 0.6812499761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.875
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1034496,
+            "cycle_count": 240,
+            "latency_spaced": {
+              "microseconds": 0.75
+            },
+            "latency_contiguous": {
+              "microseconds": 0.971875011920929
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1575936,
+            "cycle_count": 240,
+            "latency_spaced": {
+              "microseconds": 0.75
+            },
+            "latency_contiguous": {
+              "microseconds": 1.03125
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1575936,
+            "cycle_count": 264,
+            "latency_spaced": {
+              "microseconds": 0.824999988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 1.134374976158142
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 4727808,
+            "cycle_count": 614,
+            "latency_spaced": {
+              "microseconds": 1.9187500476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 2.4124999046325684
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 3
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 4727808,
+            "cycle_count": 678,
+            "latency_spaced": {
+              "microseconds": 2.1187500953674316
+            },
+            "latency_contiguous": {
+              "microseconds": 2.84375
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 512,
+              "layers": 3
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1034496,
+            "cycle_count": 282,
+            "latency_spaced": {
+              "microseconds": 0.8812500238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1687500476837158
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1034496,
+            "cycle_count": 318,
+            "latency_spaced": {
+              "microseconds": 0.9937499761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 1.178125023841858
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 384,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1575936,
+            "cycle_count": 329,
+            "latency_spaced": {
+              "microseconds": 1.0281250476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4874999523162842
+            },
+            "meta": {
+              "fp32": false,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1575936,
+            "cycle_count": 365,
+            "latency_spaced": {
+              "microseconds": 1.140625
+            },
+            "latency_contiguous": {
+              "microseconds": 1.568750023841858
+            },
+            "meta": {
+              "fp32": true,
+              "input": 512,
+              "hidden": 512,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "lstm": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 132096,
+            "cycle_count": 98,
+            "latency_spaced": {
+              "microseconds": 0.3266666531562805
+            },
+            "latency_contiguous": {
+              "microseconds": 0.3400000035762787
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1005360,
+            "cycle_count": 185,
+            "latency_spaced": {
+              "microseconds": 0.6166666746139526
+            },
+            "latency_contiguous": {
+              "microseconds": 0.846666693687439
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1004000,
+            "cycle_count": 246,
+            "latency_spaced": {
+              "microseconds": 0.8199999928474426
+            },
+            "latency_contiguous": {
+              "microseconds": 1.059999942779541
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1008192,
+            "cycle_count": 327,
+            "latency_spaced": {
+              "microseconds": 1.090000033378601
+            },
+            "latency_contiguous": {
+              "microseconds": 1.34333336353302
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 14174208,
+            "cycle_count": 1251,
+            "latency_spaced": {
+              "microseconds": 4.170000076293945
+            },
+            "latency_contiguous": {
+              "microseconds": 7.756666660308838
+            },
+            "meta": {
+              "layers": 3,
+              "hidden_size": 768
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 132096,
+            "cycle_count": 98,
+            "latency_spaced": {
+              "microseconds": 0.2969697117805481
+            },
+            "latency_contiguous": {
+              "microseconds": 0.30909091234207153
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1005360,
+            "cycle_count": 185,
+            "latency_spaced": {
+              "microseconds": 0.560606062412262
+            },
+            "latency_contiguous": {
+              "microseconds": 0.7696969509124756
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1004000,
+            "cycle_count": 246,
+            "latency_spaced": {
+              "microseconds": 0.7454545497894287
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9636363387107849
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1008192,
+            "cycle_count": 327,
+            "latency_spaced": {
+              "microseconds": 0.9909090995788574
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2212121486663818
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 14174208,
+            "cycle_count": 1251,
+            "latency_spaced": {
+              "microseconds": 3.7909090518951416
+            },
+            "latency_contiguous": {
+              "microseconds": 7.051515102386475
+            },
+            "meta": {
+              "layers": 3,
+              "hidden_size": 768
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 132096,
+            "cycle_count": 103,
+            "latency_spaced": {
+              "microseconds": 0.3218750059604645
+            },
+            "latency_contiguous": {
+              "microseconds": 0.3343749940395355
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1005360,
+            "cycle_count": 190,
+            "latency_spaced": {
+              "microseconds": 0.59375
+            },
+            "latency_contiguous": {
+              "microseconds": 0.8218749761581421
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1004000,
+            "cycle_count": 260,
+            "latency_spaced": {
+              "microseconds": 0.8125
+            },
+            "latency_contiguous": {
+              "microseconds": 1.021875023841858
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1008192,
+            "cycle_count": 347,
+            "latency_spaced": {
+              "microseconds": 1.084375023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.306249976158142
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 132096,
+            "cycle_count": 95,
+            "latency_spaced": {
+              "microseconds": 0.296875
+            },
+            "latency_contiguous": {
+              "microseconds": 0.30000001192092896
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1005360,
+            "cycle_count": 138,
+            "latency_spaced": {
+              "microseconds": 0.4312500059604645
+            },
+            "latency_contiguous": {
+              "microseconds": 0.528124988079071
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1004000,
+            "cycle_count": 188,
+            "latency_spaced": {
+              "microseconds": 0.5874999761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.609375
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1008192,
+            "cycle_count": 308,
+            "latency_spaced": {
+              "microseconds": 0.9624999761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9906250238418579
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 132096,
+            "cycle_count": 103,
+            "latency_spaced": {
+              "microseconds": 0.3218750059604645
+            },
+            "latency_contiguous": {
+              "microseconds": 0.3343749940395355
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 128
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1005360,
+            "cycle_count": 190,
+            "latency_spaced": {
+              "microseconds": 0.59375
+            },
+            "latency_contiguous": {
+              "microseconds": 0.8218749761581421
+            },
+            "meta": {
+              "layers": 1,
+              "hidden_size": 354
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1004000,
+            "cycle_count": 260,
+            "latency_spaced": {
+              "microseconds": 0.8125
+            },
+            "latency_contiguous": {
+              "microseconds": 1.021875023841858
+            },
+            "meta": {
+              "layers": 2,
+              "hidden_size": 250
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1008192,
+            "cycle_count": 347,
+            "latency_spaced": {
+              "microseconds": 1.084375023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.306249976158142
+            },
+            "meta": {
+              "layers": 4,
+              "hidden_size": 177
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "mamba1": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 240000,
+            "cycle_count": 471,
+            "latency_spaced": {
+              "microseconds": 1.5700000524520874
+            },
+            "latency_contiguous": {
+              "microseconds": 1.746666669845581
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 954624,
+            "cycle_count": 934,
+            "latency_spaced": {
+              "microseconds": 3.113333225250244
+            },
+            "latency_contiguous": {
+              "microseconds": 3.553333282470703
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1909248,
+            "cycle_count": 1816,
+            "latency_spaced": {
+              "microseconds": 6.053333282470703
+            },
+            "latency_contiguous": {
+              "microseconds": 6.980000019073486
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 6715392,
+            "cycle_count": 3444,
+            "latency_spaced": {
+              "microseconds": 11.479999542236328
+            },
+            "latency_contiguous": {
+              "microseconds": 13.386666297912598
+            },
+            "meta": {
+              "dim": 1024,
+              "state": 24,
+              "layers": 1
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 240000,
+            "cycle_count": 471,
+            "latency_spaced": {
+              "microseconds": 1.4272726774215698
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5878788232803345
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 954624,
+            "cycle_count": 934,
+            "latency_spaced": {
+              "microseconds": 2.8303029537200928
+            },
+            "latency_contiguous": {
+              "microseconds": 3.2303030490875244
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1909248,
+            "cycle_count": 1816,
+            "latency_spaced": {
+              "microseconds": 5.503030300140381
+            },
+            "latency_contiguous": {
+              "microseconds": 6.345454692840576
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 6715392,
+            "cycle_count": 3444,
+            "latency_spaced": {
+              "microseconds": 10.436363220214844
+            },
+            "latency_contiguous": {
+              "microseconds": 12.169696807861328
+            },
+            "meta": {
+              "dim": 1024,
+              "state": 24,
+              "layers": 1
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 240000,
+            "cycle_count": 510,
+            "latency_spaced": {
+              "microseconds": 1.59375
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7531249523162842
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 954624,
+            "cycle_count": 974,
+            "latency_spaced": {
+              "microseconds": 3.043750047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 3.5218749046325684
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1909248,
+            "cycle_count": 1926,
+            "latency_spaced": {
+              "microseconds": 6.018750190734863
+            },
+            "latency_contiguous": {
+              "microseconds": 6.884375095367432
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 240000,
+            "cycle_count": 463,
+            "latency_spaced": {
+              "microseconds": 1.446874976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6375000476837158
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 954624,
+            "cycle_count": 746,
+            "latency_spaced": {
+              "microseconds": 2.331249952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 2.768749952316284
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1909248,
+            "cycle_count": 1449,
+            "latency_spaced": {
+              "microseconds": 4.528124809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 5.3125
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 240000,
+            "cycle_count": 510,
+            "latency_spaced": {
+              "microseconds": 1.59375
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7531249523162842
+            },
+            "meta": {
+              "dim": 192,
+              "state": 6,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 954624,
+            "cycle_count": 974,
+            "latency_spaced": {
+              "microseconds": 3.043750047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 3.5218749046325684
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1909248,
+            "cycle_count": 1926,
+            "latency_spaced": {
+              "microseconds": 6.018750190734863
+            },
+            "latency_contiguous": {
+              "microseconds": 6.884375095367432
+            },
+            "meta": {
+              "dim": 384,
+              "state": 12,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "mamba2": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 988610,
+            "cycle_count": 689,
+            "latency_spaced": {
+              "microseconds": 2.2966666221618652
+            },
+            "latency_contiguous": {
+              "microseconds": 4.1566667556762695
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 988610,
+            "cycle_count": 685,
+            "latency_spaced": {
+              "microseconds": 2.2833333015441895
+            },
+            "latency_contiguous": {
+              "microseconds": 11.436666488647461
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1001570,
+            "cycle_count": 689,
+            "latency_spaced": {
+              "microseconds": 2.2966666221618652
+            },
+            "latency_contiguous": {
+              "microseconds": 5.87333345413208
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1001570,
+            "cycle_count": 685,
+            "latency_spaced": {
+              "microseconds": 2.2833333015441895
+            },
+            "latency_contiguous": {
+              "microseconds": 16.286666870117188
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1977220,
+            "cycle_count": 1334,
+            "latency_spaced": {
+              "microseconds": 4.446666717529297
+            },
+            "latency_contiguous": {
+              "microseconds": 8.550000190734863
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1977220,
+            "cycle_count": 1293,
+            "latency_spaced": {
+              "microseconds": 4.309999942779541
+            },
+            "latency_contiguous": {
+              "microseconds": 22.463333129882812
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3636128,
+            "cycle_count": 1226,
+            "latency_spaced": {
+              "microseconds": 4.086666584014893
+            },
+            "latency_contiguous": {
+              "microseconds": 19.963333129882812
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 768,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3636128,
+            "cycle_count": 1246,
+            "latency_spaced": {
+              "microseconds": 4.1533331871032715
+            },
+            "latency_contiguous": {
+              "microseconds": 13.8100004196167
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 768,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 988610,
+            "cycle_count": 689,
+            "latency_spaced": {
+              "microseconds": 2.087878704071045
+            },
+            "latency_contiguous": {
+              "microseconds": 3.778787851333618
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 988610,
+            "cycle_count": 685,
+            "latency_spaced": {
+              "microseconds": 2.0757575035095215
+            },
+            "latency_contiguous": {
+              "microseconds": 10.39696979522705
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1001570,
+            "cycle_count": 689,
+            "latency_spaced": {
+              "microseconds": 2.087878704071045
+            },
+            "latency_contiguous": {
+              "microseconds": 5.3393940925598145
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1001570,
+            "cycle_count": 685,
+            "latency_spaced": {
+              "microseconds": 2.0757575035095215
+            },
+            "latency_contiguous": {
+              "microseconds": 14.806060791015625
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1977220,
+            "cycle_count": 1334,
+            "latency_spaced": {
+              "microseconds": 4.042424201965332
+            },
+            "latency_contiguous": {
+              "microseconds": 7.7727274894714355
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1977220,
+            "cycle_count": 1293,
+            "latency_spaced": {
+              "microseconds": 3.918181896209717
+            },
+            "latency_contiguous": {
+              "microseconds": 20.42121124267578
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3636128,
+            "cycle_count": 1226,
+            "latency_spaced": {
+              "microseconds": 3.71515154838562
+            },
+            "latency_contiguous": {
+              "microseconds": 18.14848518371582
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 768,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3636128,
+            "cycle_count": 1246,
+            "latency_spaced": {
+              "microseconds": 3.7757575511932373
+            },
+            "latency_contiguous": {
+              "microseconds": 12.554545402526855
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 768,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 988610,
+            "cycle_count": 719,
+            "latency_spaced": {
+              "microseconds": 2.246875047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 4.543749809265137
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 988610,
+            "cycle_count": 731,
+            "latency_spaced": {
+              "microseconds": 2.284374952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 5.837500095367432
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1001570,
+            "cycle_count": 719,
+            "latency_spaced": {
+              "microseconds": 2.246875047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 6.759375095367432
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1001570,
+            "cycle_count": 731,
+            "latency_spaced": {
+              "microseconds": 2.284374952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 8.949999809265137
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1977220,
+            "cycle_count": 1407,
+            "latency_spaced": {
+              "microseconds": 4.396874904632568
+            },
+            "latency_contiguous": {
+              "microseconds": 8.365625381469727
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1977220,
+            "cycle_count": 1404,
+            "latency_spaced": {
+              "microseconds": 4.387499809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 11.040624618530273
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 988610,
+            "cycle_count": 659,
+            "latency_spaced": {
+              "microseconds": 2.059375047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 5.003125190734863
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 988610,
+            "cycle_count": 698,
+            "latency_spaced": {
+              "microseconds": 2.1812500953674316
+            },
+            "latency_contiguous": {
+              "microseconds": 13.184374809265137
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1001570,
+            "cycle_count": 659,
+            "latency_spaced": {
+              "microseconds": 2.059375047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 7.787499904632568
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1001570,
+            "cycle_count": 698,
+            "latency_spaced": {
+              "microseconds": 2.1812500953674316
+            },
+            "latency_contiguous": {
+              "microseconds": 16.28125
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1977220,
+            "cycle_count": 1263,
+            "latency_spaced": {
+              "microseconds": 3.9468750953674316
+            },
+            "latency_contiguous": {
+              "microseconds": 18.459375381469727
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1977220,
+            "cycle_count": 1343,
+            "latency_spaced": {
+              "microseconds": 4.196875095367432
+            },
+            "latency_contiguous": {
+              "microseconds": 25.125
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 3636128,
+            "cycle_count": 999,
+            "latency_spaced": {
+              "microseconds": 3.121875047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 12.362500190734863
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 768,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 988610,
+            "cycle_count": 719,
+            "latency_spaced": {
+              "microseconds": 2.246875047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 4.543749809265137
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 988610,
+            "cycle_count": 731,
+            "latency_spaced": {
+              "microseconds": 2.284374952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 5.837500095367432
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1001570,
+            "cycle_count": 719,
+            "latency_spaced": {
+              "microseconds": 2.246875047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 6.759375095367432
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1001570,
+            "cycle_count": 731,
+            "latency_spaced": {
+              "microseconds": 2.284374952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 8.949999809265137
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 32,
+              "layers": 1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1977220,
+            "cycle_count": 1407,
+            "latency_spaced": {
+              "microseconds": 4.396874904632568
+            },
+            "latency_contiguous": {
+              "microseconds": 8.365625381469727
+            },
+            "meta": {
+              "fp32": false,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1977220,
+            "cycle_count": 1404,
+            "latency_spaced": {
+              "microseconds": 4.387499809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 11.040624618530273
+            },
+            "meta": {
+              "fp32": true,
+              "dim": 400,
+              "state": 16,
+              "layers": 2
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "mlp": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 525312,
+            "cycle_count": 202,
+            "latency_spaced": {
+              "microseconds": 0.6733333468437195
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6766666769981384
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1034880,
+            "cycle_count": 431,
+            "latency_spaced": {
+              "microseconds": 1.4366666078567505
+            },
+            "latency_contiguous": {
+              "microseconds": 1.440000057220459
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1050624,
+            "cycle_count": 347,
+            "latency_spaced": {
+              "microseconds": 1.15666663646698
+            },
+            "latency_contiguous": {
+              "microseconds": 1.159999966621399
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3148800,
+            "cycle_count": 697,
+            "latency_spaced": {
+              "microseconds": 2.323333263397217
+            },
+            "latency_contiguous": {
+              "microseconds": 2.3266665935516357
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 525312,
+            "cycle_count": 202,
+            "latency_spaced": {
+              "microseconds": 0.6121212244033813
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6151515245437622
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1034880,
+            "cycle_count": 431,
+            "latency_spaced": {
+              "microseconds": 1.306060552597046
+            },
+            "latency_contiguous": {
+              "microseconds": 1.3090908527374268
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1050624,
+            "cycle_count": 347,
+            "latency_spaced": {
+              "microseconds": 1.0515151023864746
+            },
+            "latency_contiguous": {
+              "microseconds": 1.0545454025268555
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3148800,
+            "cycle_count": 697,
+            "latency_spaced": {
+              "microseconds": 2.112121105194092
+            },
+            "latency_contiguous": {
+              "microseconds": 2.1151514053344727
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 525312,
+            "cycle_count": 216,
+            "latency_spaced": {
+              "microseconds": 0.675000011920929
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6781250238418579
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1034880,
+            "cycle_count": 472,
+            "latency_spaced": {
+              "microseconds": 1.475000023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.478124976158142
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1050624,
+            "cycle_count": 379,
+            "latency_spaced": {
+              "microseconds": 1.1843750476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1875
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 3148800,
+            "cycle_count": 744,
+            "latency_spaced": {
+              "microseconds": 2.325000047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 2.328125
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 525312,
+            "cycle_count": 164,
+            "latency_spaced": {
+              "microseconds": 0.512499988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 0.515625
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1034880,
+            "cycle_count": 408,
+            "latency_spaced": {
+              "microseconds": 1.274999976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2781250476837158
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1050624,
+            "cycle_count": 288,
+            "latency_spaced": {
+              "microseconds": 0.8999999761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.903124988079071
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 3148800,
+            "cycle_count": 431,
+            "latency_spaced": {
+              "microseconds": 1.3468749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.350000023841858
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 525312,
+            "cycle_count": 216,
+            "latency_spaced": {
+              "microseconds": 0.675000011920929
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6781250238418579
+            },
+            "meta": {
+              "layers": 2,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1034880,
+            "cycle_count": 472,
+            "latency_spaced": {
+              "microseconds": 1.475000023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.478124976158142
+            },
+            "meta": {
+              "layers": 7,
+              "n_features": 384,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1050624,
+            "cycle_count": 379,
+            "latency_spaced": {
+              "microseconds": 1.1843750476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1875
+            },
+            "meta": {
+              "layers": 4,
+              "n_features": 512,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 3148800,
+            "cycle_count": 744,
+            "latency_spaced": {
+              "microseconds": 2.325000047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 2.328125
+            },
+            "meta": {
+              "layers": 3,
+              "n_features": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ]
+    },
+    "mlp-res-rms": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 533,
+            "latency_spaced": {
+              "microseconds": 1.7766666412353516
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7799999713897705
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 561,
+            "latency_spaced": {
+              "microseconds": 1.8700000047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8733333349227905
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 561,
+            "latency_spaced": {
+              "microseconds": 1.8700000047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8733333349227905
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 561,
+            "latency_spaced": {
+              "microseconds": 1.8700000047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8733333349227905
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 561,
+            "latency_spaced": {
+              "microseconds": 1.8700000047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8733333349227905
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 645,
+            "latency_spaced": {
+              "microseconds": 2.1500000953674316
+            },
+            "latency_contiguous": {
+              "microseconds": 2.1533334255218506
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 799,
+            "latency_spaced": {
+              "microseconds": 2.6633334159851074
+            },
+            "latency_contiguous": {
+              "microseconds": 2.6666667461395264
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 827,
+            "latency_spaced": {
+              "microseconds": 2.756666660308838
+            },
+            "latency_contiguous": {
+              "microseconds": 2.759999990463257
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 827,
+            "latency_spaced": {
+              "microseconds": 2.756666660308838
+            },
+            "latency_contiguous": {
+              "microseconds": 2.759999990463257
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 827,
+            "latency_spaced": {
+              "microseconds": 2.756666660308838
+            },
+            "latency_contiguous": {
+              "microseconds": 2.759999990463257
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 827,
+            "latency_spaced": {
+              "microseconds": 2.756666660308838
+            },
+            "latency_contiguous": {
+              "microseconds": 2.759999990463257
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 2101248,
+            "cycle_count": 911,
+            "latency_spaced": {
+              "microseconds": 3.0366666316986084
+            },
+            "latency_contiguous": {
+              "microseconds": 3.0399999618530273
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "elu"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 533,
+            "latency_spaced": {
+              "microseconds": 1.6151515245437622
+            },
+            "latency_contiguous": {
+              "microseconds": 1.618181824684143
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 561,
+            "latency_spaced": {
+              "microseconds": 1.7000000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7030303478240967
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 561,
+            "latency_spaced": {
+              "microseconds": 1.7000000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7030303478240967
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 561,
+            "latency_spaced": {
+              "microseconds": 1.7000000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7030303478240967
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 561,
+            "latency_spaced": {
+              "microseconds": 1.7000000476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.7030303478240967
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 645,
+            "latency_spaced": {
+              "microseconds": 1.954545497894287
+            },
+            "latency_contiguous": {
+              "microseconds": 1.957575798034668
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 799,
+            "latency_spaced": {
+              "microseconds": 2.4212121963500977
+            },
+            "latency_contiguous": {
+              "microseconds": 2.4242424964904785
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 827,
+            "latency_spaced": {
+              "microseconds": 2.5060606002807617
+            },
+            "latency_contiguous": {
+              "microseconds": 2.5090909004211426
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 827,
+            "latency_spaced": {
+              "microseconds": 2.5060606002807617
+            },
+            "latency_contiguous": {
+              "microseconds": 2.5090909004211426
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 827,
+            "latency_spaced": {
+              "microseconds": 2.5060606002807617
+            },
+            "latency_contiguous": {
+              "microseconds": 2.5090909004211426
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 827,
+            "latency_spaced": {
+              "microseconds": 2.5060606002807617
+            },
+            "latency_contiguous": {
+              "microseconds": 2.5090909004211426
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 2101248,
+            "cycle_count": 911,
+            "latency_spaced": {
+              "microseconds": 2.760606050491333
+            },
+            "latency_contiguous": {
+              "microseconds": 2.763636350631714
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "elu"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 583,
+            "latency_spaced": {
+              "microseconds": 1.821874976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8250000476837158
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 611,
+            "latency_spaced": {
+              "microseconds": 1.9093749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.912500023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 611,
+            "latency_spaced": {
+              "microseconds": 1.9093749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.912500023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 611,
+            "latency_spaced": {
+              "microseconds": 1.9093749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.912500023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 611,
+            "latency_spaced": {
+              "microseconds": 1.9093749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.912500023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 695,
+            "latency_spaced": {
+              "microseconds": 2.171875
+            },
+            "latency_contiguous": {
+              "microseconds": 2.174999952316284
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 859,
+            "latency_spaced": {
+              "microseconds": 2.684375047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 2.6875
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 887,
+            "latency_spaced": {
+              "microseconds": 2.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7750000953674316
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 887,
+            "latency_spaced": {
+              "microseconds": 2.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7750000953674316
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 887,
+            "latency_spaced": {
+              "microseconds": 2.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7750000953674316
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 887,
+            "latency_spaced": {
+              "microseconds": 2.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7750000953674316
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 2101248,
+            "cycle_count": 971,
+            "latency_spaced": {
+              "microseconds": 3.034374952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 3.0374999046325684
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "elu"
+            }
+          }
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 490,
+            "latency_spaced": {
+              "microseconds": 1.53125
+            },
+            "latency_contiguous": {
+              "microseconds": 1.5343749523162842
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 518,
+            "latency_spaced": {
+              "microseconds": 1.618749976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6218750476837158
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 518,
+            "latency_spaced": {
+              "microseconds": 1.618749976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6218750476837158
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 518,
+            "latency_spaced": {
+              "microseconds": 1.618749976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6218750476837158
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 518,
+            "latency_spaced": {
+              "microseconds": 1.618749976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6218750476837158
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 602,
+            "latency_spaced": {
+              "microseconds": 1.881250023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.884374976158142
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 587,
+            "latency_spaced": {
+              "microseconds": 1.834375023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.837499976158142
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 615,
+            "latency_spaced": {
+              "microseconds": 1.921875
+            },
+            "latency_contiguous": {
+              "microseconds": 1.9249999523162842
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 615,
+            "latency_spaced": {
+              "microseconds": 1.921875
+            },
+            "latency_contiguous": {
+              "microseconds": 1.9249999523162842
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 615,
+            "latency_spaced": {
+              "microseconds": 1.921875
+            },
+            "latency_contiguous": {
+              "microseconds": 1.9249999523162842
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 615,
+            "latency_spaced": {
+              "microseconds": 1.921875
+            },
+            "latency_contiguous": {
+              "microseconds": 1.9249999523162842
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 2101248,
+            "cycle_count": 699,
+            "latency_spaced": {
+              "microseconds": 2.184375047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 2.1875
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "elu"
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 583,
+            "latency_spaced": {
+              "microseconds": 1.821874976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.8250000476837158
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 611,
+            "latency_spaced": {
+              "microseconds": 1.9093749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.912500023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 611,
+            "latency_spaced": {
+              "microseconds": 1.9093749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.912500023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 611,
+            "latency_spaced": {
+              "microseconds": 1.9093749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.912500023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 611,
+            "latency_spaced": {
+              "microseconds": 1.9093749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.912500023841858
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 695,
+            "latency_spaced": {
+              "microseconds": 2.171875
+            },
+            "latency_contiguous": {
+              "microseconds": 2.174999952316284
+            },
+            "meta": {
+              "dim": 320,
+              "hidden": 768,
+              "activation": "elu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 859,
+            "latency_spaced": {
+              "microseconds": 2.684375047683716
+            },
+            "latency_contiguous": {
+              "microseconds": 2.6875
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "relu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 887,
+            "latency_spaced": {
+              "microseconds": 2.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7750000953674316
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "sigmoid"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 887,
+            "latency_spaced": {
+              "microseconds": 2.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7750000953674316
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "tanh"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 887,
+            "latency_spaced": {
+              "microseconds": 2.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7750000953674316
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "softplus"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 887,
+            "latency_spaced": {
+              "microseconds": 2.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.7750000953674316
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "silu"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 2101248,
+            "cycle_count": 971,
+            "latency_spaced": {
+              "microseconds": 3.034374952316284
+            },
+            "latency_contiguous": {
+              "microseconds": 3.0374999046325684
+            },
+            "meta": {
+              "dim": 512,
+              "hidden": 1024,
+              "activation": "elu"
+            }
+          }
+        }
+      ]
+    },
+    "mobilenet": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 136629,
+            "cycle_count": 2615,
+            "latency_spaced": {
+              "microseconds": 8.716666221618652
+            },
+            "latency_contiguous": {
+              "microseconds": 8.720000267028809
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 995067,
+            "cycle_count": 3070,
+            "latency_spaced": {
+              "microseconds": 10.233333587646484
+            },
+            "latency_contiguous": {
+              "microseconds": 10.236666679382324
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 4190696,
+            "cycle_count": 3914,
+            "latency_spaced": {
+              "microseconds": 13.046667098999023
+            },
+            "latency_contiguous": {
+              "microseconds": 13.739999771118164
+            },
+            "meta": {
+              "width_mult": 1.0
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 136629,
+            "cycle_count": 2615,
+            "latency_spaced": {
+              "microseconds": 7.9242424964904785
+            },
+            "latency_contiguous": {
+              "microseconds": 7.927272796630859
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 995067,
+            "cycle_count": 3070,
+            "latency_spaced": {
+              "microseconds": 9.303030014038086
+            },
+            "latency_contiguous": {
+              "microseconds": 9.306060791015625
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 4190696,
+            "cycle_count": 3914,
+            "latency_spaced": {
+              "microseconds": 11.86060619354248
+            },
+            "latency_contiguous": {
+              "microseconds": 12.4909086227417
+            },
+            "meta": {
+              "width_mult": 1.0
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 136629,
+            "cycle_count": 2925,
+            "latency_spaced": {
+              "microseconds": 9.140625
+            },
+            "latency_contiguous": {
+              "microseconds": 9.143750190734863
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 995067,
+            "cycle_count": 3489,
+            "latency_spaced": {
+              "microseconds": 10.903124809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 10.959375381469727
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 136629,
+            "cycle_count": 2916,
+            "latency_spaced": {
+              "microseconds": 9.112500190734863
+            },
+            "latency_contiguous": {
+              "microseconds": 9.115625381469727
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 995067,
+            "cycle_count": 3239,
+            "latency_spaced": {
+              "microseconds": 10.121874809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 10.228124618530273
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 4190696,
+            "cycle_count": 3663,
+            "latency_spaced": {
+              "microseconds": 11.446874618530273
+            },
+            "latency_contiguous": {
+              "microseconds": 11.481249809265137
+            },
+            "meta": {
+              "width_mult": 1.0
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 136629,
+            "cycle_count": 2925,
+            "latency_spaced": {
+              "microseconds": 9.140625
+            },
+            "latency_contiguous": {
+              "microseconds": 9.143750190734863
+            },
+            "meta": {
+              "width_mult": 0.1
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 995067,
+            "cycle_count": 3489,
+            "latency_spaced": {
+              "microseconds": 10.903124809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 10.959375381469727
+            },
+            "meta": {
+              "width_mult": 0.42
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "moe": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 983808,
+            "cycle_count": 294,
+            "latency_spaced": {
+              "microseconds": 0.9800000190734863
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9833333492279053
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1967616,
+            "cycle_count": 487,
+            "latency_spaced": {
+              "microseconds": 1.6233333349227905
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6266666650772095
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3935232,
+            "cycle_count": 867,
+            "latency_spaced": {
+              "microseconds": 2.890000104904175
+            },
+            "latency_contiguous": {
+              "microseconds": 2.8933334350585938
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 16
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 983808,
+            "cycle_count": 294,
+            "latency_spaced": {
+              "microseconds": 0.8909090757369995
+            },
+            "latency_contiguous": {
+              "microseconds": 0.8939393758773804
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1967616,
+            "cycle_count": 487,
+            "latency_spaced": {
+              "microseconds": 1.4757575988769531
+            },
+            "latency_contiguous": {
+              "microseconds": 1.478787899017334
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3935232,
+            "cycle_count": 867,
+            "latency_spaced": {
+              "microseconds": 2.627272844314575
+            },
+            "latency_contiguous": {
+              "microseconds": 2.630303144454956
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 16
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 983808,
+            "cycle_count": 379,
+            "latency_spaced": {
+              "microseconds": 1.1843750476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1875
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1967616,
+            "cycle_count": 507,
+            "latency_spaced": {
+              "microseconds": 1.584375023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.587499976158142
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 983808,
+            "cycle_count": 222,
+            "latency_spaced": {
+              "microseconds": 0.6937500238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 0.6968749761581421
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1967616,
+            "cycle_count": 332,
+            "latency_spaced": {
+              "microseconds": 1.037500023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.040624976158142
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 3935232,
+            "cycle_count": 528,
+            "latency_spaced": {
+              "microseconds": 1.649999976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6531250476837158
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 16
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 983808,
+            "cycle_count": 379,
+            "latency_spaced": {
+              "microseconds": 1.1843750476837158
+            },
+            "latency_contiguous": {
+              "microseconds": 1.1875
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 4
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1967616,
+            "cycle_count": 507,
+            "latency_spaced": {
+              "microseconds": 1.584375023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.587499976158142
+            },
+            "meta": {
+              "dim": 192,
+              "hidden": 640,
+              "n_experts": 8
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "resmlp": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 140378,
+            "cycle_count": 1541,
+            "latency_spaced": {
+              "microseconds": 5.136666774749756
+            },
+            "latency_contiguous": {
+              "microseconds": 5.139999866485596
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 140378,
+            "cycle_count": 2309,
+            "latency_spaced": {
+              "microseconds": 7.696666717529297
+            },
+            "latency_contiguous": {
+              "microseconds": 7.699999809265137
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1036460,
+            "cycle_count": 2235,
+            "latency_spaced": {
+              "microseconds": 7.449999809265137
+            },
+            "latency_contiguous": {
+              "microseconds": 7.453333377838135
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1036460,
+            "cycle_count": 3343,
+            "latency_spaced": {
+              "microseconds": 11.143333435058594
+            },
+            "latency_contiguous": {
+              "microseconds": 11.146666526794434
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 140378,
+            "cycle_count": 1541,
+            "latency_spaced": {
+              "microseconds": 4.669696807861328
+            },
+            "latency_contiguous": {
+              "microseconds": 4.672727108001709
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 140378,
+            "cycle_count": 2309,
+            "latency_spaced": {
+              "microseconds": 6.996969699859619
+            },
+            "latency_contiguous": {
+              "microseconds": 7.0
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1036460,
+            "cycle_count": 2235,
+            "latency_spaced": {
+              "microseconds": 6.7727274894714355
+            },
+            "latency_contiguous": {
+              "microseconds": 6.775757789611816
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1036460,
+            "cycle_count": 3343,
+            "latency_spaced": {
+              "microseconds": 10.130303382873535
+            },
+            "latency_contiguous": {
+              "microseconds": 10.133333206176758
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 140378,
+            "cycle_count": 1592,
+            "latency_spaced": {
+              "microseconds": 4.974999904632568
+            },
+            "latency_contiguous": {
+              "microseconds": 4.978125095367432
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 140378,
+            "cycle_count": 2360,
+            "latency_spaced": {
+              "microseconds": 7.375
+            },
+            "latency_contiguous": {
+              "microseconds": 7.378125190734863
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1036460,
+            "cycle_count": 5150,
+            "latency_spaced": {
+              "microseconds": 16.09375
+            },
+            "latency_contiguous": {
+              "microseconds": 16.096874237060547
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1036460,
+            "cycle_count": 6194,
+            "latency_spaced": {
+              "microseconds": 19.356250762939453
+            },
+            "latency_contiguous": {
+              "microseconds": 19.359375
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 140378,
+            "cycle_count": 1207,
+            "latency_spaced": {
+              "microseconds": 3.7718749046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 3.7750000953674316
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 140378,
+            "cycle_count": 1783,
+            "latency_spaced": {
+              "microseconds": 5.571875095367432
+            },
+            "latency_contiguous": {
+              "microseconds": 5.574999809265137
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1036460,
+            "cycle_count": 1611,
+            "latency_spaced": {
+              "microseconds": 5.034375190734863
+            },
+            "latency_contiguous": {
+              "microseconds": 5.037499904632568
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1036460,
+            "cycle_count": 2376,
+            "latency_spaced": {
+              "microseconds": 7.425000190734863
+            },
+            "latency_contiguous": {
+              "microseconds": 7.428124904632568
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 140378,
+            "cycle_count": 1592,
+            "latency_spaced": {
+              "microseconds": 4.974999904632568
+            },
+            "latency_contiguous": {
+              "microseconds": 4.978125095367432
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 140378,
+            "cycle_count": 2360,
+            "latency_spaced": {
+              "microseconds": 7.375
+            },
+            "latency_contiguous": {
+              "microseconds": 7.378125190734863
+            },
+            "meta": {
+              "dim": 64,
+              "patches": 36,
+              "layers": 4,
+              "activation": "GELU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1036460,
+            "cycle_count": 5150,
+            "latency_spaced": {
+              "microseconds": 16.09375
+            },
+            "latency_contiguous": {
+              "microseconds": 16.096874237060547
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1036460,
+            "cycle_count": 6194,
+            "latency_spaced": {
+              "microseconds": 19.356250762939453
+            },
+            "latency_contiguous": {
+              "microseconds": 19.359375
+            },
+            "meta": {
+              "dim": 160,
+              "patches": 9,
+              "layers": 5,
+              "activation": "GELU"
+            }
+          }
+        }
+      ]
+    },
+    "slp": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 16512,
+            "cycle_count": 74,
+            "latency_spaced": {
+              "microseconds": 0.24666666984558105
+            },
+            "latency_contiguous": {
+              "microseconds": 0.25
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 263168,
+            "cycle_count": 154,
+            "latency_spaced": {
+              "microseconds": 0.5133333206176758
+            },
+            "latency_contiguous": {
+              "microseconds": 0.5166666507720947
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1049600,
+            "cycle_count": 285,
+            "latency_spaced": {
+              "microseconds": 0.949999988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 0.95333331823349
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 16512,
+            "cycle_count": 74,
+            "latency_spaced": {
+              "microseconds": 0.2242424190044403
+            },
+            "latency_contiguous": {
+              "microseconds": 0.22727273404598236
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 263168,
+            "cycle_count": 154,
+            "latency_spaced": {
+              "microseconds": 0.46666666865348816
+            },
+            "latency_contiguous": {
+              "microseconds": 0.469696968793869
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1049600,
+            "cycle_count": 285,
+            "latency_spaced": {
+              "microseconds": 0.8636363744735718
+            },
+            "latency_contiguous": {
+              "microseconds": 0.8666666746139526
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 16512,
+            "cycle_count": 82,
+            "latency_spaced": {
+              "microseconds": 0.2562499940395355
+            },
+            "latency_contiguous": {
+              "microseconds": 0.2593750059604645
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 263168,
+            "cycle_count": 159,
+            "latency_spaced": {
+              "microseconds": 0.49687498807907104
+            },
+            "latency_contiguous": {
+              "microseconds": 0.5
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1049600,
+            "cycle_count": 290,
+            "latency_spaced": {
+              "microseconds": 0.90625
+            },
+            "latency_contiguous": {
+              "microseconds": 0.909375011920929
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 16512,
+            "cycle_count": 78,
+            "latency_spaced": {
+              "microseconds": 0.24375000596046448
+            },
+            "latency_contiguous": {
+              "microseconds": 0.24687500298023224
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 263168,
+            "cycle_count": 115,
+            "latency_spaced": {
+              "microseconds": 0.359375
+            },
+            "latency_contiguous": {
+              "microseconds": 0.36250001192092896
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1049600,
+            "cycle_count": 180,
+            "latency_spaced": {
+              "microseconds": 0.5625
+            },
+            "latency_contiguous": {
+              "microseconds": 0.565625011920929
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 16512,
+            "cycle_count": 82,
+            "latency_spaced": {
+              "microseconds": 0.2562499940395355
+            },
+            "latency_contiguous": {
+              "microseconds": 0.2593750059604645
+            },
+            "meta": {
+              "input": 128,
+              "output": 128,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 263168,
+            "cycle_count": 159,
+            "latency_spaced": {
+              "microseconds": 0.49687498807907104
+            },
+            "latency_contiguous": {
+              "microseconds": 0.5
+            },
+            "meta": {
+              "input": 256,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1049600,
+            "cycle_count": 290,
+            "latency_spaced": {
+              "microseconds": 0.90625
+            },
+            "latency_contiguous": {
+              "microseconds": 0.909375011920929
+            },
+            "meta": {
+              "input": 1024,
+              "output": 1024,
+              "activation": "ReLU"
+            }
+          }
+        }
+      ]
+    },
+    "ssm": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 589824,
+            "cycle_count": 158,
+            "latency_spaced": {
+              "microseconds": 0.5266666412353516
+            },
+            "latency_contiguous": {
+              "microseconds": 0.5299999713897705
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 1048576,
+            "cycle_count": 232,
+            "latency_spaced": {
+              "microseconds": 0.7733333110809326
+            },
+            "latency_contiguous": {
+              "microseconds": 0.7766666412353516
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 5308416,
+            "cycle_count": 567,
+            "latency_spaced": {
+              "microseconds": 1.8899999856948853
+            },
+            "latency_contiguous": {
+              "microseconds": 2.9566667079925537
+            },
+            "meta": {
+              "dim": 768,
+              "hidden": 1536
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 21233664,
+            "cycle_count": 2027,
+            "latency_spaced": {
+              "microseconds": 6.756666660308838
+            },
+            "latency_contiguous": {
+              "microseconds": 11.59666633605957
+            },
+            "meta": {
+              "dim": 1536,
+              "hidden": 3072
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 589824,
+            "cycle_count": 158,
+            "latency_spaced": {
+              "microseconds": 0.4787878692150116
+            },
+            "latency_contiguous": {
+              "microseconds": 0.48181816935539246
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 1048576,
+            "cycle_count": 232,
+            "latency_spaced": {
+              "microseconds": 0.7030302882194519
+            },
+            "latency_contiguous": {
+              "microseconds": 0.7060605883598328
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 5308416,
+            "cycle_count": 567,
+            "latency_spaced": {
+              "microseconds": 1.718181848526001
+            },
+            "latency_contiguous": {
+              "microseconds": 2.6878788471221924
+            },
+            "meta": {
+              "dim": 768,
+              "hidden": 1536
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 21233664,
+            "cycle_count": 2027,
+            "latency_spaced": {
+              "microseconds": 6.1424241065979
+            },
+            "latency_contiguous": {
+              "microseconds": 10.542424201965332
+            },
+            "meta": {
+              "dim": 1536,
+              "hidden": 3072
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 589824,
+            "cycle_count": 169,
+            "latency_spaced": {
+              "microseconds": 0.528124988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 0.53125
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 1048576,
+            "cycle_count": 237,
+            "latency_spaced": {
+              "microseconds": 0.7406250238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 0.7437499761581421
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 589824,
+            "cycle_count": 143,
+            "latency_spaced": {
+              "microseconds": 0.4468750059604645
+            },
+            "latency_contiguous": {
+              "microseconds": 0.44999998807907104
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 1048576,
+            "cycle_count": 168,
+            "latency_spaced": {
+              "microseconds": 0.5249999761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.528124988079071
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 5308416,
+            "cycle_count": 322,
+            "latency_spaced": {
+              "microseconds": 1.006250023841858
+            },
+            "latency_contiguous": {
+              "microseconds": 1.421875
+            },
+            "meta": {
+              "dim": 768,
+              "hidden": 1536
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 589824,
+            "cycle_count": 169,
+            "latency_spaced": {
+              "microseconds": 0.528124988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 0.53125
+            },
+            "meta": {
+              "dim": 384,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 1048576,
+            "cycle_count": 237,
+            "latency_spaced": {
+              "microseconds": 0.7406250238418579
+            },
+            "latency_contiguous": {
+              "microseconds": 0.7437499761581421
+            },
+            "meta": {
+              "dim": 576,
+              "hidden": 448
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "tcn": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 247168,
+            "cycle_count": 281,
+            "latency_spaced": {
+              "microseconds": 0.9366666674613953
+            },
+            "latency_contiguous": {
+              "microseconds": 1.3833333253860474
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 985856,
+            "cycle_count": 368,
+            "latency_spaced": {
+              "microseconds": 1.2266666889190674
+            },
+            "latency_contiguous": {
+              "microseconds": 1.6200000047683716
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3937792,
+            "cycle_count": 499,
+            "latency_spaced": {
+              "microseconds": 1.6633332967758179
+            },
+            "latency_contiguous": {
+              "microseconds": 3.136666774749756
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[512, 512, 512]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 6992928,
+            "cycle_count": 1030,
+            "latency_spaced": {
+              "microseconds": 3.433333396911621
+            },
+            "latency_contiguous": {
+              "microseconds": 6.486666679382324
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[32, 64, 128, 256, 512, 1024]"
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 247168,
+            "cycle_count": 281,
+            "latency_spaced": {
+              "microseconds": 0.8515151739120483
+            },
+            "latency_contiguous": {
+              "microseconds": 1.2575757503509521
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 985856,
+            "cycle_count": 368,
+            "latency_spaced": {
+              "microseconds": 1.1151515245437622
+            },
+            "latency_contiguous": {
+              "microseconds": 1.4727272987365723
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3937792,
+            "cycle_count": 499,
+            "latency_spaced": {
+              "microseconds": 1.5121212005615234
+            },
+            "latency_contiguous": {
+              "microseconds": 2.851515054702759
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[512, 512, 512]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 6992928,
+            "cycle_count": 1030,
+            "latency_spaced": {
+              "microseconds": 3.1212120056152344
+            },
+            "latency_contiguous": {
+              "microseconds": 5.896969795227051
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[32, 64, 128, 256, 512, 1024]"
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 247168,
+            "cycle_count": 319,
+            "latency_spaced": {
+              "microseconds": 0.996874988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 1.540624976158142
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 985856,
+            "cycle_count": 398,
+            "latency_spaced": {
+              "microseconds": 1.243749976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.625
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 247168,
+            "cycle_count": 283,
+            "latency_spaced": {
+              "microseconds": 0.8843749761581421
+            },
+            "latency_contiguous": {
+              "microseconds": 0.9156249761581421
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 985856,
+            "cycle_count": 331,
+            "latency_spaced": {
+              "microseconds": 1.0343749523162842
+            },
+            "latency_contiguous": {
+              "microseconds": 1.578125
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 3937792,
+            "cycle_count": 448,
+            "latency_spaced": {
+              "microseconds": 1.399999976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 2.0406250953674316
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[512, 512, 512]"
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 247168,
+            "cycle_count": 319,
+            "latency_spaced": {
+              "microseconds": 0.996874988079071
+            },
+            "latency_contiguous": {
+              "microseconds": 1.540624976158142
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[128, 128, 128]"
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 985856,
+            "cycle_count": 398,
+            "latency_spaced": {
+              "microseconds": 1.243749976158142
+            },
+            "latency_contiguous": {
+              "microseconds": 1.625
+            },
+            "meta": {
+              "inputs": 1,
+              "kernel": 3,
+              "channels": "[256, 256, 256]"
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    },
+    "wavenet": {
+      "V80": [
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 984459,
+            "cycle_count": 828,
+            "latency_spaced": {
+              "microseconds": 2.759999990463257
+            },
+            "latency_contiguous": {
+              "microseconds": 2.8933334350585938
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 3694851,
+            "cycle_count": 1001,
+            "latency_spaced": {
+              "microseconds": 3.3366665840148926
+            },
+            "latency_contiguous": {
+              "microseconds": 3.8299999237060547
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 25824003,
+            "cycle_count": 2733,
+            "latency_spaced": {
+              "microseconds": 9.109999656677246
+            },
+            "latency_contiguous": {
+              "microseconds": 12.963333129882812
+            },
+            "meta": {
+              "layers": 1,
+              "blocks": 1,
+              "hidden": 1920
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 23501187,
+            "cycle_count": 2824,
+            "latency_spaced": {
+              "microseconds": 9.41333293914795
+            },
+            "latency_contiguous": {
+              "microseconds": 13.186666488647461
+            },
+            "meta": {
+              "layers": 2,
+              "blocks": 1,
+              "hidden": 1344
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80",
+            "param_count": 23061123,
+            "cycle_count": 3000,
+            "latency_spaced": {
+              "microseconds": 10.0
+            },
+            "latency_contiguous": {
+              "microseconds": 13.853333473205566
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 960
+            }
+          }
+        }
+      ],
+      "V80LL": [
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 984459,
+            "cycle_count": 828,
+            "latency_spaced": {
+              "microseconds": 2.5090909004211426
+            },
+            "latency_contiguous": {
+              "microseconds": 2.630303144454956
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 3694851,
+            "cycle_count": 1001,
+            "latency_spaced": {
+              "microseconds": 3.0333333015441895
+            },
+            "latency_contiguous": {
+              "microseconds": 3.481818199157715
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 25824003,
+            "cycle_count": 2733,
+            "latency_spaced": {
+              "microseconds": 8.281818389892578
+            },
+            "latency_contiguous": {
+              "microseconds": 11.7848482131958
+            },
+            "meta": {
+              "layers": 1,
+              "blocks": 1,
+              "hidden": 1920
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 23501187,
+            "cycle_count": 2824,
+            "latency_spaced": {
+              "microseconds": 8.557576179504395
+            },
+            "latency_contiguous": {
+              "microseconds": 11.987878799438477
+            },
+            "meta": {
+              "layers": 2,
+              "blocks": 1,
+              "hidden": 1344
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "V80LL",
+            "param_count": 23061123,
+            "cycle_count": 3000,
+            "latency_spaced": {
+              "microseconds": 9.090909004211426
+            },
+            "latency_contiguous": {
+              "microseconds": 12.593939781188965
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 960
+            }
+          }
+        }
+      ],
+      "IA-420f": [
+        {
+          "Ok": {
+            "config": "IA-420f",
+            "param_count": 984459,
+            "cycle_count": 938,
+            "latency_spaced": {
+              "microseconds": 2.9312500953674316
+            },
+            "latency_contiguous": {
+              "microseconds": 3.018749952316284
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "IA-840f": [
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 984459,
+            "cycle_count": 815,
+            "latency_spaced": {
+              "microseconds": 2.546875
+            },
+            "latency_contiguous": {
+              "microseconds": 2.5625
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "Ok": {
+            "config": "IA-840f",
+            "param_count": 3694851,
+            "cycle_count": 857,
+            "latency_spaced": {
+              "microseconds": 2.6781249046325684
+            },
+            "latency_contiguous": {
+              "microseconds": 2.8187499046325684
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 384
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ],
+      "NT400D11": [
+        {
+          "Ok": {
+            "config": "NT400D11",
+            "param_count": 984459,
+            "cycle_count": 938,
+            "latency_spaced": {
+              "microseconds": 2.9312500953674316
+            },
+            "latency_contiguous": {
+              "microseconds": 3.018749952316284
+            },
+            "meta": {
+              "layers": 4,
+              "blocks": 1,
+              "hidden": 198
+            }
+          }
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        },
+        {
+          "AllocationError": 0
+        }
+      ]
+    }
+  }
+}
