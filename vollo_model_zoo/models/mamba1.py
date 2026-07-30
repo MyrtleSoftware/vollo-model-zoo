@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 import vollo_torch
@@ -21,50 +21,51 @@ class Mamba(nn.Module):
         bias: bool = False,
         conv_bias: bool = True,
         activation: Literal["silu", "relu"] = "silu",
-        head_partitions: Optional[tuple[tuple[int, ...], ...]] = (
-            (0,),
-            (1,),
-            (2,),
-            (3,),
-            (4,),
-            (5,),
-        ),
-        headwise_linear: bool = True,
     ):
         """
         See: https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba_simple.py
 
         Args:
-            d_model:          Dimension of the input and output.
-            d_state:          SSM state multiplier factor (i.e. state is [d_state, d_expand * d_model]).
-            d_conv:           Local convolution width.
-            expand:           Hidden state expansion factor.
-            dt_rank:          Generalized delta dimension.
-            bias:             Input/output projection bias.
-            conv_bias:        Convolutional bias.
-            activation:       Activation function to use for convolution/gate.
-            head_partitions:  Sequence of core partition indices, one per head.
-            headwise_linear:  Whether to run linear projections per head inside core partitions.
+            d_model:    Dimension of the input and output.
+            d_state:    SSM state multiplier factor (i.e. state is [d_state, d_expand * d_model]).
+            d_conv:     Local convolution width.
+            expand:     Hidden state expansion factor.
+            dt_rank:    Generalized delta dimension.
+            bias:       Input/output projection bias.
+            conv_bias:  Convolutional bias.
+            activation: Activation function to use for convolution/gate.
         """
 
         super().__init__()
 
         self.bias = bias
-        self.d_model = d_model
-        self.d_inner = int(expand * d_model)
 
-        if head_partitions is not None:
-            num_heads = len(head_partitions)
-            if self.d_inner % num_heads != 0:
-                if head_partitions == ((0,), (1,), (2,), (3,), (4,), (5,)):
-                    head_partitions = None
-                else:
-                    raise ValueError(
-                        f"Expected d_inner ({self.d_inner}) to be divisible by len(head_partitions) ({num_heads})"
-                    )
+        step = _MambaStep(
+            d_model=d_model,
+            d_state=d_state,
+            expand=expand,
+            dt_rank=dt_rank,
+        )
 
-        self.head_partitions = head_partitions
-        self.headwise_linear = self.head_partitions is not None and headwise_linear
+        self.ssm = vollo_torch.nn.Scan(step)
+
+        # Not technically a parameter but needed for .to() etc
+        self.h0 = torch.nn.Buffer(step._init_state(), persistent=False)
+
+        # - Mamba parameters
+
+        # These are a single linear layer ("in_proj") in Mamba
+        self.in_proj_x = nn.Linear(step.d_model, step.d_inner, bias=bias)
+        self.in_proj_z = nn.Linear(step.d_model, step.d_inner, bias=bias)
+
+        # Depthwise
+        self.conv1d = vollo_torch.nn.PaddedConv1d(
+            in_channels=step.d_inner,
+            out_channels=step.d_inner,
+            groups=step.d_inner,
+            kernel_size=d_conv,
+            bias=conv_bias,
+        )
 
         match activation:
             case "silu":
@@ -72,79 +73,7 @@ class Mamba(nn.Module):
             case "relu":
                 self.act = nn.ReLU()
 
-        if self.head_partitions is None:
-            step = _MambaStep(
-                d_model=d_model,
-                d_state=d_state,
-                expand=expand,
-                dt_rank=dt_rank,
-            )
-
-            self.ssm = vollo_torch.nn.Scan(step)
-            self.h0 = torch.nn.Buffer(step._init_state(), persistent=False)
-
-            self.in_proj_x = nn.Linear(d_model, self.d_inner, bias=bias)
-            self.in_proj_z = nn.Linear(d_model, self.d_inner, bias=bias)
-
-            self.conv1d = vollo_torch.nn.PaddedConv1d(
-                in_channels=self.d_inner,
-                out_channels=self.d_inner,
-                groups=self.d_inner,
-                kernel_size=d_conv,
-                bias=conv_bias,
-            )
-        else:
-            num_heads = len(self.head_partitions)
-            head_dim = self.d_inner // num_heads
-
-            steps = [
-                _MambaStep(
-                    d_model=d_model,
-                    d_state=d_state,
-                    expand=expand,
-                    dt_rank=dt_rank,
-                    d_inner=head_dim,
-                )
-                for _ in range(num_heads)
-            ]
-
-            self.ssms = nn.ModuleList([vollo_torch.nn.Scan(s) for s in steps])
-            self.h0 = torch.nn.Buffer(
-                torch.stack([s._init_state() for s in steps]), persistent=False
-            )
-
-            if self.headwise_linear:
-                self.in_proj_xs = nn.ModuleList(
-                    [nn.Linear(d_model, head_dim, bias=bias) for _ in range(num_heads)]
-                )
-                self.in_proj_zs = nn.ModuleList(
-                    [nn.Linear(d_model, head_dim, bias=bias) for _ in range(num_heads)]
-                )
-                self.conv1ds = nn.ModuleList(
-                    [
-                        vollo_torch.nn.PaddedConv1d(
-                            in_channels=head_dim,
-                            out_channels=head_dim,
-                            groups=head_dim,
-                            kernel_size=d_conv,
-                            bias=conv_bias,
-                        )
-                        for _ in range(num_heads)
-                    ]
-                )
-            else:
-                self.in_proj_x = nn.Linear(d_model, self.d_inner, bias=bias)
-                self.in_proj_z = nn.Linear(d_model, self.d_inner, bias=bias)
-                self.conv1d = vollo_torch.nn.PaddedConv1d(
-                    in_channels=self.d_inner,
-                    out_channels=self.d_inner,
-                    groups=self.d_inner,
-                    kernel_size=d_conv,
-                    bias=conv_bias,
-                )
-
-        self.out_proj = nn.Linear(self.d_inner, d_model, bias=bias)
-        self.register_load_state_dict_pre_hook(self._load_legacy_state_dict)
+        self.out_proj = nn.Linear(step.d_inner, step.d_model, bias=bias)
 
     def forward(self, x):
         """
@@ -152,185 +81,24 @@ class Mamba(nn.Module):
 
         Returns r: [time, d_model]
         """
-        if self.head_partitions is None:
-            # Up projection
-            x_proj, z_proj = self.in_proj_x(x), self.in_proj_z(x)
 
-            # Vollo requires that time is rightmost dimension for convolution
-            x_proj = x_proj.transpose(0, 1)
-            x_proj = self.act(self.conv1d(x_proj))
-            x_proj = x_proj.transpose(0, 1)
+        # Up projection
+        x, z = self.in_proj_x(x), self.in_proj_z(x)
 
-            y = self.ssm(x_proj, self.h0, input_axis=0, output_axis=0)  # [t, D]
+        # Vollo requires that time is rightmost dimension for convolution
+        x = x.transpose(0, 1)
+        x = self.act(self.conv1d(x))
+        x = x.transpose(0, 1)
 
-            # Outer residual/gate
-            y = y * self.act(z_proj)
+        y = self.ssm(x, self.h0, input_axis=0, output_axis=0)  # [t, D]
 
-            # Down projection
-            y = self.out_proj(y)  # [t, d]
-            return y
-        else:
-            if not self.headwise_linear:
-                x_proj, z_proj = self.in_proj_x(x), self.in_proj_z(x)
-                x_proj = x_proj.transpose(0, 1)
-                x_proj = self.act(self.conv1d(x_proj))
-                x_proj = x_proj.transpose(0, 1)
+        # Outer residual/gate
+        y = y * self.act(z)
 
-            num_heads = len(self.head_partitions)
-            head_dim = self.d_inner // num_heads
+        # Down projection
+        y = self.out_proj(y)  # [t, d]
 
-            ys = []
-            for head_ix, head_partition in enumerate(self.head_partitions):
-                with vollo_torch.CorePartition(head_partition):
-                    if self.headwise_linear:
-                        xh = self.in_proj_xs[head_ix](x)
-                        zh = self.in_proj_zs[head_ix](x)
-
-                        xh = xh.transpose(0, 1)
-                        xh = self.act(self.conv1ds[head_ix](xh))
-                        xh = xh.transpose(0, 1)
-                    else:
-                        xh = x_proj[:, head_ix * head_dim : (head_ix + 1) * head_dim]
-                        zh = z_proj[:, head_ix * head_dim : (head_ix + 1) * head_dim]
-
-                    yh = self.ssms[head_ix](
-                        xh, self.h0[head_ix], input_axis=0, output_axis=0
-                    )
-                    yh = yh * self.act(zh)
-                    ys.append(yh)
-
-            y = torch.cat(ys, dim=-1)
-            y = self.out_proj(y)
-            return y
-
-    def _load_legacy_state_dict(
-        self,
-        _module,
-        state_dict,
-        prefix,
-        _local_metadata,
-        _strict,
-        _missing_keys,
-        _unexpected_keys,
-        _error_msgs,
-    ):
-        if self.head_partitions is None:
-            # Combine partitioned keys into unpartitioned keys if present
-            # ssms.{i}.step.* -> ssm.step.*
-            keys_to_combine = [
-                ("ssms.{}.step.A_log_t", "ssm.step.A_log_t", 1),
-                ("ssms.{}.step.x_proj_t.weight", "ssm.step.x_proj_t.weight", 1),
-                ("ssms.{}.step.x_proj_B.weight", "ssm.step.x_proj_B.weight", 1),
-                ("ssms.{}.step.x_proj_C.weight", "ssm.step.x_proj_C.weight", 1),
-                ("ssms.{}.step.dt_proj.weight", "ssm.step.dt_proj.weight", 0),
-                ("ssms.{}.step.dt_proj.bias", "ssm.step.dt_proj.bias", 0),
-                ("ssms.{}.step.D", "ssm.step.D", 1),
-                ("in_proj_xs.{}.weight", "in_proj_x.weight", 0),
-                ("in_proj_xs.{}.bias", "in_proj_x.bias", 0),
-                ("in_proj_zs.{}.weight", "in_proj_z.weight", 0),
-                ("in_proj_zs.{}.bias", "in_proj_z.bias", 0),
-                ("conv1ds.{}.conv.weight", "conv1d.conv.weight", 0),
-                ("conv1ds.{}.conv.bias", "conv1d.conv.bias", 0),
-            ]
-            for head_key_fmt, wide_key, concat_dim in keys_to_combine:
-                # Find how many head keys exist
-                head_keys = []
-                idx = 0
-                while prefix + head_key_fmt.format(idx) in state_dict:
-                    head_keys.append(prefix + head_key_fmt.format(idx))
-                    idx += 1
-                if head_keys:
-                    values = [state_dict.pop(k) for k in head_keys]
-                    state_dict.setdefault(
-                        prefix + wide_key, torch.cat(values, dim=concat_dim)
-                    )
-        else:
-            num_heads = len(self.head_partitions)
-            head_dim = self.d_inner // num_heads
-
-            def split_key(wide_key, head_key_fmt, sizes, dim):
-                full_wide_key = prefix + wide_key
-                if full_wide_key in state_dict:
-                    val = state_dict.pop(full_wide_key)
-                    chunks = torch.split(val, sizes, dim=dim)
-                    for i, chunk in enumerate(chunks):
-                        state_dict.setdefault(prefix + head_key_fmt.format(i), chunk)
-
-            split_key(
-                "ssm.step.A_log_t",
-                "ssms.{}.step.A_log_t",
-                [head_dim] * num_heads,
-                dim=1,
-            )
-            split_key(
-                "ssm.step.x_proj_t.weight",
-                "ssms.{}.step.x_proj_t.weight",
-                [head_dim] * num_heads,
-                dim=1,
-            )
-            split_key(
-                "ssm.step.x_proj_B.weight",
-                "ssms.{}.step.x_proj_B.weight",
-                [head_dim] * num_heads,
-                dim=1,
-            )
-            split_key(
-                "ssm.step.x_proj_C.weight",
-                "ssms.{}.step.x_proj_C.weight",
-                [head_dim] * num_heads,
-                dim=1,
-            )
-            split_key(
-                "ssm.step.dt_proj.weight",
-                "ssms.{}.step.dt_proj.weight",
-                [head_dim] * num_heads,
-                dim=0,
-            )
-            split_key(
-                "ssm.step.dt_proj.bias",
-                "ssms.{}.step.dt_proj.bias",
-                [head_dim] * num_heads,
-                dim=0,
-            )
-            split_key("ssm.step.D", "ssms.{}.step.D", [head_dim] * num_heads, dim=1)
-
-            if self.headwise_linear:
-                split_key(
-                    "in_proj_x.weight",
-                    "in_proj_xs.{}.weight",
-                    [head_dim] * num_heads,
-                    dim=0,
-                )
-                split_key(
-                    "in_proj_x.bias",
-                    "in_proj_xs.{}.bias",
-                    [head_dim] * num_heads,
-                    dim=0,
-                )
-                split_key(
-                    "in_proj_z.weight",
-                    "in_proj_zs.{}.weight",
-                    [head_dim] * num_heads,
-                    dim=0,
-                )
-                split_key(
-                    "in_proj_z.bias",
-                    "in_proj_zs.{}.bias",
-                    [head_dim] * num_heads,
-                    dim=0,
-                )
-                split_key(
-                    "conv1d.conv.weight",
-                    "conv1ds.{}.conv.weight",
-                    [head_dim] * num_heads,
-                    dim=0,
-                )
-                split_key(
-                    "conv1d.conv.bias",
-                    "conv1ds.{}.conv.bias",
-                    [head_dim] * num_heads,
-                    dim=0,
-                )
+        return y
 
 
 class _MambaStep(nn.Module):
@@ -345,7 +113,6 @@ class _MambaStep(nn.Module):
         dt_max=0.1,
         dt_scale=1.0,
         dt_init_floor=1e-4,
-        d_inner: int | None = None,
     ):
         """
         Second half of mamba (post convolution) mainly the SSM.
@@ -355,9 +122,7 @@ class _MambaStep(nn.Module):
         self.d_model = d_model
         self.d_state = d_state
         self.expand = expand
-        self.d_inner = (
-            d_inner if d_inner is not None else int(self.expand * self.d_model)
-        )
+        self.d_inner = int(self.expand * self.d_model)
         self.dt_rank = (
             math.ceil(self.d_model / 16) if isinstance(dt_rank, str) else dt_rank
         )
@@ -408,7 +173,7 @@ class _MambaStep(nn.Module):
     def _init_state(self):
         return torch.zeros(
             self.d_state,
-            self.d_inner,
+            self.d_model * self.expand,
         )
 
     def forward(self, x, state):
@@ -460,14 +225,6 @@ def _vm(
     state: int,
     layers: int,
     config: str,
-    head_partitions: Optional[tuple[tuple[int, ...], ...]] = (
-        (0,),
-        (1,),
-        (2,),
-        (3,),
-        (4,),
-        (5,),
-    ),
 ):
     from vollo_model_zoo.vm import vollo_info
 
@@ -477,7 +234,6 @@ def _vm(
         Mamba(
             d_model=dim,
             d_state=state,
-            head_partitions=head_partitions,
         )
         for _ in range(layers)
     )
@@ -502,12 +258,7 @@ def main(config: str = "V80") -> Generator:
         dict(dim=32 * 6, state=6, layers=1),
         dict(dim=32 * 12, state=6 * 2, layers=1),
         dict(dim=32 * 12, state=6 * 2, layers=2),
-        dict(
-            dim=32 * 32,
-            state=6 * 4,
-            layers=1,
-            head_partitions=((0, 1), (2, 3), (4,), (5,)),
-        ),
+        dict(dim=32 * 32, state=6 * 4, layers=1),
     ]:
         yield _vm(**x, config=config)
 
