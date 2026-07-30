@@ -144,3 +144,62 @@ def test_mamba_equivalence(
             atol=1e-5,
             err_msg=f"Mamba implementations output mismatch at step={i}",
         )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA for triton")
+@pytest.mark.parametrize("num_heads", [2, 4])
+@pytest.mark.parametrize("headwise_linear", [True, False])
+def test_mamba1_partitioned_equivalence(num_heads: int, headwise_linear: bool):
+    torch.manual_seed(42)
+
+    d_model = 32
+    d_state = 16
+    d_conv = 4
+    expand = 2
+    dt_rank = 16
+
+    head_partitions = tuple((i,) for i in range(num_heads))
+
+    fla_model = (
+        FLAMamba(
+            hidden_size=d_model,
+            state_size=d_state,
+            conv_kernel=d_conv,
+            intermediate_size=d_model * expand,
+            time_step_rank=dt_rank,
+            use_bias=False,
+            use_conv_bias=True,
+            backend="triton",
+            hidden_act="relu",
+        )
+        .eval()
+        .cuda()
+    )
+
+    vollo_model = (
+        VolloMamba(
+            d_model=d_model,
+            d_state=d_state,
+            d_conv=d_conv,
+            expand=expand,
+            dt_rank=dt_rank,
+            bias=False,
+            conv_bias=True,
+            activation="relu",
+            head_partitions=head_partitions,
+            headwise_linear=headwise_linear,
+        )
+        .eval()
+        .cuda()
+    )
+
+    vollo_state_dict = convert_state_dict(fla_model.state_dict())
+    vollo_model.load_state_dict(vollo_state_dict, strict=True)
+
+    T = 16
+    x = torch.randn(1, T, d_model).cuda()
+
+    with torch.no_grad():
+        vollo_out = vollo_model(x.squeeze(0))
+
+    assert vollo_out.shape == (T, d_model)
