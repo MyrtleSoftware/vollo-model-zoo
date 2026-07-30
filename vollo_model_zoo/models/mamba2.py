@@ -32,7 +32,6 @@ class Mamba2(nn.Module):
             (4,),
             (5,),
         ),
-        headwise_linear: bool = True,
     ):
         """
         See: https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba_simple.py
@@ -48,7 +47,6 @@ class Mamba2(nn.Module):
             activation:       Activation function to use for convolution/gate.
             ssm_fp32:         Whether to use fp32 for the ssm hidden state and select activations.
             head_partitions:  Sequence of core partition indices, one per head partition.
-            headwise_linear:  Whether to run linear projections per head partition inside core partitions.
         """
         super().__init__()
 
@@ -63,7 +61,6 @@ class Mamba2(nn.Module):
                 head_partitions = None
 
         self.head_partitions = head_partitions
-        self.headwise_linear = self.head_partitions is not None and headwise_linear
 
         self.proj_B = nn.Linear(d_model, d_state, bias=bias)
         self.proj_C = nn.Linear(d_model, d_state, bias=bias)
@@ -126,69 +123,53 @@ class Mamba2(nn.Module):
                 torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
             )
 
-            if self.headwise_linear:
-                self.proj_zs = nn.ModuleList(
-                    [
-                        nn.Linear(d_model, self.dim_splits[p], bias=bias)
-                        for p in range(num_partitions)
-                    ]
-                )
-                self.proj_xs = nn.ModuleList(
-                    [
-                        nn.Linear(d_model, self.dim_splits[p], bias=bias)
-                        for p in range(num_partitions)
-                    ]
-                )
-                self.proj_dts = nn.ModuleList(
-                    [
-                        nn.Linear(d_model, self.head_splits[p], bias=bias)
-                        for p in range(num_partitions)
-                    ]
-                )
-                self.conv_xs = nn.ModuleList(
-                    [
-                        _ShortConv(
-                            dim=self.dim_splits[p],
-                            d_conv=d_conv,
-                            bias=conv_bias,
-                            activation=activation,
-                        )
-                        for p in range(num_partitions)
-                    ]
-                )
-                self.dt_biases = nn.ParameterList(
-                    [
-                        nn.Parameter(torch.rand(self.head_splits[p]))
-                        for p in range(num_partitions)
-                    ]
-                )
-                self.A_logs = nn.ParameterList(
-                    [
-                        nn.Parameter(torch.rand(self.head_splits[p]))
-                        for p in range(num_partitions)
-                    ]
-                )
-                self.D_heads = nn.ParameterList(
-                    [
-                        nn.Parameter(torch.ones(self.dim_splits[p]))
-                        for p in range(num_partitions)
-                    ]
-                )
-            else:
-                self.proj_z = nn.Linear(d_model, self.d_inner, bias=bias)
-                self.proj_x = nn.Linear(d_model, self.d_inner, bias=bias)
-                self.proj_dt = nn.Linear(d_model, self.n_heads, bias=bias)
-
-                self.conv_x = _ShortConv(
-                    dim=self.d_inner,
-                    d_conv=d_conv,
-                    bias=conv_bias,
-                    activation=activation,
-                )
-
-                self.dt_bias = nn.Parameter(torch.rand(self.n_heads))
-                self.A_log = nn.Parameter(torch.rand(self.n_heads))
-                self.D = nn.Parameter(torch.ones(self.d_inner))
+            self.proj_zs = nn.ModuleList(
+                [
+                    nn.Linear(d_model, self.dim_splits[p], bias=bias)
+                    for p in range(num_partitions)
+                ]
+            )
+            self.proj_xs = nn.ModuleList(
+                [
+                    nn.Linear(d_model, self.dim_splits[p], bias=bias)
+                    for p in range(num_partitions)
+                ]
+            )
+            self.proj_dts = nn.ModuleList(
+                [
+                    nn.Linear(d_model, self.head_splits[p], bias=bias)
+                    for p in range(num_partitions)
+                ]
+            )
+            self.conv_xs = nn.ModuleList(
+                [
+                    _ShortConv(
+                        dim=self.dim_splits[p],
+                        d_conv=d_conv,
+                        bias=conv_bias,
+                        activation=activation,
+                    )
+                    for p in range(num_partitions)
+                ]
+            )
+            self.dt_biases = nn.ParameterList(
+                [
+                    nn.Parameter(torch.rand(self.head_splits[p]))
+                    for p in range(num_partitions)
+                ]
+            )
+            self.A_logs = nn.ParameterList(
+                [
+                    nn.Parameter(torch.rand(self.head_splits[p]))
+                    for p in range(num_partitions)
+                ]
+            )
+            self.D_heads = nn.ParameterList(
+                [
+                    nn.Parameter(torch.ones(self.dim_splits[p]))
+                    for p in range(num_partitions)
+                ]
+            )
 
         self.norm = torch.nn.RMSNorm(self.d_inner, eps=1e-5)
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=bias)
@@ -240,15 +221,6 @@ class Mamba2(nn.Module):
             B = self.conv_B(B)
             C = self.conv_C(C)
 
-            if not self.headwise_linear:
-                z = self.proj_z(input)
-                x = self.proj_x(input)
-                dt = self.proj_dt(input)
-
-                x = self.conv_x(x)
-                dt = F.softplus(dt + self.dt_bias)
-                dA = dt * (-torch.exp(self.A_log))
-
             ys = []
             h0_offset = 0
             dim_offset = 0
@@ -258,20 +230,14 @@ class Mamba2(nn.Module):
                 h0_p = self.h0[h0_offset : h0_offset + n_hp]
 
                 with vollo_torch.CorePartition(head_partition):
-                    if self.headwise_linear:
-                        zp = self.proj_zs[p](input)
-                        xp = self.proj_xs[p](input)
-                        dtp = self.proj_dts[p](input)
+                    zp = self.proj_zs[p](input)
+                    xp = self.proj_xs[p](input)
+                    dtp = self.proj_dts[p](input)
 
-                        xp = self.conv_xs[p](xp)
+                    xp = self.conv_xs[p](xp)
 
-                        dtp = F.softplus(dtp + self.dt_biases[p])
-                        dAp = dtp * (-torch.exp(self.A_logs[p]))
-                    else:
-                        zp = z[:, dim_offset : dim_offset + dim_p]
-                        xp = x[:, dim_offset : dim_offset + dim_p]
-                        dtp = dt[:, h0_offset : h0_offset + n_hp]
-                        dAp = dA[:, h0_offset : h0_offset + n_hp]
+                    dtp = F.softplus(dtp + self.dt_biases[p])
+                    dAp = dtp * (-torch.exp(self.A_logs[p]))
 
                     xp_reshaped = xp.reshape(-1, n_hp, self.d_head)
                     yp = self.ssms[p](
@@ -282,9 +248,8 @@ class Mamba2(nn.Module):
                     )
                     yp = yp.reshape(-1, dim_p)
 
-                    if self.headwise_linear:
-                        yp = yp + self.D_heads[p] * xp
-                        yp = yp * F.silu(zp)
+                    yp = yp + self.D_heads[p] * xp
+                    yp = yp * F.silu(zp)
 
                     ys.append(yp)
 
@@ -292,10 +257,6 @@ class Mamba2(nn.Module):
                 dim_offset += dim_p
 
             y = torch.cat(ys, dim=-1)
-
-            if not self.headwise_linear:
-                y = y + self.D * x
-                y = y * F.silu(z)
 
             y = self.norm(y)
             return self.out_proj(y)
