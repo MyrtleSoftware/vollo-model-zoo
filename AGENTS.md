@@ -353,6 +353,118 @@ directly if you need them): `program.metrics()` for static resource usage,
 resettable state, and `program.save()`/`vollo-onnx` for producing `.vollo`
 files.
 
+## Debugging a model: observing the NNIR
+
+Mostly for Myrtle devs. `vollo_info` is a black box that returns a latency or an
+error, which is the wrong granularity when a model won't compile or is
+mysteriously slow. **Drop below the harness and print the NNIR** — it is the
+compiler's own view of your model, and it answers most questions in one look.
+
+First, know that **`zoo` hides failures**: `run_model` skips every non-`Ok`
+result, so a size that fails to compile just _silently vanishes from the table_.
+Use `-j` to see it (`to_dict` renders `{"ValueError": "<message>"}`), or go
+manual:
+
+This runs as-is (`uv run python <file>`); swap in the model you're debugging.
+Hyphenated model files need `importlib.import_module`.
+
+```python
+import torch, vollo_compiler as vc, vollo_torch as vt
+from vollo_model_zoo.models.mlp import MLP
+
+model = MLP(num_layers=2, in_features=64, out_features=64, hidden_features=64)
+x = torch.randn(1, 5, 64)
+
+model, _ = vt.fx.prepare_shape(model, x)   # torch.fx trace + shape propagation
+nnir = vt.fx.nnir.to_nnir(model)
+print(nnir)                                # <-- the whole point
+streamed, out_axis = nnir.streaming_transform(1)   # same time_axis as _vm passes
+print(streamed)                            # <-- diff against the above
+program = streamed.to_program(vc.Config.v80_c6b32())
+program.pack()                             # AllocationError surfaces here, not earlier
+```
+
+`print(nnir)` (its `__str__`/`__repr__`) lists the inputs, the outputs, and one
+line per node:
+
+```
+Id(1v2) - (linear) Linear(weight: (128, 64), weight_precision: Bf16, bias: 128, input: Id(0)) - [1, 4, 128]
+Id(2v2) - (relu) Clamp(min: 0, max: None, input: Id(1), activation_precision: Bf16) - [1, 4, 128]
+```
+
+i.e. node id, the originating **fx name in parentheses** (`(linear)`, `(relu)` —
+this is your link back to the Python source), the NNIR op with its constant
+shapes and precision, and the output shape. What to use it for:
+
+- **Verify a precision context actually applied.** Every node carries
+  `activation_precision:` and every weighted node a `weight_precision:`. Wrapping
+  a region in `Fp32Activations()` flips its nodes to `F32`
+  (`Pointwise(op: Mul { activation_precision: F32 }, ...)`) and leaves everything
+  else `Bf16`. This is the only reliable way to check a `with` block covers the
+  ops you meant — and when a node inside the block stays `Bf16`, that op has no
+  fp32 support, so go read the support table rather than arguing with the
+  compiler.
+- **Verify the streaming transform.** Print before and after: the time axis
+  should disappear from every shape (`[1, 4, 64] → [1, 64]`). If a shape keeps
+  its time extent, that node didn't stream.
+- **See what your PyTorch actually lowered to.** Ops fuse and rename — `relu`
+  becomes `Clamp`, and `nn.Linear` becomes `Linear` with the bias inlined. When
+  the data dimension complains about an op you didn't think you wrote, this is
+  where you find it.
+
+Two caveats: the `vN` suffix in `Id(0v2)` is a graph version, and it changes as
+the graph is transformed (the same node is `Id(0v2)` before the streaming
+transform and `Id(0v9)` after), so diff on structure and shapes, never on ids;
+and `to_nnir` aggregates every unsupported op into one plain
+**`ValueError`** (not `UnsupportedOperationError`) whose message is already the
+answer:
+
+```
+Unsupported operations encountered translating to Vollo NNIR:
+  unsupported function 'fft_fft': found 1
+  unsupported attribute 'real': found 1
+```
+
+Cross-reference those names against
+[supported-models](https://vollo.myrtle.ai/latest/supported-models.html). This is
+the error `vollo_info` returns as a value and that `test_models.py` re-raises on
+every config.
+
+### One level further out: the fx graph
+
+If `to_nnir` fails before producing anything, the torch.fx graph is what it was
+reading:
+
+```python
+print(model.graph)  # after prepare_shape; print_tabular() needs `tabulate`, not a dep here
+for n in model.graph.nodes:
+    print(n.op, n.target, n.meta["tensor_meta"].shape, n.meta["vollo_fp32_activations"])
+```
+
+`prepare_shape` hangs a `tensor_meta` on every node (shape, dtype, stride) plus
+the `vollo_fp8_weights` / `vollo_fp32_activations` / `vollo_core_partition` keys
+that the precision context managers set — so you can confirm a context reached a
+node even before NNIR exists. `vt.fx.save(...)` / `vt.fx.load(...)` archive a
+traced module, which is the tidiest way to hand a repro to someone else.
+
+### Resource usage and where the cycles go
+
+`program.metrics()` is the tool for an `AllocationError`. Its `repr` is useless;
+read the named fields, most of which are **per-core lists** (six entries on
+`c6b32`, three on `c3b64`):
+
+```python
+m = program.metrics()
+m.tensor_ram_used, m.tensor_ram_depth       # [384, 0, 0, 0, 0, 0], 262144
+m.weight_store_used, m.weight_store_depth   # per-core used vs total available
+m.num_instrs, m.num_micro_instructions      # per-core instruction counts
+m.input_bytes, m.output_bytes               # per-model IO, per inference
+```
+
+`_used` against `_depth` tells you which store you blew and by how much; all the
+load sitting on core 0 with the rest at zero tells you the model isn't spread
+across cores.
+
 ## Tests
 
 - `test_models.py` — the bulk test: every model × (default + all 5 configs),
