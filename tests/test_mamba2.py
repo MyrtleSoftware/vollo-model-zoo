@@ -175,14 +175,19 @@ def test_mamba2_equivalence(
 
 @pytest.mark.filterwarnings("ignore:n_heads")  # 5 splits 12 heads unevenly, on purpose
 @pytest.mark.parametrize("head_partitions", [1, 2, 5, 6])
-def test_mamba2_partitioned_matches_unpartitioned(head_partitions: int):
+@pytest.mark.parametrize("bias", [False, True])
+def test_mamba2_partitioned_matches_unpartitioned(head_partitions: int, bias: bool):
     torch.manual_seed(42)
 
     d_model = 96
 
     def build(partitions):
         return VolloMamba2(
-            d_model=d_model, expand=2, d_head=16, head_partitions=partitions
+            d_model=d_model,
+            expand=2,
+            d_head=16,
+            bias=bias,
+            head_partitions=partitions,
         )
 
     # Partitioned -> wide keys, then wide -> partitioned keys again.
