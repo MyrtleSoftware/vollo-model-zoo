@@ -466,6 +466,10 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
+        # Note: some of these configurations are sub-optimal for core splitting
+        # because the number of heads is not divisible by the number of cores,
+        # but they are left unmodified so that we can compare with historical
+        # data
         dict(dim=400, state=16, layers=1, fp32=False),
         dict(dim=400, state=16, layers=1, fp32=True),
         dict(dim=400, state=32, layers=1, fp32=False),
