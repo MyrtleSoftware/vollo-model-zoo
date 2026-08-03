@@ -323,6 +323,11 @@ improve numerical stability during long sequence processing. This mirrors the
 reference implementation and helps avoid precision issues that may arise when
 using reduced-precision recurrent states.
 
+The heads are also split into `head_partitions` groups, one per accelerator
+core, with each group's projections, depthwise convolution and scan wrapped in a
+`vollo_torch.CorePartition` so that the cores work on independent heads rather
+than sharing one wide recurrence. This reducer cross-core communication.
+
 ## Other utilities
 
 Alongside the primary `zoo` command a few utilities are available to run in
