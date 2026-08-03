@@ -14,7 +14,7 @@ We use `pre-commit` to ensure code quality and consistency. The hooks include:
 
 - `isort`: Organizes imports.
 - `black`: Formats Python code.
-- `markdownlint`: Lints Markdown files.
+- `codespell`: Catches typos in all text files.
 
 To install the pre-commit hooks, run:
 
