@@ -42,12 +42,12 @@ class Mamba2(nn.Module):
             activation:       Activation function to use for convolution/gate.
             ssm_fp32:         Whether to use fp32 for the ssm hidden state and select activations.
             head_partitions:  Number of head groups to split the heads (and their
-                              projections, convolution and scan) into, or None to run all
-                              heads as one group. Group `p` is placed on core `p`, so this
-                              must not exceed the core count of the target Vollo config
-                              (6 for `c6b32`, 3 for `c3b64`). Must be between 1 and the
-                              number of heads; warns if it does not divide the heads
-                              evenly.
+                              projections, convolution, scan, norm and output
+                              projection) into, or None to run all heads as one group.
+                              Group `p` is placed on core `p`, so this must not exceed
+                              the core count of the target Vollo config (6 for `c6b32`,
+                              3 for `c3b64`). Must be between 1 and the number of heads;
+                              warns if it does not divide the heads evenly.
             no_warning:       Suppress that uneven-split warning, for callers that
                               already know the split is uneven.
         """
@@ -75,6 +75,7 @@ class Mamba2(nn.Module):
                 )
 
         self.head_partitions = head_partitions
+        self.norm_eps = 1e-5
 
         self.proj_B = nn.Linear(d_model, d_state, bias=bias)
         self.proj_C = nn.Linear(d_model, d_state, bias=bias)
@@ -111,6 +112,9 @@ class Mamba2(nn.Module):
             self.h0 = torch.nn.Buffer(
                 torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
             )
+
+            self.norm = torch.nn.RMSNorm(self.d_inner, eps=self.norm_eps)
+            self.out_proj = nn.Linear(self.d_inner, d_model, bias=bias)
         else:
             # Heads per partition, and the features they span: `h` heads == `d` features.
             self.head_splits = [
@@ -155,9 +159,20 @@ class Mamba2(nn.Module):
             self.D_heads = nn.ParameterList(
                 nn.Parameter(torch.ones(d)) for d in self.dim_splits
             )
+            # The norm and output projection are partitioned too: each core
+            # holds its slice of the norm gain and the rows of out_proj that
+            # its features contract against. The bias is added once, after the
+            # partials are summed, so it is not partitioned.
+            self.norm_weights = nn.ParameterList(
+                nn.Parameter(torch.ones(d)) for d in self.dim_splits
+            )
+            self.out_projs = nn.ModuleList(
+                nn.Linear(d, d_model, bias=False) for d in self.dim_splits
+            )
+            self.register_parameter(
+                "out_bias", nn.Parameter(torch.zeros(d_model)) if bias else None
+            )
 
-        self.norm = torch.nn.RMSNorm(self.d_inner, eps=1e-5)
-        self.out_proj = nn.Linear(self.d_inner, d_model, bias=bias)
         self.register_load_state_dict_pre_hook(self._load_legacy_state_dict)
 
     def forward(self, input):
@@ -206,7 +221,18 @@ class Mamba2(nn.Module):
             B = self.conv_B(B)
             C = self.conv_C(C)
 
-            ys = []
+            # RMSNorm's reduction spans every partition, so it cannot simply be
+            # done per core. But its scale is a per-timestep scalar and out_proj
+            # is linear, so the scale factors out of the projection:
+            #
+            #   out = W @ (y * w / rms) = (1 / rms) * sum_p (y_p * w_p) @ W_p
+            #
+            # Each core therefore contributes its slice's sum of squares and a
+            # partial projection, and only those cross cores -- the wide
+            # concatenation of `y` disappears. out_proj contracts over d_inner,
+            # so the partials are summed, not concatenated.
+            ss_parts = []
+            partials = []
             h0_offset = 0
             for p in range(self.head_partitions):
                 n_hp = self.head_splits[p]
@@ -236,38 +262,52 @@ class Mamba2(nn.Module):
                     yp = yp + self.D_heads[p] * xp
                     yp = yp * F.silu(zp)
 
-                    ys.append(yp)
+                    ss_parts.append((yp * yp).sum(-1, keepdim=True))
+                    partials.append(self.out_projs[p](yp * self.norm_weights[p]))
 
                 h0_offset += n_hp
 
-            y = torch.cat(ys, dim=-1)
+            ss = _tree_sum(ss_parts)
+            out = _tree_sum(partials)
 
-            y = self.norm(y)
-            return self.out_proj(y)
+            out = out * torch.rsqrt(ss / self.d_inner + self.norm_eps)
 
-    # Wide (unpartitioned) key, per-partition key format, and whether the tensor is
-    # split per feature or per head. Both load directions are driven off this one
-    # table, so they cannot drift apart.
+            if self.out_bias is not None:
+                out = out + self.out_bias
+
+            return out
+
+    # Wide (unpartitioned) key, per-partition key format, whether the tensor is
+    # split per feature or per head, and the axis it splits along. Both load
+    # directions are driven off this one table, so they cannot drift apart.
     _PARTITIONED_KEYS = (
-        ("proj_z.weight", "proj_zs.{}.weight", "dim"),
-        ("proj_z.bias", "proj_zs.{}.bias", "dim"),
-        ("proj_x.weight", "proj_xs.{}.weight", "dim"),
-        ("proj_x.bias", "proj_xs.{}.bias", "dim"),
-        ("proj_dt.weight", "proj_dts.{}.weight", "head"),
-        ("proj_dt.bias", "proj_dts.{}.bias", "head"),
-        ("conv_x.conv1d.conv.weight", "conv_xs.{}.conv1d.conv.weight", "dim"),
-        ("conv_x.conv1d.conv.bias", "conv_xs.{}.conv1d.conv.bias", "dim"),
-        ("dt_bias", "dt_biases.{}", "head"),
-        ("A_log", "A_logs.{}", "head"),
-        ("D", "D_heads.{}", "dim"),
+        ("proj_z.weight", "proj_zs.{}.weight", "dim", 0),
+        ("proj_z.bias", "proj_zs.{}.bias", "dim", 0),
+        ("proj_x.weight", "proj_xs.{}.weight", "dim", 0),
+        ("proj_x.bias", "proj_xs.{}.bias", "dim", 0),
+        ("proj_dt.weight", "proj_dts.{}.weight", "head", 0),
+        ("proj_dt.bias", "proj_dts.{}.bias", "head", 0),
+        ("conv_x.conv1d.conv.weight", "conv_xs.{}.conv1d.conv.weight", "dim", 0),
+        ("conv_x.conv1d.conv.bias", "conv_xs.{}.conv1d.conv.bias", "dim", 0),
+        ("dt_bias", "dt_biases.{}", "head", 0),
+        ("A_log", "A_logs.{}", "head", 0),
+        ("D", "D_heads.{}", "dim", 0),
+        ("norm.weight", "norm_weights.{}", "dim", 0),
+        # out_proj contracts over d_inner, so its rows -- axis 1 of the
+        # [d_model, d_inner] weight -- are what each core owns.
+        ("out_proj.weight", "out_projs.{}.weight", "dim", 1),
     )
+
+    # Keys that change name between the layouts but are not split: the output
+    # bias is added once, after the per-core partials are summed.
+    _RENAMED_KEYS = (("out_proj.bias", "out_bias"),)
 
     def _load_legacy_state_dict(self, _module, state_dict, prefix, *_hook_args):
         """
         Translate a checkpoint between the wide and per-partition key layouts, so one
-        saved from either model loads into the other. Every tensor splits along dim 0.
+        saved from either model loads into the other.
         """
-        for wide, part_fmt, split_by in self._PARTITIONED_KEYS:
+        for wide, part_fmt, split_by, axis in self._PARTITIONED_KEYS:
             wide_key = prefix + wide
 
             if self.head_partitions is None:
@@ -276,12 +316,33 @@ class Mamba2(nn.Module):
                     parts.append(state_dict.pop(prefix + part_fmt.format(idx)))
                     idx += 1
                 if parts:
-                    state_dict.setdefault(wide_key, torch.cat(parts))
+                    state_dict.setdefault(wide_key, torch.cat(parts, dim=axis))
 
             elif wide_key in state_dict:
                 sizes = self.head_splits if split_by == "head" else self.dim_splits
-                for i, chunk in enumerate(torch.split(state_dict.pop(wide_key), sizes)):
+                for i, chunk in enumerate(
+                    torch.split(state_dict.pop(wide_key), sizes, dim=axis)
+                ):
                     state_dict.setdefault(prefix + part_fmt.format(i), chunk)
+
+        for wide, part in self._RENAMED_KEYS:
+            src, dst = (part, wide) if self.head_partitions is None else (wide, part)
+            if prefix + src in state_dict:
+                state_dict.setdefault(prefix + dst, state_dict.pop(prefix + src))
+
+
+def _tree_sum(parts: list[torch.Tensor]) -> torch.Tensor:
+    """
+    Sum per-core partials pairwise rather than in a chain, so the cross-core
+    reduction is log-depth: the partials become available in parallel, and a
+    chain would serialise them behind each other.
+    """
+    while len(parts) > 1:
+        parts = [
+            parts[i] + parts[i + 1] if i + 1 < len(parts) else parts[i]
+            for i in range(0, len(parts), 2)
+        ]
+    return parts[0]
 
 
 class _Mamba2Step(nn.Module):

@@ -326,7 +326,19 @@ using reduced-precision recurrent states.
 The heads are also split into `head_partitions` groups, one per accelerator
 core, with each group's projections, depthwise convolution and scan wrapped in a
 `vollo_torch.CorePartition` so that the cores work on independent heads rather
-than sharing one wide recurrence. This reducer cross-core communication.
+than sharing one wide recurrence. This reduces cross-core communication.
+
+The final RMS norm and output projection are partitioned along with them. The
+norm's scale is a per-timestep scalar and the output projection is linear, so
+the scale factors out of the projection and each core can project its own slice:
+
+    out = W @ (y * w / rms) = (1 / rms) * sum_p (y_p * w_p) @ W_p
+
+Each core then contributes only a scalar sum of squares and a narrow partial
+result, in place of concatenating the full gated output onto a single core.
+Because the output projection contracts over `d_inner`, those partials are
+summed rather than concatenated, in a log-depth tree so that the reduction does
+not serialise behind one core.
 
 ## Other utilities
 
