@@ -132,6 +132,9 @@ def test_mamba2_equivalence(
             bias=bias,
             conv_bias=conv_bias,
             activation="relu",
+            # These sizes have as few as 2 heads, too few to partition; the
+            # partitioned path is checked against this one in the test below.
+            head_partitions=None,
         )
         .eval()
         .cuda()
@@ -170,6 +173,7 @@ def test_mamba2_equivalence(
         )
 
 
+@pytest.mark.filterwarnings("ignore:n_heads")  # 5 splits 12 heads unevenly, on purpose
 @pytest.mark.parametrize("head_partitions", [1, 2, 5, 6])
 def test_mamba2_partitioned_matches_unpartitioned(head_partitions: int):
     torch.manual_seed(42)
@@ -222,3 +226,17 @@ def test_mamba2_partitioned_matches_unpartitioned(head_partitions: int):
         rtol=1e-5,
         atol=1e-5,
     )
+
+
+def test_mamba2_head_partitions_validation():
+    # 96 * 2 / 16 = 12 heads
+    kwargs = dict(d_model=96, expand=2, d_head=16)
+
+    with pytest.raises(ValueError, match="must not exceed the number of heads"):
+        VolloMamba2(**kwargs, head_partitions=13)
+
+    with pytest.raises(ValueError, match="must be >= 1"):
+        VolloMamba2(**kwargs, head_partitions=0)
+
+    with pytest.warns(UserWarning, match="not a multiple of head_partitions"):
+        VolloMamba2(**kwargs, head_partitions=5)

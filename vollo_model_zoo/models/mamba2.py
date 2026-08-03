@@ -1,3 +1,4 @@
+import warnings
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Literal, Optional
@@ -43,8 +44,9 @@ class Mamba2(nn.Module):
                               projections, convolution and scan) into, or None to run all
                               heads as one group. Group `p` is placed on core `p`, so this
                               must not exceed the core count of the target Vollo config
-                              (6 for `c6b32`, 3 for `c3b64`). Falls back to None when there
-                              are fewer heads than groups.
+                              (6 for `c6b32`, 3 for `c3b64`). Must be between 1 and the
+                              number of heads; warns if it does not divide the heads
+                              evenly.
         """
         super().__init__()
 
@@ -56,8 +58,18 @@ class Mamba2(nn.Module):
         if head_partitions is not None:
             if head_partitions < 1:
                 raise ValueError(f"head_partitions must be >= 1, got {head_partitions}")
-            if self.n_heads < head_partitions:
-                head_partitions = None
+            if head_partitions > self.n_heads:
+                raise ValueError(
+                    f"head_partitions ({head_partitions}) must not exceed the number of "
+                    f"heads ({self.n_heads}); pass head_partitions=None to run all heads "
+                    "as a single group."
+                )
+            if self.n_heads % head_partitions != 0:
+                warnings.warn(
+                    f"n_heads ({self.n_heads}) is not a multiple of head_partitions "
+                    f"({head_partitions}): the head groups are uneven, so some cores do "
+                    "more work than others."
+                )
 
         self.head_partitions = head_partitions
 
@@ -418,8 +430,7 @@ def _vm(
 ):
     from vollo_model_zoo.vm import CONFIGS, vollo_info
 
-    # Head group `p` runs on core `p`, so a config with fewer cores than the
-    # requested number of groups gets one group per core instead.
+    # Head group `p` runs on core `p`, so use one group per core of this config.
     partitions = CONFIGS[config].num_cores
 
     input = torch.randn(2, dim)
@@ -448,7 +459,6 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        # Paired to show what splitting the heads across cores buys.
         dict(dim=400, state=16, layers=1, fp32=False),
         dict(dim=400, state=16, layers=1, fp32=True),
         dict(dim=400, state=32, layers=1, fp32=False),
