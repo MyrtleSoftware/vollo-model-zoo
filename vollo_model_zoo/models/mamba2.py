@@ -24,14 +24,7 @@ class Mamba2(nn.Module):
         conv_bias: bool = True,
         activation: Literal["silu", "relu"] = "silu",
         ssm_fp32: bool = True,
-        head_partitions: Optional[tuple[tuple[int, ...], ...]] = (
-            (0,),
-            (1,),
-            (2,),
-            (3,),
-            (4,),
-            (5,),
-        ),
+        head_partitions: Optional[int] = 6,
     ):
         """
         See: https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba_simple.py
@@ -46,7 +39,12 @@ class Mamba2(nn.Module):
             conv_bias:        Convolutional bias.
             activation:       Activation function to use for convolution/gate.
             ssm_fp32:         Whether to use fp32 for the ssm hidden state and select activations.
-            head_partitions:  Sequence of core partition indices, one per head partition.
+            head_partitions:  Number of head groups to split the heads (and their
+                              projections, convolution and scan) into, or None to run all
+                              heads as one group. Group `p` is placed on core `p`, so this
+                              must not exceed the core count of the target Vollo config
+                              (6 for `c6b32`, 3 for `c3b64`). Falls back to None when there
+                              are fewer heads than groups.
         """
         super().__init__()
 
@@ -56,8 +54,9 @@ class Mamba2(nn.Module):
         self.n_heads = self.d_inner // self.d_head
 
         if head_partitions is not None:
-            num_partitions = len(head_partitions)
-            if self.n_heads < num_partitions:
+            if head_partitions < 1:
+                raise ValueError(f"head_partitions must be >= 1, got {head_partitions}")
+            if self.n_heads < head_partitions:
                 head_partitions = None
 
         self.head_partitions = head_partitions
@@ -98,7 +97,7 @@ class Mamba2(nn.Module):
                 torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
             )
         else:
-            num_partitions = len(self.head_partitions)
+            num_partitions = self.head_partitions
             self.head_splits = [
                 len(chunk)
                 for chunk in torch.arange(self.n_heads).tensor_split(num_partitions)
@@ -223,13 +222,13 @@ class Mamba2(nn.Module):
 
             ys = []
             h0_offset = 0
-            dim_offset = 0
-            for p, head_partition in enumerate(self.head_partitions):
+            for p in range(self.head_partitions):
                 n_hp = self.head_splits[p]
                 dim_p = self.dim_splits[p]
                 h0_p = self.h0[h0_offset : h0_offset + n_hp]
 
-                with vollo_torch.CorePartition(head_partition):
+                # One head group per core.
+                with vollo_torch.CorePartition([p]):
                     zp = self.proj_zs[p](input)
                     xp = self.proj_xs[p](input)
                     dtp = self.proj_dts[p](input)
@@ -254,7 +253,6 @@ class Mamba2(nn.Module):
                     ys.append(yp)
 
                 h0_offset += n_hp
-                dim_offset += dim_p
 
             y = torch.cat(ys, dim=-1)
 
@@ -299,7 +297,6 @@ class Mamba2(nn.Module):
                         prefix + wide_key, torch.cat(values, dim=concat_dim)
                     )
         else:
-            num_partitions = len(self.head_partitions)
 
             def split_key(wide_key, head_key_fmt, sizes, dim):
                 full_wide_key = prefix + wide_key
@@ -309,30 +306,27 @@ class Mamba2(nn.Module):
                     for i, chunk in enumerate(chunks):
                         state_dict.setdefault(prefix + head_key_fmt.format(i), chunk)
 
-            if self.headwise_linear:
-                split_key("proj_z.weight", "proj_zs.{}.weight", self.dim_splits, dim=0)
-                split_key("proj_z.bias", "proj_zs.{}.bias", self.dim_splits, dim=0)
-                split_key("proj_x.weight", "proj_xs.{}.weight", self.dim_splits, dim=0)
-                split_key("proj_x.bias", "proj_xs.{}.bias", self.dim_splits, dim=0)
-                split_key(
-                    "proj_dt.weight", "proj_dts.{}.weight", self.head_splits, dim=0
-                )
-                split_key("proj_dt.bias", "proj_dts.{}.bias", self.head_splits, dim=0)
-                split_key(
-                    "conv_x.conv1d.conv.weight",
-                    "conv_xs.{}.conv1d.conv.weight",
-                    self.dim_splits,
-                    dim=0,
-                )
-                split_key(
-                    "conv_x.conv1d.conv.bias",
-                    "conv_xs.{}.conv1d.conv.bias",
-                    self.dim_splits,
-                    dim=0,
-                )
-                split_key("dt_bias", "dt_biases.{}", self.head_splits, dim=0)
-                split_key("A_log", "A_logs.{}", self.head_splits, dim=0)
-                split_key("D", "D_heads.{}", self.dim_splits, dim=0)
+            split_key("proj_z.weight", "proj_zs.{}.weight", self.dim_splits, dim=0)
+            split_key("proj_z.bias", "proj_zs.{}.bias", self.dim_splits, dim=0)
+            split_key("proj_x.weight", "proj_xs.{}.weight", self.dim_splits, dim=0)
+            split_key("proj_x.bias", "proj_xs.{}.bias", self.dim_splits, dim=0)
+            split_key("proj_dt.weight", "proj_dts.{}.weight", self.head_splits, dim=0)
+            split_key("proj_dt.bias", "proj_dts.{}.bias", self.head_splits, dim=0)
+            split_key(
+                "conv_x.conv1d.conv.weight",
+                "conv_xs.{}.conv1d.conv.weight",
+                self.dim_splits,
+                dim=0,
+            )
+            split_key(
+                "conv_x.conv1d.conv.bias",
+                "conv_xs.{}.conv1d.conv.bias",
+                self.dim_splits,
+                dim=0,
+            )
+            split_key("dt_bias", "dt_biases.{}", self.head_splits, dim=0)
+            split_key("A_log", "A_logs.{}", self.head_splits, dim=0)
+            split_key("D", "D_heads.{}", self.dim_splits, dim=0)
 
 
 class _Mamba2Step(nn.Module):
@@ -422,12 +416,17 @@ def _vm(
     fp32: bool,
     config: str,
 ):
-    from vollo_model_zoo.vm import vollo_info
+    from vollo_model_zoo.vm import CONFIGS, vollo_info
+
+    # Head group `p` runs on core `p`, so a config with fewer cores than the
+    # requested number of groups gets one group per core instead.
+    partitions = CONFIGS[config].num_cores
 
     input = torch.randn(2, dim)
 
     model = nn.Sequential().extend(
-        Mamba2(d_model=dim, d_state=state, ssm_fp32=fp32) for _ in range(layers)
+        Mamba2(d_model=dim, d_state=state, ssm_fp32=fp32, head_partitions=partitions)
+        for _ in range(layers)
     )
 
     return vollo_info(
@@ -449,6 +448,7 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
+        # Paired to show what splitting the heads across cores buys.
         dict(dim=400, state=16, layers=1, fp32=False),
         dict(dim=400, state=16, layers=1, fp32=True),
         dict(dim=400, state=32, layers=1, fp32=False),
