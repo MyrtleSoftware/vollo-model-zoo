@@ -179,53 +179,31 @@ def test_mamba2_partitioned_matches_unpartitioned(head_partitions: int):
     torch.manual_seed(42)
 
     d_model = 96
-    expand = 2
-    headdim = 16
 
-    partitioned = VolloMamba2(
-        d_model=d_model,
-        expand=expand,
-        d_head=headdim,
-        head_partitions=head_partitions,
-    )
-    unpartitioned = VolloMamba2(
-        d_model=d_model,
-        expand=expand,
-        d_head=headdim,
-        head_partitions=None,
-    )
+    def build(partitions):
+        return VolloMamba2(
+            d_model=d_model, expand=2, d_head=16, head_partitions=partitions
+        )
 
     # Partitioned -> wide keys, then wide -> partitioned keys again.
+    partitioned = build(head_partitions)
+    unpartitioned = build(None)
     unpartitioned.load_state_dict(partitioned.state_dict(), strict=True)
-
-    reloaded = VolloMamba2(
-        d_model=d_model,
-        expand=expand,
-        d_head=headdim,
-        head_partitions=head_partitions,
-    )
+    reloaded = build(head_partitions)
     reloaded.load_state_dict(unpartitioned.state_dict(), strict=True)
 
-    T = 16
-    x = torch.randn(T, d_model)
+    x = torch.randn(16, d_model)
 
     with torch.no_grad():
-        y_partitioned = partitioned(x)
-        y_unpartitioned = unpartitioned(x)
-        y_reloaded = reloaded(x)
-
-    np.testing.assert_allclose(
-        y_partitioned.numpy(),
-        y_unpartitioned.numpy(),
-        rtol=1e-5,
-        atol=1e-5,
-    )
-    np.testing.assert_allclose(
-        y_partitioned.numpy(),
-        y_reloaded.numpy(),
-        rtol=1e-5,
-        atol=1e-5,
-    )
+        expected = partitioned(x).numpy()
+        for name, model in [("unpartitioned", unpartitioned), ("reloaded", reloaded)]:
+            np.testing.assert_allclose(
+                expected,
+                model(x).numpy(),
+                rtol=1e-5,
+                atol=1e-5,
+                err_msg=f"{name} does not match the partitioned model",
+            )
 
 
 def test_mamba2_head_partitions_validation():

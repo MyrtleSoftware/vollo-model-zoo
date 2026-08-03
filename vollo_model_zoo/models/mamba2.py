@@ -48,6 +48,8 @@ class Mamba2(nn.Module):
                               (6 for `c6b32`, 3 for `c3b64`). Must be between 1 and the
                               number of heads; warns if it does not divide the heads
                               evenly.
+            no_warning:       Suppress that uneven-split warning, for callers that
+                              already know the split is uneven.
         """
         super().__init__()
 
@@ -110,77 +112,48 @@ class Mamba2(nn.Module):
                 torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
             )
         else:
-            num_partitions = self.head_partitions
+            # Heads per partition, and the features they span: `h` heads == `d` features.
             self.head_splits = [
                 len(chunk)
-                for chunk in torch.arange(self.n_heads).tensor_split(num_partitions)
+                for chunk in torch.arange(self.n_heads).tensor_split(
+                    self.head_partitions
+                )
             ]
-            self.dim_splits = [h_cnt * self.d_head for h_cnt in self.head_splits]
-
-            self.ssms = nn.ModuleList(
-                [
-                    vollo_torch.nn.Scan(
-                        _Mamba2Step(
-                            n_heads=self.head_splits[p],
-                            d_head=self.d_head,
-                            d_state=d_state,
-                            fp32=ssm_fp32,
-                        )
-                    )
-                    for p in range(num_partitions)
-                ]
-            )
+            self.dim_splits = [h * self.d_head for h in self.head_splits]
 
             self.h0 = torch.nn.Buffer(
                 torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
             )
 
+            self.ssms = nn.ModuleList(
+                vollo_torch.nn.Scan(
+                    _Mamba2Step(
+                        n_heads=h, d_head=self.d_head, d_state=d_state, fp32=ssm_fp32
+                    )
+                )
+                for h in self.head_splits
+            )
             self.proj_zs = nn.ModuleList(
-                [
-                    nn.Linear(d_model, self.dim_splits[p], bias=bias)
-                    for p in range(num_partitions)
-                ]
+                nn.Linear(d_model, d, bias=bias) for d in self.dim_splits
             )
             self.proj_xs = nn.ModuleList(
-                [
-                    nn.Linear(d_model, self.dim_splits[p], bias=bias)
-                    for p in range(num_partitions)
-                ]
+                nn.Linear(d_model, d, bias=bias) for d in self.dim_splits
             )
             self.proj_dts = nn.ModuleList(
-                [
-                    nn.Linear(d_model, self.head_splits[p], bias=bias)
-                    for p in range(num_partitions)
-                ]
+                nn.Linear(d_model, h, bias=bias) for h in self.head_splits
             )
             self.conv_xs = nn.ModuleList(
-                [
-                    _ShortConv(
-                        dim=self.dim_splits[p],
-                        d_conv=d_conv,
-                        bias=conv_bias,
-                        activation=activation,
-                    )
-                    for p in range(num_partitions)
-                ]
+                _ShortConv(dim=d, d_conv=d_conv, bias=conv_bias, activation=activation)
+                for d in self.dim_splits
             )
             self.dt_biases = nn.ParameterList(
-                [
-                    nn.Parameter(torch.rand(self.head_splits[p]))
-                    for p in range(num_partitions)
-                ]
+                nn.Parameter(torch.rand(h)) for h in self.head_splits
             )
             self.A_logs = nn.ParameterList(
-                [
-                    nn.Parameter(torch.rand(self.head_splits[p]))
-                    for p in range(num_partitions)
-                ]
+                nn.Parameter(torch.rand(h)) for h in self.head_splits
             )
             self.D_heads = nn.ParameterList(
-                [
-                    nn.Parameter(torch.ones(self.dim_splits[p]))
-                    for p in range(num_partitions)
-                ]
+                nn.Parameter(torch.ones(d)) for d in self.dim_splits
             )
 
         self.norm = torch.nn.RMSNorm(self.d_inner, eps=1e-5)
@@ -272,74 +245,43 @@ class Mamba2(nn.Module):
             y = self.norm(y)
             return self.out_proj(y)
 
-    def _load_legacy_state_dict(
-        self,
-        _module,
-        state_dict,
-        prefix,
-        _local_metadata,
-        _strict,
-        _missing_keys,
-        _unexpected_keys,
-        _error_msgs,
-    ):
-        if self.head_partitions is None:
-            # Combine partitioned keys into wide keys if present
-            keys_to_combine = [
-                ("proj_zs.{}.weight", "proj_z.weight", 0),
-                ("proj_zs.{}.bias", "proj_z.bias", 0),
-                ("proj_xs.{}.weight", "proj_x.weight", 0),
-                ("proj_xs.{}.bias", "proj_x.bias", 0),
-                ("proj_dts.{}.weight", "proj_dt.weight", 0),
-                ("proj_dts.{}.bias", "proj_dt.bias", 0),
-                ("conv_xs.{}.conv1d.conv.weight", "conv_x.conv1d.conv.weight", 0),
-                ("conv_xs.{}.conv1d.conv.bias", "conv_x.conv1d.conv.bias", 0),
-                ("dt_biases.{}", "dt_bias", 0),
-                ("A_logs.{}", "A_log", 0),
-                ("D_heads.{}", "D", 0),
-            ]
-            for head_key_fmt, wide_key, concat_dim in keys_to_combine:
-                head_keys = []
-                idx = 0
-                while prefix + head_key_fmt.format(idx) in state_dict:
-                    head_keys.append(prefix + head_key_fmt.format(idx))
+    # Wide (unpartitioned) key, per-partition key format, and whether the tensor is
+    # split per feature or per head. Both load directions are driven off this one
+    # table, so they cannot drift apart.
+    _PARTITIONED_KEYS = (
+        ("proj_z.weight", "proj_zs.{}.weight", "dim"),
+        ("proj_z.bias", "proj_zs.{}.bias", "dim"),
+        ("proj_x.weight", "proj_xs.{}.weight", "dim"),
+        ("proj_x.bias", "proj_xs.{}.bias", "dim"),
+        ("proj_dt.weight", "proj_dts.{}.weight", "head"),
+        ("proj_dt.bias", "proj_dts.{}.bias", "head"),
+        ("conv_x.conv1d.conv.weight", "conv_xs.{}.conv1d.conv.weight", "dim"),
+        ("conv_x.conv1d.conv.bias", "conv_xs.{}.conv1d.conv.bias", "dim"),
+        ("dt_bias", "dt_biases.{}", "head"),
+        ("A_log", "A_logs.{}", "head"),
+        ("D", "D_heads.{}", "dim"),
+    )
+
+    def _load_legacy_state_dict(self, _module, state_dict, prefix, *_hook_args):
+        """
+        Translate a checkpoint between the wide and per-partition key layouts, so one
+        saved from either model loads into the other. Every tensor splits along dim 0.
+        """
+        for wide, part_fmt, split_by in self._PARTITIONED_KEYS:
+            wide_key = prefix + wide
+
+            if self.head_partitions is None:
+                parts, idx = [], 0
+                while prefix + part_fmt.format(idx) in state_dict:
+                    parts.append(state_dict.pop(prefix + part_fmt.format(idx)))
                     idx += 1
-                if head_keys:
-                    values = [state_dict.pop(k) for k in head_keys]
-                    state_dict.setdefault(
-                        prefix + wide_key, torch.cat(values, dim=concat_dim)
-                    )
-        else:
+                if parts:
+                    state_dict.setdefault(wide_key, torch.cat(parts))
 
-            def split_key(wide_key, head_key_fmt, sizes, dim):
-                full_wide_key = prefix + wide_key
-                if full_wide_key in state_dict:
-                    val = state_dict.pop(full_wide_key)
-                    chunks = torch.split(val, sizes, dim=dim)
-                    for i, chunk in enumerate(chunks):
-                        state_dict.setdefault(prefix + head_key_fmt.format(i), chunk)
-
-            split_key("proj_z.weight", "proj_zs.{}.weight", self.dim_splits, dim=0)
-            split_key("proj_z.bias", "proj_zs.{}.bias", self.dim_splits, dim=0)
-            split_key("proj_x.weight", "proj_xs.{}.weight", self.dim_splits, dim=0)
-            split_key("proj_x.bias", "proj_xs.{}.bias", self.dim_splits, dim=0)
-            split_key("proj_dt.weight", "proj_dts.{}.weight", self.head_splits, dim=0)
-            split_key("proj_dt.bias", "proj_dts.{}.bias", self.head_splits, dim=0)
-            split_key(
-                "conv_x.conv1d.conv.weight",
-                "conv_xs.{}.conv1d.conv.weight",
-                self.dim_splits,
-                dim=0,
-            )
-            split_key(
-                "conv_x.conv1d.conv.bias",
-                "conv_xs.{}.conv1d.conv.bias",
-                self.dim_splits,
-                dim=0,
-            )
-            split_key("dt_bias", "dt_biases.{}", self.head_splits, dim=0)
-            split_key("A_log", "A_logs.{}", self.head_splits, dim=0)
-            split_key("D", "D_heads.{}", self.dim_splits, dim=0)
+            elif wide_key in state_dict:
+                sizes = self.head_splits if split_by == "head" else self.dim_splits
+                for i, chunk in enumerate(torch.split(state_dict.pop(wide_key), sizes)):
+                    state_dict.setdefault(prefix + part_fmt.format(i), chunk)
 
 
 class _Mamba2Step(nn.Module):
