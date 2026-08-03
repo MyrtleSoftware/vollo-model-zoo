@@ -170,25 +170,19 @@ def test_mamba2_equivalence(
         )
 
 
-@pytest.mark.parametrize("num_partitions", [2, 6])
-@pytest.mark.parametrize("headwise_linear", [True, False])
-def test_mamba2_partitioned_matches_unpartitioned(
-    num_partitions: int, headwise_linear: bool
-):
+@pytest.mark.parametrize("head_partitions", [1, 2, 5, 6])
+def test_mamba2_partitioned_matches_unpartitioned(head_partitions: int):
     torch.manual_seed(42)
 
     d_model = 96
     expand = 2
     headdim = 16
 
-    head_partitions = tuple((i,) for i in range(num_partitions))
-
     partitioned = VolloMamba2(
         d_model=d_model,
         expand=expand,
         d_head=headdim,
         head_partitions=head_partitions,
-        headwise_linear=headwise_linear,
     )
     unpartitioned = VolloMamba2(
         d_model=d_model,
@@ -197,7 +191,16 @@ def test_mamba2_partitioned_matches_unpartitioned(
         head_partitions=None,
     )
 
+    # Partitioned -> wide keys, then wide -> partitioned keys again.
     unpartitioned.load_state_dict(partitioned.state_dict(), strict=True)
+
+    reloaded = VolloMamba2(
+        d_model=d_model,
+        expand=expand,
+        d_head=headdim,
+        head_partitions=head_partitions,
+    )
+    reloaded.load_state_dict(unpartitioned.state_dict(), strict=True)
 
     T = 16
     x = torch.randn(T, d_model)
@@ -205,10 +208,17 @@ def test_mamba2_partitioned_matches_unpartitioned(
     with torch.no_grad():
         y_partitioned = partitioned(x)
         y_unpartitioned = unpartitioned(x)
+        y_reloaded = reloaded(x)
 
     np.testing.assert_allclose(
         y_partitioned.numpy(),
         y_unpartitioned.numpy(),
+        rtol=1e-5,
+        atol=1e-5,
+    )
+    np.testing.assert_allclose(
+        y_partitioned.numpy(),
+        y_reloaded.numpy(),
         rtol=1e-5,
         atol=1e-5,
     )
