@@ -26,6 +26,7 @@ class Mamba2(nn.Module):
         activation: Literal["silu", "relu"] = "silu",
         ssm_fp32: bool = True,
         head_partitions: Optional[int] = 6,
+        no_warning: bool = False,
     ):
         """
         See: https://github.com/state-spaces/mamba/blob/main/mamba_ssm/modules/mamba_simple.py
@@ -64,7 +65,7 @@ class Mamba2(nn.Module):
                     f"heads ({self.n_heads}); pass head_partitions=None to run all heads "
                     "as a single group."
                 )
-            if self.n_heads % head_partitions != 0:
+            if not no_warning and self.n_heads % head_partitions != 0:
                 warnings.warn(
                     f"n_heads ({self.n_heads}) is not a multiple of head_partitions "
                     f"({head_partitions}): the head groups are uneven, so some cores do "
@@ -436,7 +437,13 @@ def _vm(
     input = torch.randn(2, dim)
 
     model = nn.Sequential().extend(
-        Mamba2(d_model=dim, d_state=state, ssm_fp32=fp32, head_partitions=partitions)
+        Mamba2(
+            d_model=dim,
+            d_state=state,
+            ssm_fp32=fp32,
+            head_partitions=partitions,
+            no_warning=True,
+        )
         for _ in range(layers)
     )
 
