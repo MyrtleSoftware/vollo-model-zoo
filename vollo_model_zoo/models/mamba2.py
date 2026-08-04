@@ -273,8 +273,13 @@ class Mamba2(nn.Module):
                 y = torch.cat(ys, dim=-1)
                 return self.out_proj(self.norm(y))
 
-            ss = _tree_sum(ss_parts)
             out = _tree_sum(partials)
+
+            # Each core's sum of squares is a single element, so gathering them
+            # into one vector and reducing that costs one cross-core
+            # concatenation plus one reduction, rather than a chain of cross-core
+            # adds.
+            ss = torch.cat(ss_parts, dim=-1).sum(-1, keepdim=True)
 
             out = out * torch.rsqrt(ss / self.d_inner + self.norm_eps)
 
