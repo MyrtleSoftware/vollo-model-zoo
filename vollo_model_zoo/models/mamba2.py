@@ -112,7 +112,6 @@ class Mamba2(nn.Module):
 
             self.dt_bias = nn.Parameter(torch.rand(self.n_heads))
             self.A_log = nn.Parameter(torch.rand(self.n_heads))
-            self.D = nn.Parameter(torch.ones(self.d_inner))
 
             self.ssm = vollo_torch.nn.Scan(
                 _Mamba2Step(
@@ -160,9 +159,6 @@ class Mamba2(nn.Module):
             self.A_logs = nn.ParameterList(
                 nn.Parameter(torch.rand(h)) for h in self.head_splits
             )
-            self.D_heads = nn.ParameterList(
-                nn.Parameter(torch.ones(d)) for d in self.dim_splits
-            )
 
         if self.distributed_norm:
             # Each core holds its slice of the norm gain and the rows of
@@ -205,10 +201,8 @@ class Mamba2(nn.Module):
             dt = F.softplus(dt + self.dt_bias)
             dA = dt * (-torch.exp(self.A_log))
 
+            # The step folds the D skip connection into its output.
             y = self.ssm([x, B, C, dt, dA], self.h0, input_axis=[0] * 5, output_axis=0)
-
-            # Skip connection
-            y = y + self.D * x
 
             # Gating (FLA always uses SiLU regardless of hidden_act)
             # This is "norm after gate" configuration.
@@ -258,7 +252,6 @@ class Mamba2(nn.Module):
                         output_axis=0,
                     )
 
-                    yp = yp + self.D_heads[p] * xp
                     yp = yp * F.silu(zp)
 
                     if self.distributed_norm:
@@ -288,30 +281,44 @@ class Mamba2(nn.Module):
 
             return out
 
-    # Wide (unpartitioned) key, per-partition key format, whether the tensor is
-    # split per feature or per head, and the axis it splits along. Every load
-    # direction is driven off this one table, so they cannot drift apart.
+    # Checkpoint key, unpartitioned key, per-partition key format, whether the
+    # tensor is split per feature or per head, and the axis it splits along. Every
+    # load direction is driven off this one table, so they cannot drift apart. The
+    # checkpoint key differs from the unpartitioned key only for `D`, which the
+    # scan's step module owns (see `_Mamba2Step`).
     _PARTITIONED_KEYS = (
-        ("proj_z.weight", "proj_zs.{}.weight", "dim", 0),
-        ("proj_z.bias", "proj_zs.{}.bias", "dim", 0),
-        ("proj_x.weight", "proj_xs.{}.weight", "dim", 0),
-        ("proj_x.bias", "proj_xs.{}.bias", "dim", 0),
-        ("proj_dt.weight", "proj_dts.{}.weight", "head", 0),
-        ("proj_dt.bias", "proj_dts.{}.bias", "head", 0),
-        ("conv_x.conv1d.conv.weight", "conv_xs.{}.conv1d.conv.weight", "dim", 0),
-        ("conv_x.conv1d.conv.bias", "conv_xs.{}.conv1d.conv.bias", "dim", 0),
-        ("dt_bias", "dt_biases.{}", "head", 0),
-        ("A_log", "A_logs.{}", "head", 0),
-        ("D", "D_heads.{}", "dim", 0),
+        ("proj_z.weight", "proj_z.weight", "proj_zs.{}.weight", "dim", 0),
+        ("proj_z.bias", "proj_z.bias", "proj_zs.{}.bias", "dim", 0),
+        ("proj_x.weight", "proj_x.weight", "proj_xs.{}.weight", "dim", 0),
+        ("proj_x.bias", "proj_x.bias", "proj_xs.{}.bias", "dim", 0),
+        ("proj_dt.weight", "proj_dt.weight", "proj_dts.{}.weight", "head", 0),
+        ("proj_dt.bias", "proj_dt.bias", "proj_dts.{}.bias", "head", 0),
+        (
+            "conv_x.conv1d.conv.weight",
+            "conv_x.conv1d.conv.weight",
+            "conv_xs.{}.conv1d.conv.weight",
+            "dim",
+            0,
+        ),
+        (
+            "conv_x.conv1d.conv.bias",
+            "conv_x.conv1d.conv.bias",
+            "conv_xs.{}.conv1d.conv.bias",
+            "dim",
+            0,
+        ),
+        ("dt_bias", "dt_bias", "dt_biases.{}", "head", 0),
+        ("A_log", "A_log", "A_logs.{}", "head", 0),
+        ("D", "ssm.step.D", "ssms.{}.step.D", "dim", 0),
     )
 
     # Same table, for the keys that `distributed_norm` rather than
     # `head_partitions` decides the layout of.
     _NORM_KEYS = (
-        ("norm.weight", "norm_weights.{}", "dim", 0),
+        ("norm.weight", "norm.weight", "norm_weights.{}", "dim", 0),
         # out_proj contracts over d_inner, so its rows -- axis 1 of the
         # [d_model, d_inner] weight -- are what each core owns.
-        ("out_proj.weight", "out_projs.{}.weight", "dim", 1),
+        ("out_proj.weight", "out_proj.weight", "out_projs.{}.weight", "dim", 1),
     )
 
     # Keys that change name between the layouts but are not split: the output
@@ -337,10 +344,14 @@ class Mamba2(nn.Module):
                 state_dict.setdefault(prefix + dst, state_dict.pop(prefix + src))
 
     def _split_or_merge(self, state_dict, prefix, keys, to_partitioned: bool):
-        for wide, part_fmt, split_by, axis in keys:
+        for ckpt, wide, part_fmt, split_by, axis in keys:
             # Gather whichever layout the checkpoint used into one wide tensor.
-            tensor = state_dict.pop(prefix + wide, None)
-            if tensor is None:
+            tensor = None
+            for key in dict.fromkeys((prefix + ckpt, prefix + wide)):
+                if key in state_dict:
+                    tensor = state_dict.pop(key)
+                    break
+            else:
                 parts, idx = [], 0
                 while prefix + part_fmt.format(idx) in state_dict:
                     parts.append(state_dict.pop(prefix + part_fmt.format(idx)))
@@ -386,6 +397,12 @@ class _Mamba2Step(nn.Module):
 
         self.fp_context = vollo_torch.Fp32Activations if fp32 else nullcontext
 
+        # The skip connection's scale. It belongs to the step, rather than to the
+        # enclosing Mamba2, because the step folds it into the instantaneous term
+        # below, and a parameter read inside a Scan must be owned by the step
+        # module. `_PARTITIONED_KEYS` maps the usual `D` checkpoint key onto it.
+        self.D = nn.Parameter(torch.ones(self.d_inner))
+
         # head_expand[i, g] = 1 iff feature i belongs to head g, so that a
         # per-head scalar can be broadcast over its features by contracting the
         # data dimension instead of moving it -- see _broadcast_heads.
@@ -422,13 +439,18 @@ class _Mamba2Step(nn.Module):
         # [d h] @ [h! 1] -> [d! 1] -> [d!]
         dt = (self.head_expand @ dt.unsqueeze(-1)).squeeze(-1)
 
-        # [d! n] @ [n!] -> [d!]
-        y = dA * (S @ C) + dt * x * (B * C).sum(-1, keepdim=True)
+        # The instantaneous term folds in the D skip connection, since
+        #     dt * x * (B . C) + D * x == x * (dt * (B . C) + D)
+        # which leaves just one multiply and one add waiting on x.
+        instant = x * (dt * (B * C).sum(-1, keepdim=True) + self.D)
 
         # [d! 1] * [1! n] -> [d! n]
         dB = (dt * x).unsqueeze(-1) * torch.stack(
             [B[i : i + 1] for i in range(self.d_state)], dim=1
         )
+
+        # [d! n] @ [n!] -> [d!]
+        y = dA * (S @ C) + instant
 
         with self.fp_context():
             S = dA.unsqueeze(-1) * S + dB
