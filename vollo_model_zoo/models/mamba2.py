@@ -376,6 +376,14 @@ class _Mamba2Step(nn.Module):
 
         self.fp_context = vollo_torch.Fp32Activations if fp32 else nullcontext
 
+        # head_expand[i, g] = 1 iff feature i belongs to head g, so that a
+        # per-head scalar can be broadcast over its features by contracting the
+        # data dimension instead of moving it -- see _broadcast_heads.
+        expand = torch.zeros(self.d_inner, n_heads)
+        for i in range(self.d_inner):
+            expand[i, i // d_head] = 1.0
+        self.head_expand = torch.nn.Buffer(expand, persistent=False)
+
     def forward(self, inputs: list[torch.Tensor], S: torch.Tensor):
         """
         The state is held flat, as `[d! n]`: Vollo's matrix-vector product wants
@@ -396,8 +404,13 @@ class _Mamba2Step(nn.Module):
         with self.fp_context():
             dA = dA.exp()
 
+        # dA is the output of an fp32 op, so it is broadcast by slicing the data
+        # dimension apart: feeding it through the (bf16) matmul that dt uses
+        # would cost a conversion worth more than the slices it saves.
         dA = self._broadcast_heads(dA)  # [h!] -> [d!]
-        dt = self._broadcast_heads(dt)  # [h!] -> [d!]
+
+        # [d h] @ [h! 1] -> [d! 1] -> [d!]
+        dt = (self.head_expand @ dt.unsqueeze(-1)).squeeze(-1)
 
         # [d! n] @ [n!] -> [d!]
         y = dA * (S @ C) + dt * x * (B * C).sum(-1, keepdim=True)
@@ -418,7 +431,8 @@ class _Mamba2Step(nn.Module):
 
         Broadcasting along the data dimension is only cheap from an extent of 1,
         so each head's element is sliced out, widened, and the results
-        concatenated.
+        concatenated. `head_expand` does the same thing as a matmul, which is
+        cheaper -- but only for a bf16 input.
         """
         return torch.cat(
             [
