@@ -187,18 +187,15 @@ class Mamba2(nn.Module):
         Output:
             y: [T, D]
         """
+        B = self.proj_B(input)
+        C = self.proj_C(input)
+        B = self.conv_B(B)
+        C = self.conv_C(C)
+
         if self.head_partitions is None:
-            z = self.proj_z(input)
-            x = self.proj_x(input)
-            B = self.proj_B(input)
-            C = self.proj_C(input)
-            dt = self.proj_dt(input)
+            x = self.conv_x(self.proj_x(input))
 
-            x = self.conv_x(x)
-            B = self.conv_B(B)
-            C = self.conv_C(C)
-
-            dt = F.softplus(dt + self.dt_bias)
+            dt = F.softplus(self.proj_dt(input) + self.dt_bias)
             dA = dt * (-torch.exp(self.A_log))
 
             # The step folds the D skip connection into its output.
@@ -206,17 +203,12 @@ class Mamba2(nn.Module):
 
             # Gating (FLA always uses SiLU regardless of hidden_act)
             # This is "norm after gate" configuration.
-            y = y * torch.nn.functional.silu(z)
+            y = y * torch.nn.functional.silu(self.proj_z(input))
 
             y = self.norm(y)
 
             return self.out_proj(y)
         else:
-            B = self.proj_B(input)
-            C = self.proj_C(input)
-            B = self.conv_B(B)
-            C = self.conv_C(C)
-
             # RMSNorm's reduction spans every partition, so it cannot simply be
             # done per core. But its scale is a per-timestep scalar and out_proj
             # is linear, so under `distributed_norm` the scale factors out of the
@@ -236,13 +228,9 @@ class Mamba2(nn.Module):
 
                 # One head group per core.
                 with vollo_torch.CorePartition([p]):
-                    zp = self.proj_zs[p](input)
-                    xp = self.proj_xs[p](input)
-                    dtp = self.proj_dts[p](input)
+                    xp = self.conv_xs[p](self.proj_xs[p](input))
 
-                    xp = self.conv_xs[p](xp)
-
-                    dtp = F.softplus(dtp + self.dt_biases[p])
+                    dtp = F.softplus(self.proj_dts[p](input) + self.dt_biases[p])
                     dAp = dtp * (-torch.exp(self.A_logs[p]))
 
                     yp = self.ssms[p](
@@ -252,7 +240,7 @@ class Mamba2(nn.Module):
                         output_axis=0,
                     )
 
-                    yp = yp * F.silu(zp)
+                    yp = yp * F.silu(self.proj_zs[p](input))
 
                     if self.distributed_norm:
                         ss_parts.append((yp * yp).sum(-1, keepdim=True))
