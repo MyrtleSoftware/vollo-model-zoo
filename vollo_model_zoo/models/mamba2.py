@@ -98,6 +98,9 @@ class Mamba2(nn.Module):
             dim=d_state, d_conv=d_conv, bias=conv_bias, activation=activation
         )
 
+        # The scan keeps its state flat, as [d_inner! d_state].
+        self.h0 = torch.nn.Buffer(torch.zeros(self.d_inner, d_state), persistent=False)
+
         if self.head_partitions is None:
             self.proj_z = nn.Linear(d_model, self.d_inner, bias=bias)
             self.proj_x = nn.Linear(d_model, self.d_inner, bias=bias)
@@ -120,9 +123,6 @@ class Mamba2(nn.Module):
                 )
             )
 
-            self.h0 = torch.nn.Buffer(
-                torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
-            )
         else:
             # Heads per partition, and the features they span: `h` heads == `d` features.
             self.head_splits = [
@@ -132,10 +132,6 @@ class Mamba2(nn.Module):
                 )
             ]
             self.dim_splits = [h * self.d_head for h in self.head_splits]
-
-            self.h0 = torch.nn.Buffer(
-                torch.zeros(self.n_heads, self.d_head, d_state), persistent=False
-            )
 
             self.ssms = nn.ModuleList(
                 vollo_torch.nn.Scan(
@@ -209,14 +205,7 @@ class Mamba2(nn.Module):
             dt = F.softplus(dt + self.dt_bias)
             dA = dt * (-torch.exp(self.A_log))
 
-            x_reshaped = x.reshape(-1, self.n_heads, self.d_head)
-
-            y = self.ssm(
-                [x_reshaped, B, C, dt, dA], self.h0, input_axis=[0] * 5, output_axis=0
-            )
-
-            # [t h! p] -> [t (h p)!]
-            y = y.reshape(-1, self.d_inner)
+            y = self.ssm([x, B, C, dt, dA], self.h0, input_axis=[0] * 5, output_axis=0)
 
             # Skip connection
             y = y + self.D * x
@@ -246,11 +235,10 @@ class Mamba2(nn.Module):
             ys = []
             ss_parts = []
             partials = []
-            h0_offset = 0
+            dim_offset = 0
             for p in range(self.head_partitions):
-                n_hp = self.head_splits[p]
                 dim_p = self.dim_splits[p]
-                h0_p = self.h0[h0_offset : h0_offset + n_hp]
+                h0_p = self.h0[dim_offset : dim_offset + dim_p]
 
                 # One head group per core.
                 with vollo_torch.CorePartition([p]):
@@ -263,14 +251,12 @@ class Mamba2(nn.Module):
                     dtp = F.softplus(dtp + self.dt_biases[p])
                     dAp = dtp * (-torch.exp(self.A_logs[p]))
 
-                    xp_reshaped = xp.reshape(-1, n_hp, self.d_head)
                     yp = self.ssms[p](
-                        [xp_reshaped, B, C, dtp, dAp],
+                        [xp, B, C, dtp, dAp],
                         h0_p,
                         input_axis=[0] * 5,
                         output_axis=0,
                     )
-                    yp = yp.reshape(-1, dim_p)
 
                     yp = yp + self.D_heads[p] * xp
                     yp = yp * F.silu(zp)
@@ -281,7 +267,7 @@ class Mamba2(nn.Module):
                     else:
                         ys.append(yp)
 
-                h0_offset += n_hp
+                dim_offset += dim_p
 
             if not self.distributed_norm:
                 y = torch.cat(ys, dim=-1)
@@ -386,43 +372,61 @@ class _Mamba2Step(nn.Module):
         self.n_heads = n_heads  # h
         self.d_head = d_head  # p
         self.d_state = d_state  # n
+        self.d_inner = n_heads * d_head  # d
 
         self.fp_context = vollo_torch.Fp32Activations if fp32 else nullcontext
 
-    def forward(self, inputs: list[torch.Tensor], h: torch.Tensor):
+    def forward(self, inputs: list[torch.Tensor], S: torch.Tensor):
         """
+        The state is held flat, as `[d! n]`: Vollo's matrix-vector product wants
+        the matrix's data dimension second-innermost, so this is the layout the
+        state read compiles to natively, and x and y need no per-head reshape.
+
         Inputs:
-                 x: [h p!]
+                 x: [d!]
               B, C: [n!]
             dA, dt: [h!]
-                 h: [h p! n]
+                 S: [d! n]
 
         Returns:
-                 y: [h p!]
+                 y: [d!]
         """
         x, B, C, dt, dA = inputs
 
         with self.fp_context():
             dA = dA.exp()
 
-        # dA [h!] -> [h 1!]
-        dA = torch.stack([dA[i : i + 1] for i in range(self.n_heads)], dim=0)
+        dA = self._broadcast_heads(dA)  # [h!] -> [d!]
+        dt = self._broadcast_heads(dt)  # [h!] -> [d!]
 
-        # dt [h!] -> [h 1!]
-        dt = torch.stack([dt[i : i + 1] for i in range(self.n_heads)], dim=0)
+        # [d! n] @ [n!] -> [d!]
+        y = dA * (S @ C) + dt * x * (B * C).sum(-1, keepdim=True)
 
-        # [h p! n] @ [n!] -> [h p!]
-        y = dA * (h @ C) + dt * x * (B * C).sum(0, keepdim=True)
-
-        # [h p! 1] * [1 n 1!]
-        dB = (dt * x)[:, :, None] * torch.stack(
+        # [d! 1] * [1! n] -> [d! n]
+        dB = (dt * x).unsqueeze(-1) * torch.stack(
             [B[i : i + 1] for i in range(self.d_state)], dim=1
         )
 
         with self.fp_context():
-            h = dA[:, :, None] * h + dB
+            S = dA.unsqueeze(-1) * S + dB
 
-        return y, h
+        return y, S
+
+    def _broadcast_heads(self, v: torch.Tensor) -> torch.Tensor:
+        """
+        [h!] -> [d!]: broadcast each per-head scalar over that head's features.
+
+        Broadcasting along the data dimension is only cheap from an extent of 1,
+        so each head's element is sliced out, widened, and the results
+        concatenated.
+        """
+        return torch.cat(
+            [
+                torch.broadcast_to(v[g : g + 1], (self.d_head,))
+                for g in range(self.n_heads)
+            ],
+            dim=-1,
+        )
 
 
 class _ShortConv(nn.Module):
