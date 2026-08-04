@@ -284,8 +284,8 @@ class Mamba2(nn.Module):
             return out
 
     # Wide (unpartitioned) key, per-partition key format, whether the tensor is
-    # split per feature or per head, and the axis it splits along. Both load
-    # directions are driven off this one table, so they cannot drift apart.
+    # split per feature or per head, and the axis it splits along. Every load
+    # direction is driven off this one table, so they cannot drift apart.
     _PARTITIONED_KEYS = (
         ("proj_z.weight", "proj_zs.{}.weight", "dim", 0),
         ("proj_z.bias", "proj_zs.{}.bias", "dim", 0),
@@ -316,9 +316,10 @@ class Mamba2(nn.Module):
     def _load_legacy_state_dict(self, _module, state_dict, prefix, *_hook_args):
         """
         Translate a checkpoint between the wide and per-partition key layouts, so one
-        saved from any configuration loads into any other. The projections,
-        convolution and scan follow `head_partitions`; the norm and output projection
-        follow `distributed_norm`, which is an independent choice.
+        saved from any configuration -- with any number of partitions -- loads into
+        any other. The projections, convolution and scan follow `head_partitions`;
+        the norm and output projection follow `distributed_norm`, which is an
+        independent choice.
         """
         self._split_or_merge(
             state_dict, prefix, self._PARTITIONED_KEYS, self.head_partitions is not None
@@ -332,21 +333,25 @@ class Mamba2(nn.Module):
 
     def _split_or_merge(self, state_dict, prefix, keys, to_partitioned: bool):
         for wide, part_fmt, split_by, axis in keys:
-            wide_key = prefix + wide
-
-            if not to_partitioned:
+            # Gather whichever layout the checkpoint used into one wide tensor.
+            tensor = state_dict.pop(prefix + wide, None)
+            if tensor is None:
                 parts, idx = [], 0
                 while prefix + part_fmt.format(idx) in state_dict:
                     parts.append(state_dict.pop(prefix + part_fmt.format(idx)))
                     idx += 1
                 if parts:
-                    state_dict.setdefault(wide_key, torch.cat(parts, dim=axis))
+                    tensor = torch.cat(parts, dim=axis)
 
-            elif wide_key in state_dict:
+            if tensor is None:
+                continue
+
+            # ... then split it the way this model holds it.
+            if not to_partitioned:
+                state_dict.setdefault(prefix + wide, tensor)
+            else:
                 sizes = self.head_splits if split_by == "head" else self.dim_splits
-                for i, chunk in enumerate(
-                    torch.split(state_dict.pop(wide_key), sizes, dim=axis)
-                ):
+                for i, chunk in enumerate(torch.split(tensor, sizes, dim=axis)):
                     state_dict.setdefault(prefix + part_fmt.format(i), chunk)
 
 
