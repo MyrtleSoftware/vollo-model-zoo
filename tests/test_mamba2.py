@@ -175,33 +175,52 @@ def test_mamba2_equivalence(
 
 @pytest.mark.filterwarnings("ignore:n_heads")  # 5 splits 12 heads unevenly, on purpose
 @pytest.mark.parametrize("head_partitions", [1, 2, 5, 6])
+@pytest.mark.parametrize("distributed_norm", [False, True])
 @pytest.mark.parametrize("bias", [False, True])
-def test_mamba2_partitioned_matches_unpartitioned(head_partitions: int, bias: bool):
+def test_mamba2_partitioned_matches_unpartitioned(
+    head_partitions: int, distributed_norm: bool, bias: bool
+):
     torch.manual_seed(42)
 
     d_model = 96
 
-    def build(partitions):
-        return VolloMamba2(
+    def build(partitions, distributed=True):
+        model = VolloMamba2(
             d_model=d_model,
             expand=2,
             d_head=16,
             bias=bias,
             head_partitions=partitions,
+            distributed_norm=distributed,
         )
+        # A freshly built RMSNorm gain is all-ones, which would hide a wrong
+        # slice of it; give it something the split has to get right.
+        with torch.no_grad():
+            for w in (
+                model.norm_weights if model.distributed_norm else [model.norm.weight]
+            ):
+                w.copy_(1.0 + 0.1 * torch.randn_like(w))
+        return model
 
-    # Partitioned -> wide keys, then wide -> partitioned keys again.
-    partitioned = build(head_partitions)
+    partitioned = build(head_partitions, distributed_norm)
+
+    # Partitioned -> wide keys, then wide -> partitioned keys again, into both
+    # norm layouts: `distributed_norm` is translated independently of
+    # `head_partitions`, so a checkpoint from either loads into either.
     unpartitioned = build(None)
     unpartitioned.load_state_dict(partitioned.state_dict(), strict=True)
-    reloaded = build(head_partitions)
-    reloaded.load_state_dict(unpartitioned.state_dict(), strict=True)
+
+    models = {"unpartitioned": unpartitioned}
+    for distributed in [False, True]:
+        reloaded = build(head_partitions, distributed)
+        reloaded.load_state_dict(unpartitioned.state_dict(), strict=True)
+        models[f"reloaded (distributed_norm={distributed})"] = reloaded
 
     x = torch.randn(16, d_model)
 
     with torch.no_grad():
         expected = partitioned(x).numpy()
-        for name, model in [("unpartitioned", unpartitioned), ("reloaded", reloaded)]:
+        for name, model in models.items():
             np.testing.assert_allclose(
                 expected,
                 model(x).numpy(),
@@ -223,3 +242,9 @@ def test_mamba2_head_partitions_validation():
 
     with pytest.warns(UserWarning, match="not a multiple of head_partitions"):
         VolloMamba2(**kwargs, head_partitions=5)
+
+    # With no partitions there is nothing to distribute over, so the flag is
+    # ignored rather than an error -- it is on by default.
+    assert not VolloMamba2(
+        **kwargs, head_partitions=None, distributed_norm=True
+    ).distributed_norm
