@@ -46,9 +46,8 @@ class Mamba2(nn.Module):
                               projections, convolution and scan) into, or None to run
                               all heads as one group. Group `p` is placed on core `p`,
                               so this must not exceed the core count of the target
-                              Vollo config (6 for `c6b32`, 3 for `c3b64`). Must be
-                              between 1 and the number of heads; warns if it does not
-                              divide the heads evenly.
+                              Vollo config. Must be between 1 and the number of
+                              heads; warns if it does not divide the heads evenly.
             distributed_norm: Whether to partition the final norm and output
                               projection too, so each core reduces its own slice
                               instead of concatenating it onto one core. Ignored
@@ -56,9 +55,7 @@ class Mamba2(nn.Module):
                               one group and the two forms coincide. Faster, but it
                               splits both reductions into per-core partials that
                               cross cores in bf16, where the unpartitioned form
-                              keeps each one in a single wider accumulator: ~1.1x
-                              the output error of a block on 6 cores. Set False to
-                              buy that accuracy back.
+                              keeps each one in a single wider accumulator.
             no_warning:       Suppress that uneven-split warning, for callers that
                               already know the split is uneven.
         """
