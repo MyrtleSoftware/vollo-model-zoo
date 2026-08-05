@@ -85,9 +85,13 @@ def _plot_config(model: str, config: str, group: pd.DataFrame, output_dir: str):
     ax1.set_ylabel("Latency (us)")
     ax2.set_title("Contiguous Latency")
     ax2.set_ylabel("Latency (us)")
-    ax2.set_xlabel("SDK Version")
+    ax2.set_xlabel("Version (Vollo SDK + model zoo)")
 
-    fig.suptitle(f"Performance vs SDK Version\nModel: {model} | Config: {config}")
+    # Composite versions make for long tick labels; the axes are shared, so
+    # rotating the bottom one covers both.
+    plt.setp(ax2.get_xticklabels(), rotation=45, ha="right")
+
+    fig.suptitle(f"Performance vs Version\nModel: {model} | Config: {config}")
 
     if not all(group["meta"] == ""):
         ax1.legend(title="Parameters", bbox_to_anchor=(1.05, 1), loc="upper left")
