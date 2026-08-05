@@ -6,6 +6,7 @@ from beartype import beartype
 from beartype.typing import Optional
 
 from vollo_model_zoo.parse import parse_records_from_json
+from vollo_model_zoo.version import describe_version
 
 
 @beartype
@@ -67,7 +68,7 @@ def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> 
             print(x, file=f)
 
         # Format as markdown
-        write(f"# Vollo Model Zoo Benchmarks (version {versions[0]})")
+        write(f"# Vollo Model Zoo Benchmarks ({describe_version(versions[0])})")
         write("")
         write("Compute latency for an approximately 1-million parameter model.")
         write("")

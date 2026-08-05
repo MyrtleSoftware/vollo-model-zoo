@@ -33,27 +33,42 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "latest version is ${VERSION}"
 
+      - name: Resolve benchmark identity
+        id: identity
+        run: |
+          # A benchmark run is identified by the SDK it measures *and* the zoo
+          # version that defined the models, so a zoo-only change is not
+          # mistaken for a run we already have. This builds the same string as
+          # `benchmark_version` in vollo_model_zoo/version.py -- keep the two in
+          # step. The zoo version comes from pyproject.toml, which is what uv
+          # installs the version from (tests/test_version.py checks they agree).
+          VERSION=${{ steps.vollo-version.outputs.version }}
+          VER_NUM=${VERSION#v}
+          ZOO_VER=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          echo "sdk=${VER_NUM}" >> $GITHUB_OUTPUT
+          echo "zoo=${ZOO_VER}" >> $GITHUB_OUTPUT
+          echo "file=benchmarks/vollo_${VER_NUM}+zoo.${ZOO_VER}.json" >> $GITHUB_OUTPUT
+          echo "benchmarking Vollo SDK ${VER_NUM} with model zoo ${ZOO_VER}"
+
       - name: Check if benchmark already exists
         id: check-version
         run: |
-          VERSION=${{ steps.vollo-version.outputs.version }}
-          VER_NUM=${VERSION#v}
-          BENCHMARK_FILE="benchmarks/vollo_${VER_NUM}.json"
+          BENCHMARK_FILE="${{ steps.identity.outputs.file }}"
           if [ -f "$BENCHMARK_FILE" ]; then
-            echo "Benchmark for $VERSION already exists. Skipping update."
+            echo "$BENCHMARK_FILE already exists. Skipping update."
             echo "should_update=false" >> $GITHUB_OUTPUT
           else
-            echo "Benchmark for $VERSION does not exist. Proceeding with update."
+            echo "$BENCHMARK_FILE does not exist. Proceeding with update."
             echo "should_update=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Download and extract Vollo SDK
         if: steps.check-version.outputs.should_update == 'true'
         run: |
-          VERSION=${{ steps.vollo-version.outputs.version }}
-          VER_NUM=${VERSION#v}
+          VER_NUM=${{ steps.identity.outputs.sdk }}
           SDK_FILE="vollo-sdk-${VER_NUM}.run"
-          URL="https://github.com/MyrtleSoftware/vollo-sdk/releases/download/${VERSION}/${SDK_FILE}"
+          TAG=${{ steps.vollo-version.outputs.version }}
+          URL="https://github.com/MyrtleSoftware/vollo-sdk/releases/download/${TAG}/${SDK_FILE}"
 
           mkdir -p build
           echo "Downloading $URL ..."
@@ -78,10 +93,7 @@ jobs:
 
       - name: Run benchmarks
         if: steps.check-version.outputs.should_update == 'true'
-        run: |
-          VERSION=${{ steps.vollo-version.outputs.version }}
-          VER_NUM=${VERSION#v}
-          uv run benchmark --json_output "benchmarks/vollo_${VER_NUM}.json"
+        run: uv run benchmark --json_output "${{ steps.identity.outputs.file }}"
 
       - name: Update plots
         if: steps.check-version.outputs.should_update == 'true'
@@ -89,25 +101,22 @@ jobs:
 
       - name: Update report
         if: steps.check-version.outputs.should_update == 'true'
-        run: |
-          VERSION=${{ steps.vollo-version.outputs.version }}
-          VER_NUM=${VERSION#v}
-          uv run report "benchmarks/vollo_${VER_NUM}.json" --plots ./plots/*.svg
+        run: uv run report "${{ steps.identity.outputs.file }}" --plots ./plots/*.svg
 
       - name: Create Pull Request
         if: steps.check-version.outputs.should_update == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "benchmarks: update for Vollo SDK ${{ steps.vollo-version.outputs.version }}"
-          title: "Update Benchmarks: Vollo SDK ${{ steps.vollo-version.outputs.version }}"
+          commit-message: "benchmarks: update for Vollo SDK ${{ steps.identity.outputs.sdk }}, model zoo ${{ steps.identity.outputs.zoo }}"
+          title: "Update Benchmarks: Vollo SDK ${{ steps.identity.outputs.sdk }}, model zoo ${{ steps.identity.outputs.zoo }}"
           body: |
-            This is an automated PR to update the benchmarks, plots, and report for the latest Vollo SDK version: ${{ steps.vollo-version.outputs.version }}.
+            This is an automated PR to update the benchmarks, plots, and report for Vollo SDK ${{ steps.identity.outputs.sdk }} as measured by model zoo ${{ steps.identity.outputs.zoo }}.
 
-            - Updated `benchmarks/vollo_${{ steps.vollo-version.outputs.version }}.json`
+            - Added `${{ steps.identity.outputs.file }}`
             - Regenerated plots in `plots/`
             - Updated benchmark report in `benchmarks/README.md`
-          branch: "automation/update-benchmarks-${{ steps.vollo-version.outputs.version }}"
+          branch: "automation/update-benchmarks-${{ steps.identity.outputs.sdk }}-zoo-${{ steps.identity.outputs.zoo }}"
           base: main
           delete-branch: true
           add-paths: |

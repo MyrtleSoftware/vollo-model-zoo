@@ -1,5 +1,4 @@
 import argparse
-import importlib.metadata
 import json
 from collections import defaultdict
 from itertools import product
@@ -8,6 +7,7 @@ from pathlib import Path
 from beartype import beartype
 from tqdm import tqdm
 
+from vollo_model_zoo.version import benchmark_version, describe_version
 from vollo_model_zoo.vm import CONFIGS, get_models, get_results, to_dict
 
 
@@ -16,10 +16,9 @@ def main() -> int:
     """
     Entry point for 'benchmark' command.
     """
-    try:
-        version = importlib.metadata.version("vollo-compiler")
-    except importlib.metadata.PackageNotFoundError:
-        version = "unknown"
+    # Identifies the run by both the compiler and the zoo, so that changing a
+    # model is as much a reason to re-benchmark as a new SDK release is.
+    version = benchmark_version()
 
     parser = argparse.ArgumentParser(description="Run all models and configurations")
 
@@ -50,7 +49,7 @@ def run_benchmark(json_output: Path, version: str) -> int:
 
     for model, config in tqdm(
         product(models, configs),
-        desc=f"Benchmarking models (Vollo {version})",
+        desc=f"Benchmarking models ({describe_version(version)})",
         total=len(models) * len(configs),
     ):
         try:
