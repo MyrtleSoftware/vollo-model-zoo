@@ -28,6 +28,10 @@ package = true
 [tool.setuptools.packages.find]
 include = ["vollo_model_zoo*"]
 
+[tool.isort]
+# Keep isort from fighting black over how to wrap a long import.
+profile = "black"
+
 [tool.pytest.ini_options]
 addopts = "-v"
 
