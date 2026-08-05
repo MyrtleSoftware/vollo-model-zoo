@@ -36,3 +36,23 @@ You can run all the models in the zoo with:
 ```fish
 uv run pytest
 ```
+
+## Versioning
+
+The [benchmarks](./benchmarks/README.md) are re-measured by a weekly workflow,
+which identifies each run by the Vollo SDK version _and_ the version of this
+repo, then skips the work if it already has that combination on file:
+
+```
+benchmarks/vollo_28.1.0+zoo.0.2.0.json
+                 ^ SDK       ^ zoo, from `[project] version` in pyproject.toml
+```
+
+So if your change moves a latency — a model file, its size sweep, or the `vm.py`
+harness they are all compiled with — **bump `version` in `pyproject.toml` in the
+same PR**, and commit the `uv.lock` re-lock that comes with it. Without the bump
+the workflow mistakes your change for a run it has already measured, and the new
+numbers never appear.
+
+Changes that cannot move a latency (documentation, tests, the plotting and
+reporting tooling) don't need a bump.
