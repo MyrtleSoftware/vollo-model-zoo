@@ -323,36 +323,14 @@ improve numerical stability during long sequence processing. This mirrors the
 reference implementation and helps avoid precision issues that may arise when
 using reduced-precision recurrent states.
 
-The heads are also split into `head_partitions` groups, one per accelerator
-core, with each group's projections, depthwise convolution and scan wrapped in a
+This model demonstrates how to use the `vollo_torch.CorePartition` API to
+explicitly partition the model across Vollo's cores. The heads are split into
+`head_partitions` groups, one per accelerator core, with each group's
+projections, depthwise convolution and scan wrapped in a
 `vollo_torch.CorePartition` so that the cores work on independent heads rather
-than sharing one wide recurrence. This reduces cross-core communication.
-
-The final RMS norm and output projection are partitioned along with them, under
-`distributed_norm` (on by default). The norm's reduction spans every head, but
-its scale is a per-timestep scalar and the output projection is linear, so the
-scale factors out of the projection and each core can project its own slice:
-
-    out = W @ (y * w / rms) = (1 / rms) * sum_p (y_p * w_p) @ W_p
-
-Each core then contributes only a scalar sum of squares and a narrow partial
-result, in place of concatenating the full gated output onto a single core.
-Because the output projection contracts over `d_inner`, those partials are
-summed rather than concatenated, in a log-depth tree so that the reduction does
-not serialise behind one core.
-
-Set `distributed_norm=False` to trade that speed back for accuracy. Splitting a
-reduction across cores replaces one wide accumulator with `head_partitions`
-partials that are rounded to bf16 before they are summed, so the result carries
-the rounding of every partial rather than of one total. Measured on the
-bit-accurate VM against a float64 reference, the isolated norm and projection are
-1.3x less accurate on 6 cores (1.1x on 2, 1.2x on 3), which works out at 1.1x on
-a whole block's output, where the SSM recurrence dominates the error budget. Most
-of that comes from splitting the output projection rather than the norm: the sum
-of squares has no cancellation and feeds an inverse square root, which halves its
-relative error. Head partitioning on its own is numerically free — bit-identical
-to `head_partitions=None` — so this flag is the only accuracy trade-off in the
-partitioning.
+than sharing one wide recurrence. This reduces cross-core communication. The
+final RMS norm and output projection are partitioned along with them, under
+`distributed_norm` (on by default).
 
 ## Other utilities
 
