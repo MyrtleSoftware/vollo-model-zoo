@@ -242,11 +242,7 @@ class Mamba2(nn.Module):
             #   out = W @ (y * w / rms) = (1 / rms) * sum_p (y_p * w_p) @ W_p
             #
             # Each core then contributes its slice's sum of squares and a partial
-            # projection, and only those cross cores -- the wide concatenation of
-            # `y` disappears. out_proj contracts over d_inner, so the partials
-            # are summed, not concatenated. Without the flag, `y` is concatenated
-            # onto one core and normed there, which keeps each reduction inside a
-            # single wider accumulator at the cost of that concatenation.
+            # projection, and only those cross cores.
             ys = []
             ss_parts = []
             partials = []
@@ -279,9 +275,6 @@ class Mamba2(nn.Module):
                     yp = yp + self.D_heads[p] * xp
                     yp = yp * F.silu(zp)
 
-                    # Keep this inside the partition's `with` block: emitting it
-                    # in a second pass over the groups reorders the graph enough
-                    # to trip the allocator on the smaller boards.
                     if self.distributed_norm:
                         ss_parts.append((yp * yp).sum(-1, keepdim=True))
                         partials.append(self.out_projs[p](yp * self.norm_weights[p]))
