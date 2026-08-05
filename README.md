@@ -344,6 +344,10 @@ this repo:
   uv run benchmark --json_output ./benchmarks/my-benchmark.json
   ```
 
+  Left to itself it writes `./benchmarks/vollo_<sdk>+zoo.<zoo>.json`, naming
+  both the Vollo SDK it measured and the version of this repo that defined the
+  models, since either one moves the numbers.
+
 - To plot multiple benchmark JSON files run:
 
   ```fish
