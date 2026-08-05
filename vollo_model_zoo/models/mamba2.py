@@ -178,9 +178,10 @@ class Mamba2(nn.Module):
             self.out_projs = nn.ModuleList(
                 nn.Linear(d, d_model, bias=False) for d in self.dim_splits
             )
-            self.register_parameter(
-                "out_bias", nn.Parameter(torch.zeros(d_model)) if bias else None
-            )
+            if bias:
+                self.out_bias = nn.Parameter(torch.zeros(d_model))
+            else:
+                self.out_bias = None
         else:
             self.norm = torch.nn.RMSNorm(self.d_inner, eps=self.norm_eps)
             self.out_proj = nn.Linear(self.d_inner, d_model, bias=bias)
