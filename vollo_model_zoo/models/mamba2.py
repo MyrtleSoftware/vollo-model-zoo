@@ -269,11 +269,13 @@ class Mamba2(nn.Module):
 
             return out
 
-    # Checkpoint key, unpartitioned key, per-partition key format, whether the
-    # tensor is split per feature or per head, and the axis it splits along. Every
-    # load direction is driven off this one table, so they cannot drift apart. The
-    # checkpoint key differs from the unpartitioned key only for `D`, which the
-    # scan's step module owns (see `_Mamba2Step`).
+    # Format:
+    #   checkpoint key,
+    #   unpartitioned key,
+    #   per-partition key,
+    #   whether the tensor is split per feature or per head,
+    #   the axis it splits along
+
     _PARTITIONED_KEYS = (
         ("proj_z.weight", "proj_z.weight", "proj_zs.{}.weight", "dim", 0),
         ("proj_z.bias", "proj_z.bias", "proj_zs.{}.bias", "dim", 0),
@@ -300,26 +302,19 @@ class Mamba2(nn.Module):
         ("D", "ssm.step.D", "ssms.{}.step.D", "dim", 0),
     )
 
-    # Same table, for the keys that `distributed_norm` rather than
-    # `head_partitions` decides the layout of.
     _NORM_KEYS = (
         ("norm.weight", "norm.weight", "norm_weights.{}", "dim", 0),
-        # out_proj contracts over d_inner, so its rows -- axis 1 of the
-        # [d_model, d_inner] weight -- are what each core owns.
         ("out_proj.weight", "out_proj.weight", "out_projs.{}.weight", "dim", 1),
     )
 
-    # Keys that change name between the layouts but are not split: the output
-    # bias is added once, after the per-core partials are summed.
+    # Keys that change name between the layouts but are not split
     _RENAMED_KEYS = (("out_proj.bias", "out_bias"),)
 
     def _load_legacy_state_dict(self, _module, state_dict, prefix, *_hook_args):
         """
         Translate a checkpoint between the wide and per-partition key layouts, so one
         saved from any configuration -- with any number of partitions -- loads into
-        any other. The projections, convolution and scan follow `head_partitions`;
-        the norm and output projection follow `distributed_norm`, which is an
-        independent choice.
+        any other.
         """
         self._split_or_merge(
             state_dict, prefix, self._PARTITIONED_KEYS, self.head_partitions is not None
@@ -403,7 +398,7 @@ class _Mamba2Step(nn.Module):
         """
         The state is held flat, as `[d! n]`: Vollo's matrix-vector product wants
         the matrix's data dimension second-innermost, so this is the layout the
-        state read compiles to natively, and x and y need no per-head reshape.
+        state read compiles to natively.
 
         Inputs:
                  x: [d!]
@@ -420,8 +415,7 @@ class _Mamba2Step(nn.Module):
             dA = dA.exp()
 
         # dA is the output of an fp32 op, so it is broadcast by slicing the data
-        # dimension apart: feeding it through the (bf16) matmul that dt uses
-        # would cost a conversion worth more than the slices it saves.
+        # dimension apart (matmul would decay to bf16).
         dA = self._broadcast_heads(dA)  # [h!] -> [d!]
 
         # [d h] @ [h! 1] -> [d! 1] -> [d!]
@@ -448,11 +442,6 @@ class _Mamba2Step(nn.Module):
     def _broadcast_heads(self, v: torch.Tensor) -> torch.Tensor:
         """
         [h!] -> [d!]: broadcast each per-head scalar over that head's features.
-
-        Broadcasting along the data dimension is only cheap from an extent of 1,
-        so each head's element is sliced out, widened, and the results
-        concatenated. `head_expand` does the same thing as a matmul, which is
-        cheaper -- but only for a bf16 input.
         """
         return torch.cat(
             [
