@@ -136,12 +136,6 @@ is the JSON filename _and_ its top-level key:
 benchmarks/vollo_28.1.0+zoo.0.2.0.json   # {"28.1.0+zoo.0.2.0": {model: {config: [...]}}}
 ```
 
-The local segment is numeric so `packaging.version.parse` — which is what
-`plot.py` sorts its x axis by — orders runs chronologically:
-`28.1.0 < 28.1.0+zoo.0.2.0 < 28.1.0+zoo.0.10.0 < 28.2.0+zoo.0.2.0`. Files
-written before the zoo version existed are keyed by the bare SDK version and
-still parse; `split_benchmark_version` returns `None` for their zoo half.
-
 **The zoo version is `[project] version` in `pyproject.toml`, and nothing bumps
 it for you.** `update_benchmarks.yml` decides whether to work by asking whether
 that exact filename already exists, so an unbumped version means the weekly job
