@@ -332,29 +332,6 @@ than sharing one wide recurrence. This reduces cross-core communication. The
 final RMS norm and output projection are partitioned along with them, under
 `distributed_norm` (on by default).
 
-The scan itself is written around Vollo's data dimension rules rather than around
-the head structure of the maths. The recurrent state is held flat, as
-`[d_inner! d_state]`, because Vollo's matrix-vector product wants the matrix's
-data dimension second-innermost, which makes the state read
-
-    S @ C : [d! n] @ [n!] -> [d!]
-
-compile to that product directly and leaves `x` and `y` needing no per-head
-reshape. The per-head scalars (`dt`, `dA`) still have to be broadcast over each
-head's features, which moves the data dimension, and the rules only allow that
-by slicing it apart. `dt` avoids the slices by going through a matmul against a
-constant one-hot matrix instead, contracting the data dimension rather than
-moving it. `dA` keeps the slices: it is the output of an `fp32` op, so feeding it
-through that (`bf16`) matmul would cost a conversion worth more than the slices
-it saves.
-
-Finally the step folds the `D` skip connection into the instantaneous term,
-
-    dt * x * (B . C) + D * x == x * (dt * (B . C) + D)
-
-so that only one multiply and one add wait on `x` -- which arrives late, via the
-input projection and the depthwise convolution -- instead of two of each.
-
 ## Other utilities
 
 Alongside the primary `zoo` command a few utilities are available to run in
