@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (version 28.1.1)
+# Vollo Model Zoo Benchmarks (Vollo SDK 28.1.1, model zoo 0.2.0)
 
 Compute latency for an approximately 1-million parameter model.
 
@@ -17,7 +17,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | mobilenet | 9.30 | 9.31 | width_mult=0.42 |
 | mlp-res-rms | 1.62 | 1.62 | dim=320, hidden=768, activation=relu |
 | mlp | 1.31 | 1.31 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.09 | 5.34 | fp32=False, dim=400, state=32, layers=1 |
+| mamba2 | 1.65 | 3.52 | fp32=False, dim=400, state=32, layers=1 |
 | mamba1 | 2.83 | 3.23 | dim=384, state=12, layers=1 |
 | lstm | 0.75 | 0.96 | layers=2, hidden_size=250 |
 | gru | 0.83 | 1.09 | fp32=False, input=512, hidden=384, layers=1 |
@@ -37,7 +37,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | mobilenet | 10.23 | 10.24 | width_mult=0.42 |
 | mlp-res-rms | 1.78 | 1.78 | dim=320, hidden=768, activation=relu |
 | mlp | 1.44 | 1.44 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.30 | 5.87 | fp32=False, dim=400, state=32, layers=1 |
+| mamba2 | 1.81 | 3.87 | fp32=False, dim=400, state=32, layers=1 |
 | mamba1 | 3.11 | 3.55 | dim=384, state=12, layers=1 |
 | lstm | 0.82 | 1.06 | layers=2, hidden_size=250 |
 | gru | 0.92 | 1.20 | fp32=False, input=512, hidden=384, layers=1 |
@@ -57,7 +57,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | mobilenet | 10.90 | 10.96 | width_mult=0.42 |
 | mlp-res-rms | 1.82 | 1.83 | dim=320, hidden=768, activation=relu |
 | mlp | 1.48 | 1.48 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.25 | 6.76 | fp32=False, dim=400, state=32, layers=1 |
+| mamba2 | 1.87 | 3.78 | fp32=False, dim=400, state=32, layers=1 |
 | mamba1 | 3.04 | 3.52 | dim=384, state=12, layers=1 |
 | lstm | 0.81 | 1.02 | layers=2, hidden_size=250 |
 | gru | 0.88 | 1.17 | fp32=False, input=512, hidden=384, layers=1 |
@@ -77,7 +77,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | mobilenet | 10.12 | 10.23 | width_mult=0.42 |
 | mlp-res-rms | 1.53 | 1.53 | dim=320, hidden=768, activation=relu |
 | mlp | 1.27 | 1.28 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.06 | 7.79 | fp32=False, dim=400, state=32, layers=1 |
+| mamba2 | 1.58 | 3.72 | fp32=False, dim=400, state=32, layers=1 |
 | mamba1 | 2.33 | 2.77 | dim=384, state=12, layers=1 |
 | lstm | 0.59 | 0.61 | layers=2, hidden_size=250 |
 | gru | 0.68 | 0.88 | fp32=False, input=512, hidden=384, layers=1 |
@@ -97,7 +97,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | mobilenet | 10.90 | 10.96 | width_mult=0.42 |
 | mlp-res-rms | 1.82 | 1.83 | dim=320, hidden=768, activation=relu |
 | mlp | 1.48 | 1.48 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 2.25 | 6.76 | fp32=False, dim=400, state=32, layers=1 |
+| mamba2 | 1.87 | 3.78 | fp32=False, dim=400, state=32, layers=1 |
 | mamba1 | 3.04 | 3.52 | dim=384, state=12, layers=1 |
 | lstm | 0.81 | 1.02 | layers=2, hidden_size=250 |
 | gru | 0.88 | 1.17 | fp32=False, input=512, hidden=384, layers=1 |
