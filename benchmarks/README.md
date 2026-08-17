@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (Vollo SDK 28.1.1, model zoo 0.2.0)
+# Vollo Model Zoo Benchmarks (Vollo SDK 28.1.2, model zoo 0.2.0)
 
 Compute latency for an approximately 1-million parameter model.
 
