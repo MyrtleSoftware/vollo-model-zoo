@@ -18,6 +18,7 @@ Models in the zoo include:
 |                   | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
 | **Recurrent**     | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
 |                   | [GRU](#gru)                                           | [`gru.py`](./vollo_model_zoo/models/gru.py)                                                                                                           |
+|                   | [RNN-T](#rnn-t)                                       | [`rnnt.py`](./vollo_model_zoo/models/rnnt.py), [`stateless_rnnt.py`](./vollo_model_zoo/models/stateless_rnnt.py)                                      |
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
 |                   | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
@@ -234,6 +235,26 @@ A standard LSTM cell consists of:
 
 Vollo has first-class support for `torch.nn.LSTM`, allowing for efficient
 streaming inference of multi-layer, biased, and batch-first LSTM models.
+
+### RNN-T
+
+Code/models: [`rnnt.py`](./vollo_model_zoo/models/rnnt.py) and
+[`stateless_rnnt.py`](./vollo_model_zoo/models/stateless_rnnt.py)
+
+These examples compile the two RNN-T entry points used by the ASR runtime:
+
+- prediction/joint: one-hot token plus encoder representation → prediction
+  representation and logits;
+- encoder/joint: two feature frames plus prediction representation → encoder
+  representation and logits.
+
+Both entry points are added to one Vollo program and share the joint-network
+weights. The stateful version keeps LSTM cell state on the accelerator via
+`vollo_torch.nn.LSTMCell`; the stateless version returns hidden and cell state
+explicitly so the host can manage an unbounded stream.
+
+Each file includes a 23M BF16 configuration, a 49M FP8 configuration enabled
+with Vollo SDK 29 or newer, and a small baseline used by the model-zoo tests.
 
 ### GRU
 

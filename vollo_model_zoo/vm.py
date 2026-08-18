@@ -9,7 +9,7 @@ import torch
 import vollo_compiler as vc
 import vollo_torch as vt
 from beartype import beartype
-from beartype.typing import Callable, Optional, Union
+from beartype.typing import Callable, Optional, Sequence, Union
 from vollo_compiler import AllocationError, SaveError
 
 # Names changed over time, fallback to depreciated for backwards-compat
@@ -80,6 +80,17 @@ class Ok:
     meta: Optional[dict[str, Union[int, float, str]]] = None
 
 
+@beartype
+@dataclass(frozen=True)
+class MultiModelEntry:
+    """One entry point in a multi-model Vollo program."""
+
+    name: str
+    model: torch.nn.Module
+    inputs: tuple[torch.Tensor, ...]
+    streaming_axis: Optional[int] = None
+
+
 type Result = Union[Ok, AllocationError, SaveError, ValueError]
 
 
@@ -131,6 +142,69 @@ def vollo_info(
         latency_contiguous=Microseconds(latency_slow),
         meta=meta,
     )
+
+
+@beartype
+def vollo_multi_model_info(
+    entries: Sequence[MultiModelEntry],
+    *,
+    config: str,
+    meta: Optional[dict[str, Union[int, float, str]]] = None,
+    quick_compile: bool = False,
+) -> list[Result]:
+    """Compile several PyTorch entry points into one Vollo program."""
+
+    if not entries:
+        raise ValueError("Expected at least one multi-model entry")
+
+    try:
+        builder = vc.ProgramBuilder(_config(config), remember_allocations=True)
+
+        for entry in entries:
+            shaped_model, _ = vt.fx.prepare_shape(entry.model, *entry.inputs)
+            nnir = vt.fx.nnir.to_nnir(shaped_model)
+            if entry.streaming_axis is not None:
+                nnir, _ = nnir.streaming_transform(entry.streaming_axis)
+
+            builder.add_nnir(nnir, entry.name, quick_compile=quick_compile)
+
+        program = builder.to_program()
+        program.pack()
+    except (AllocationError, SaveError, ValueError) as error:
+        return [error]
+
+    # Shared modules, such as RNN-T's joint network, are counted once.
+    parameters = {
+        id(parameter): parameter
+        for entry in entries
+        for parameter in entry.model.parameters()
+    }
+    parameter_count = sum(parameter.numel() for parameter in parameters.values())
+
+    results = []
+    for model_index, entry in enumerate(entries):
+        results.append(
+            Ok(
+                config=config,
+                param_count=parameter_count,
+                cycle_count=program.cycle_count_per_inference(model_index=model_index),
+                latency_spaced=Microseconds(
+                    program.compute_duration_per_inference_us(
+                        model_index=model_index,
+                        spaced=True,
+                    )
+                ),
+                latency_contiguous=Microseconds(
+                    program.compute_duration_per_inference_us(
+                        model_index=model_index,
+                        spaced=False,
+                    )
+                ),
+                meta=meta,
+            )
+        )
+
+    return results
 
 
 type Activation = Callable[[torch.Tensor], torch.Tensor]
