@@ -7,13 +7,11 @@ the layout used by the ASR runtime.
 
 from collections.abc import Generator
 from contextlib import nullcontext
-from importlib.metadata import version
 from pathlib import Path
 
 import torch
 import vollo_torch
 from beartype import beartype
-from packaging.version import Version
 from torch import Tensor, nn
 
 
@@ -376,23 +374,19 @@ def main(config: str = "V80") -> Generator:
             joint_n_hid=256,
             fp8_weights=False,
         ),
+        # 49M model with FP8 weights.
+        dict(
+            n_classes=1024,
+            pred_n_hid=512,
+            pred_rnn_layers=2,
+            in_feats=240,
+            enc_n_hid=1024,
+            enc_pre_rnn_layers=2,
+            enc_post_rnn_layers=3,
+            joint_n_hid=512,
+            fp8_weights=True,
+        ),
     ]
-
-    # Multi-model FP8 allocation requires the ProgramBuilder fixes in SDK 29.
-    if Version(version("vollo-compiler")) >= Version("29.0.0"):
-        models.append(
-            dict(
-                n_classes=1024,
-                pred_n_hid=512,
-                pred_rnn_layers=2,
-                in_feats=240,
-                enc_n_hid=1024,
-                enc_pre_rnn_layers=2,
-                enc_post_rnn_layers=3,
-                joint_n_hid=512,
-                fp8_weights=True,
-            )
-        )
 
     for x in models:
         yield from _vm(**x, config=config)

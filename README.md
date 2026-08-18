@@ -253,8 +253,8 @@ weights. The stateful version keeps LSTM cell state on the accelerator via
 `vollo_torch.nn.LSTMCell`; the stateless version returns hidden and cell state
 explicitly so the host can manage an unbounded stream.
 
-Each file includes a 23M BF16 configuration, a 49M FP8 configuration enabled
-with Vollo SDK 29 or newer, and a small baseline used by the model-zoo tests.
+Each file includes a 23M BF16 configuration and a 49M FP8 configuration, plus
+a small baseline used by the model-zoo tests.
 
 ### GRU
 
