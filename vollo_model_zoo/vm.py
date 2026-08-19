@@ -88,7 +88,8 @@ class MultiModelEntry:
     name: str
     model: torch.nn.Module
     inputs: tuple[torch.Tensor, ...]
-    streaming_axis: Optional[int] = None
+    # One axis, or one per input for a multi-input model.
+    streaming_axis: Optional[Union[int, tuple[int, ...]]] = None
 
 
 type Result = Union[Ok, AllocationError, SaveError, ValueError]

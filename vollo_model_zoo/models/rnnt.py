@@ -5,7 +5,7 @@ network.  :func:`main` compiles both entry points into one program, matching
 the layout used by the ASR runtime.
 """
 
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import nullcontext
 from pathlib import Path
 
@@ -16,10 +16,17 @@ from torch import Tensor, nn
 
 
 class _LSTMStack(nn.Module):
-    """Apply optimized Vollo LSTM cells while keeping cell state internal."""
-
+    @beartype
     def __init__(self, input_size: int, hidden_size: int, num_layers: int) -> None:
+        """Apply optimized Vollo LSTM cells while keeping cell state internal.
+        
+        Args:
+               input_size:           Features in the input to the first layer
+               hidden_size:          Features in each layer's hidden state
+               num_layers:           Number of stacked LSTM layers
+        """
         super().__init__()
+
         self.cells = nn.ModuleList(
             [
                 vollo_torch.nn.LSTMCell(
@@ -42,9 +49,6 @@ class _LSTMStack(nn.Module):
             A pair ``(output, next_hidden)`` where ``output`` is
             ``[batch, hidden_size]`` and ``next_hidden`` is
             ``[num_layers, batch, hidden_size]``.
-
-        The optimized Vollo LSTM cells keep their cell states internally, so
-        only the hidden states are carried by the surrounding scan.
         """
         next_hidden = []
         for layer, cell in enumerate(self.cells):
@@ -54,112 +58,125 @@ class _LSTMStack(nn.Module):
 
 
 class _PredictionJointStep(nn.Module):
+    @beartype
     def __init__(
         self,
         *,
-        n_classes: int,
         pred_n_hid: int,
         pred_rnn_layers: int,
         joint_n_hid: int,
         fp8_weights: bool,
         joint_network: nn.Module,
     ) -> None:
+        """One prediction/joint step, for use as a :class:`Scan` step.
+
+        Args:
+               pred_n_hid:           Width of the prediction network's LSTM
+               pred_rnn_layers:      Number of prediction LSTM layers
+               joint_n_hid:          Width of the shared joint space
+               fp8_weights:          Store weight matrices as FP8 E4M3
+               joint_network:        Joint network, shared with the encoder
+        """
         super().__init__()
-        self.vocab_without_blank = n_classes - 1
+
         self.fp8_weights = fp8_weights
-        self.embedding = nn.Linear(
-            self.vocab_without_blank,
-            pred_n_hid,
-            bias=False,
-        )
-        self.lstm = _LSTMStack(
-            pred_n_hid,
-            pred_n_hid,
-            pred_rnn_layers,
-        )
+        self.lstm = _LSTMStack(pred_n_hid, pred_n_hid, pred_rnn_layers)
         self.joint_pred = nn.Linear(pred_n_hid, joint_n_hid)
         self.joint_network = joint_network
 
     def forward(
         self,
-        x: Tensor,
-        hidden: Tensor,
-    ) -> tuple[Tensor, Tensor]:
+        inputs: Sequence[Tensor],  # (embed, encoding)
+        hidden: Tensor,  # [pred_rnn_layers, batch, pred_n_hid]
+    ) -> tuple[tuple[Tensor, Tensor], Tensor]:  # (prediction, logits), hidden
         """Run the prediction network and joint network for one token.
 
         Args:
-            x: ``[batch, (n_classes - 1) + joint_n_hid]``. The first slice is
-                a one-hot non-blank token; the second is the current encoder
-                representation.
+            inputs: ``(embed, encoding)``. ``embed`` is
+                ``[batch, pred_n_hid]``, the host's embedding look-up for the
+                latest non-blank token. ``encoding`` is ``[batch, joint_n_hid]``,
+                the current encoder representation.
             hidden: ``[pred_rnn_layers, batch, pred_n_hid]`` prediction-network
                 hidden states.
 
         Returns:
-            A pair ``(output, next_hidden)``. ``output`` is
-            ``[batch, joint_n_hid + n_classes]`` and concatenates the new
-            prediction representation with the joint logits. ``next_hidden``
-            has the same shape as ``hidden``.
+            A pair ``((prediction, logits), next_hidden)``, where ``prediction``
+            is ``[batch, joint_n_hid]``, ``logits`` is ``[batch, n_classes]``
+            and ``next_hidden`` matches ``hidden``.
         """
-        token = x[..., : self.vocab_without_blank]
-        encoding = x[..., self.vocab_without_blank :]
+        embed, encoding = inputs
+
         precision = vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext()
         with precision:
-            embedded = self.embedding(token)
-            prediction, hidden = self.lstm(embedded, hidden)
+            prediction, hidden = self.lstm(embed, hidden)
             prediction = self.joint_pred(prediction)
             logits = self.joint_network(encoding + prediction)
-        return torch.cat((prediction, logits), dim=-1), hidden
+
+        return (prediction, logits), hidden
 
 
 class PredictionJoint(nn.Module):
-    """Run prediction/joint steps with optimized LSTM state on the accelerator."""
-
+    @beartype
     def __init__(
         self,
         *,
-        n_classes: int,
         pred_n_hid: int,
         pred_rnn_layers: int,
         joint_n_hid: int,
-        fp8_weights: bool = False,
         joint_network: nn.Module,
+        fp8_weights: bool = False,
     ) -> None:
+        """Prediction/joint entry point.
+
+        The token embedding is a look-up, so the host performs it and passes the
+        embedded vector in.
+
+        Args:
+               pred_n_hid:           Width of the prediction network's LSTM
+               pred_rnn_layers:      Number of prediction LSTM layers
+               joint_n_hid:          Width of the shared joint space
+               joint_network:        Joint network, shared with the encoder so
+                                     the compiler packs its weights once
+               fp8_weights:          Store weight matrices as FP8 E4M3
+        """
         super().__init__()
+
         self.step = _PredictionJointStep(
-            n_classes=n_classes,
             pred_n_hid=pred_n_hid,
             pred_rnn_layers=pred_rnn_layers,
             joint_n_hid=joint_n_hid,
             fp8_weights=fp8_weights,
             joint_network=joint_network,
         )
+        self.scan = vollo_torch.nn.Scan(self.step)
+
         self.initial_hidden = nn.Buffer(
             torch.zeros(pred_rnn_layers, 1, pred_n_hid),
             persistent=False,
         )
-        self.scan = vollo_torch.nn.Scan(self.step)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, embed: Tensor, encoding: Tensor) -> tuple[Tensor, Tensor]:
         """Run a sequence of prediction/joint steps.
 
         Args:
-            x: ``[time, batch, (n_classes - 1) + joint_n_hid]``. Each step
-                contains a one-hot non-blank token followed by an encoder
-                representation.
+            embed: ``[time, batch, pred_n_hid]`` embedded non-blank tokens.
+            encoding: ``[time, batch, joint_n_hid]`` encoder representations.
 
         Returns:
-            ``[time, batch, joint_n_hid + n_classes]``. Each step contains the
-            prediction representation followed by the joint logits.
+            A pair ``(prediction, logits)`` of ``[time, batch, joint_n_hid]``
+            and ``[time, batch, n_classes]``.
         """
-        return self.scan(
-            x,
+        outputs = self.scan(
+            (embed, encoding),
             self.initial_hidden,
-            input_axis=0,
-            output_axis=0,
+            input_axis=(0, 0),
+            output_axis=(0, 0),
         )
+        return outputs[0], outputs[1]
 
 
 class _EncoderJointStep(nn.Module):
+    @beartype
     def __init__(
         self,
         *,
@@ -171,53 +188,58 @@ class _EncoderJointStep(nn.Module):
         fp8_weights: bool,
         joint_network: nn.Module,
     ) -> None:
+        """One two-frame encoder/joint step, for use as a :class:`Scan` step.
+
+        Args:
+               in_feats:             Acoustic features per frame
+               enc_n_hid:            Width of the encoder's LSTMs
+               enc_pre_rnn_layers:   Pre-RNN layers, advanced once per frame
+               enc_post_rnn_layers:  Post-RNN layers, advanced once per pair
+               joint_n_hid:          Width of the shared joint space
+               fp8_weights:          Store weight matrices as FP8 E4M3
+               joint_network:        Joint network, shared with the predictor
+        """
         super().__init__()
-        self.in_feats = in_feats
+
         self.fp8_weights = fp8_weights
-        self.pre_rnn = _LSTMStack(
-            in_feats,
-            enc_n_hid,
-            enc_pre_rnn_layers,
-        )
-        self.post_rnn = _LSTMStack(
-            2 * enc_n_hid,
-            enc_n_hid,
-            enc_post_rnn_layers,
-        )
+        self.pre_rnn = _LSTMStack(in_feats, enc_n_hid, enc_pre_rnn_layers)
+        self.post_rnn = _LSTMStack(2 * enc_n_hid, enc_n_hid, enc_post_rnn_layers)
         self.joint_enc = nn.Linear(enc_n_hid, joint_n_hid)
         self.joint_network = joint_network
 
     def forward(
         self,
-        x: Tensor,
-        state: tuple[Tensor, Tensor],
-    ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
-        """Encode one stacked pair of feature frames and compute joint logits.
+        inputs: Sequence[Tensor],  # (feats_0, feats_1, prediction)
+        state: Sequence[Tensor],  # (pre_hidden, post_hidden)
+    ) -> tuple[
+        tuple[Tensor, Tensor],  # (encoding, logits)
+        tuple[Tensor, Tensor],  # (pre_hidden, post_hidden)
+    ]:
+        """Encode a pair of feature frames and compute joint logits.
+
+        Taking two frames per step keeps the accelerator interface fixed-rate:
+        the pre-RNN advances twice, then the post-RNN advances once per pair.
 
         Args:
-            x: ``[batch, 2 * in_feats + joint_n_hid]``. The first two slices
-                are consecutive acoustic feature frames; the final slice is
-                the current prediction representation.
-            state: ``(pre_hidden, post_hidden)``. Their shapes are
+            inputs: ``(feats_0, feats_1, prediction)``. The two frames are
+                ``[batch, in_feats]`` each; ``prediction`` is
+                ``[batch, joint_n_hid]``.
+            state: ``(pre_hidden, post_hidden)``, shaped
                 ``[enc_pre_rnn_layers, batch, enc_n_hid]`` and
                 ``[enc_post_rnn_layers, batch, enc_n_hid]``.
 
         Returns:
-            A pair ``(output, next_state)``. ``output`` is
-            ``[batch, joint_n_hid + n_classes]`` and concatenates the encoder
-            representation with the joint logits. ``next_state`` contains the
-            updated pre-RNN and post-RNN hidden states.
+            A pair ``((encoding, logits), (pre_hidden, post_hidden))``, where
+            ``encoding`` is ``[batch, joint_n_hid]`` and ``logits`` is
+            ``[batch, n_classes]``.
         """
-        features = x[..., : 2 * self.in_feats]
-        prediction = x[..., 2 * self.in_feats :]
+        feats_0, feats_1, prediction = inputs
         pre_hidden, post_hidden = state
-        feature_0 = features[:, : self.in_feats]
-        feature_1 = features[:, self.in_feats :]
 
         precision = vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext()
         with precision:
-            pre_0, pre_hidden = self.pre_rnn(feature_0, pre_hidden)
-            pre_1, pre_hidden = self.pre_rnn(feature_1, pre_hidden)
+            pre_0, pre_hidden = self.pre_rnn(feats_0, pre_hidden)
+            pre_1, pre_hidden = self.pre_rnn(feats_1, pre_hidden)
             output, post_hidden = self.post_rnn(
                 torch.cat((pre_0, pre_1), dim=-1),
                 post_hidden,
@@ -225,12 +247,11 @@ class _EncoderJointStep(nn.Module):
             encoding = self.joint_enc(output)
             logits = self.joint_network(encoding + prediction)
 
-        return torch.cat((encoding, logits), dim=-1), (pre_hidden, post_hidden)
+        return (encoding, logits), (pre_hidden, post_hidden)
 
 
 class EncoderJoint(nn.Module):
-    """Run encoder/joint steps with optimized LSTM state on the accelerator."""
-
+    @beartype
     def __init__(
         self,
         *,
@@ -239,10 +260,23 @@ class EncoderJoint(nn.Module):
         enc_pre_rnn_layers: int,
         enc_post_rnn_layers: int,
         joint_n_hid: int,
-        fp8_weights: bool = False,
         joint_network: nn.Module,
+        fp8_weights: bool = False,
     ) -> None:
+        """Encoder/joint entry point.
+
+        Args:
+               in_feats:             Acoustic features per frame (two per step)
+               enc_n_hid:            Width of the encoder's LSTMs
+               enc_pre_rnn_layers:   Pre-RNN layers, advanced once per frame
+               enc_post_rnn_layers:  Post-RNN layers, advanced once per pair
+               joint_n_hid:          Width of the shared joint space
+               joint_network:        Joint network, shared with the predictor so
+                                     the compiler packs its weights once
+               fp8_weights:          Store weight matrices as FP8 E4M3
+        """
         super().__init__()
+
         self.step = _EncoderJointStep(
             in_feats=in_feats,
             enc_n_hid=enc_n_hid,
@@ -252,6 +286,8 @@ class EncoderJoint(nn.Module):
             fp8_weights=fp8_weights,
             joint_network=joint_network,
         )
+        self.scan = vollo_torch.nn.Scan(self.step)
+
         self.initial_pre_hidden = nn.Buffer(
             torch.zeros(enc_pre_rnn_layers, 1, enc_n_hid),
             persistent=False,
@@ -260,26 +296,31 @@ class EncoderJoint(nn.Module):
             torch.zeros(enc_post_rnn_layers, 1, enc_n_hid),
             persistent=False,
         )
-        self.scan = vollo_torch.nn.Scan(self.step)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(
+        self,
+        feats_0: Tensor,
+        feats_1: Tensor,
+        prediction: Tensor,
+    ) -> tuple[Tensor, Tensor]:
         """Run a sequence of two-frame encoder/joint steps.
 
         Args:
-            x: ``[time, batch, 2 * in_feats + joint_n_hid]``. Each step
-                contains two acoustic feature frames followed by a prediction
-                representation.
+            feats_0: ``[time, batch, in_feats]`` first frame of each pair.
+            feats_1: ``[time, batch, in_feats]`` second frame of each pair.
+            prediction: ``[time, batch, joint_n_hid]`` prediction representations.
 
         Returns:
-            ``[time, batch, joint_n_hid + n_classes]``. Each step contains the
-            encoder representation followed by the joint logits.
+            A pair ``(encoding, logits)`` of ``[time, batch, joint_n_hid]`` and
+            ``[time, batch, n_classes]``.
         """
-        return self.scan(
-            x,
+        outputs = self.scan(
+            (feats_0, feats_1, prediction),
             (self.initial_pre_hidden, self.initial_post_hidden),
-            input_axis=0,
-            output_axis=0,
+            input_axis=(0, 0, 0),
+            output_axis=(0, 0),
         )
+        return outputs[0], outputs[1]
 
 
 @beartype
@@ -304,7 +345,6 @@ def _vm(
         nn.Linear(joint_n_hid, n_classes),
     )
     prediction = PredictionJoint(
-        n_classes=n_classes,
         pred_n_hid=pred_n_hid,
         pred_rnn_layers=pred_rnn_layers,
         joint_n_hid=joint_n_hid,
@@ -320,22 +360,28 @@ def _vm(
         fp8_weights=fp8_weights,
         joint_network=joint_network,
     )
-    prediction_input = torch.randn(3, 1, n_classes - 1 + joint_n_hid)
-    # paired-frame input for encoder: 2 * in_feats
-    encoder_input = torch.randn(3, 1, 2 * in_feats + joint_n_hid)
+
+    time, batch = 3, 1
     return vollo_multi_model_info(
         [
             MultiModelEntry(
                 name="prediction_joint",
                 model=prediction,
-                inputs=(prediction_input,),
-                streaming_axis=0,
+                inputs=(
+                    torch.randn(time, batch, pred_n_hid),  # embed
+                    torch.randn(time, batch, joint_n_hid),  # output from encoder/joint
+                ),
+                streaming_axis=(0, 0),
             ),
             MultiModelEntry(
                 name="encoder_joint",
                 model=encoder,
-                inputs=(encoder_input,),
-                streaming_axis=0,
+                inputs=(
+                    torch.randn(time, batch, in_feats),  # feats_0
+                    torch.randn(time, batch, in_feats),  # feats_1
+                    torch.randn(time, batch, joint_n_hid),  # output from prediction/joint
+                ),
+                streaming_axis=(0, 0, 0),
             ),
         ],
         config=config,
