@@ -370,6 +370,10 @@ def _vm(
                     torch.randn(time, batch, joint_n_hid),  # output from encoder/joint
                 ),
                 streaming_axis=(0, 0),
+                meta={
+                    "joint_n_hid": joint_n_hid,
+                    "pred_n_hid": pred_n_hid,
+                },
             ),
             MultiModelEntry(
                 name="encoder_joint",
@@ -382,21 +386,20 @@ def _vm(
                     ),  # output from prediction/joint
                 ),
                 streaming_axis=(0, 0, 0),
+                meta={
+                    "enc_n_hid": enc_n_hid,
+                    "joint_n_hid": joint_n_hid,
+                },
             ),
         ],
         config=config,
-        meta={
-            "enc_n_hid": enc_n_hid,
-            "joint_n_hid": joint_n_hid,
-            "pred_n_hid": pred_n_hid,
-        },
     )
 
 
 @beartype
 def main(config: str = "V80") -> Generator:
     models = [
-        # Small baseline used by the model-zoo test suite.
+        # 1M baseline used by the model-zoo test suite.
         dict(
             n_classes=256,
             pred_n_hid=192,
@@ -405,7 +408,7 @@ def main(config: str = "V80") -> Generator:
             enc_n_hid=176,
             enc_pre_rnn_layers=1,
             enc_post_rnn_layers=1,
-            joint_n_hid=192,
+            joint_n_hid=288,
             fp8_weights=False,
         ),
         # 23M model for BF16/FP32

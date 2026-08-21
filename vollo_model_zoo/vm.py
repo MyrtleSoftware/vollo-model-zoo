@@ -90,6 +90,7 @@ class MultiModelEntry:
     inputs: tuple[torch.Tensor, ...]
     # One axis, or one per input for a multi-input model.
     streaming_axis: Optional[Union[int, tuple[int, ...]]] = None
+    meta: Optional[dict[str, Union[int, float, str]]] = None
 
 
 type Result = Union[Ok, AllocationError, SaveError, ValueError]
@@ -150,7 +151,6 @@ def vollo_multi_model_info(
     entries: Sequence[MultiModelEntry],
     *,
     config: str,
-    meta: Optional[dict[str, Union[int, float, str]]] = None,
     quick_compile: bool = False,
 ) -> list[Result]:
     """Compile several PyTorch entry points into one Vollo program."""
@@ -184,6 +184,7 @@ def vollo_multi_model_info(
 
     results = []
     for model_index, entry in enumerate(entries):
+        entry_meta = {"entry_point": entry.name, **(entry.meta or {})}
         results.append(
             Ok(
                 config=config,
@@ -201,7 +202,7 @@ def vollo_multi_model_info(
                         spaced=False,
                     )
                 ),
-                meta=meta,
+                meta=entry_meta,
             )
         )
 
