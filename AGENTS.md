@@ -143,10 +143,10 @@ Two consequences:
 
 - Only the latest SDK is re-measured, so a new point lands beside the old ones
   rather than replacing them — hence plot labels naming both versions.
-- `scripts/backtest_github_versions.sh` is meant to rebuild the curve over older
-  releases, but it overrides the SDK with `UV_FIND_LINKS` + `uv sync`, which no
-  longer works (see the pin above) — fix it to pin with `uv pip install` before
-  trusting it.
+- To rebuild the whole curve against current models, run
+  `scripts/backtest_github_versions.sh` over the released SDKs by hand. It reuses
+  an already-extracted `build/vollo-sdk-<version>/`, so it also serves for a
+  locally built SDK.
 
 ## Layout
 
@@ -161,7 +161,7 @@ vollo_model_zoo/
   report.py    /  development.
   version.py      what identifies a benchmark run (see above)
 benchmarks/, plots/  generated latency history; do not hand-edit
-scripts/          backtest_github_versions.sh (see caveat above)
+scripts/          backtest_github_versions.sh — benchmark older SDK releases
 .github/workflows ci.yml (lock check + lint + tests), update_benchmarks.yml (weekly PR)
 ```
 
