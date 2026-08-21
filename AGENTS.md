@@ -43,10 +43,19 @@ uv run pre-commit install          # once; hooks = isort, black, codespell
 uv run pre-commit run --all-files  # lint
 ```
 
-`ci.yml` runs `uv run --all-extras pre-commit run --all-files` then
+`ci.yml` runs `uv lock --check`, then
+`uv run --all-extras pre-commit run --all-files`, then
 `uv run --all-extras pytest -x`. Note the `-x`: a red CI reports only the
 _first_ failure, so never read "everything else passed" into it — re-run the
 suite locally without `-x` to get the full picture.
+
+`uv lock --check` fails when `pyproject.toml` was committed without its
+`uv.lock` hunk — most often a zoo version bump, since the project's own version
+is recorded in the lock too. Every other uv command re-locks silently instead of
+complaining, so without this the mismatch reaches main and resurfaces as a stray
+hunk in a later benchmark PR. Fix it with `uv lock` and commit the result; the
+check validates the resolution rather than the file's bytes, so a different uv
+version is not what made it red.
 
 A model file can also be run directly (`uv run python vollo_model_zoo/models/mlp.py`)
 thanks to its `__main__` block — useful when iterating on one model.

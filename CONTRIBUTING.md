@@ -63,9 +63,10 @@ benchmarks/vollo_28.1.0+zoo.0.2.0.json
 
 So if your change moves a latency — a model file, its size sweep, or the `vm.py`
 harness they are all compiled with — **bump `version` in `pyproject.toml` in the
-same PR**, and commit the `uv.lock` re-lock that comes with it. Without the bump
-the workflow mistakes your change for a run it has already measured, and the new
-numbers never appear.
+same PR**, and commit the `uv.lock` re-lock that comes with it (the version is
+recorded there too, and CI's `uv lock --check` fails if you commit only one of
+the two). Without the bump the workflow mistakes your change for a run it has
+already measured, and the new numbers never appear.
 
 Changes that cannot move a latency (documentation, tests, the plotting and
 reporting tooling) don't need a bump.
