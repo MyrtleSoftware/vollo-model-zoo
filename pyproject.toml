@@ -6,8 +6,6 @@ description = "Exemplar models for the Vollo SDK "
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-  # Unbounded on purpose: the SDK version the zoo is tested against is the one
-  # in uv.lock, which the weekly benchmark workflow moves. See AGENTS.md.
   "vollo-compiler",
   "vollo-torch",
   "beartype",

@@ -43,8 +43,7 @@ uv run pytest
 tested against; `pyproject.toml` declares them without a version bound on
 purpose, because no older SDK is tested. A weekly workflow moves the lock to
 each new release and re-measures the benchmarks, so writing a model against the
-current compiler is the expected thing to do — don't add a floor to
-`pyproject.toml` to record which features a model needs.
+current compiler is the expected thing to do.
 
 If you need to compile against a different SDK (an unreleased build, or an
 older release), point uv at a directory of wheels rather than editing the
@@ -63,10 +62,7 @@ benchmarks/vollo_28.1.0+zoo.0.2.0.json
 
 So if your change moves a latency — a model file, its size sweep, or the `vm.py`
 harness they are all compiled with — **bump `version` in `pyproject.toml` in the
-same PR**, and commit the `uv.lock` re-lock that comes with it (the version is
-recorded there too, and CI's `uv lock --check` fails if you commit only one of
-the two). Without the bump the workflow mistakes your change for a run it has
-already measured, and the new numbers never appear.
+same PR**, and commit the `uv.lock` re-lock that comes with it.
 
 Changes that cannot move a latency (documentation, tests, the plotting and
 reporting tooling) don't need a bump.
