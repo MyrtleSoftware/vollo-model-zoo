@@ -6,8 +6,8 @@ description = "Exemplar models for the Vollo SDK "
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-  "vollo-compiler>=26.1.0",
-  "vollo-torch>=26.1.0",
+  "vollo-compiler",
+  "vollo-torch",
   "beartype",
   "torch",
   "matplotlib",

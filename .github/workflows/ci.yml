@@ -24,6 +24,10 @@ jobs:
         with:
           python-version-file: ".python-version"
 
+      - name: Check the lock file is current
+        run: |
+          uv lock --check
+
       - name: Run linting
         run: uv run --all-extras pre-commit run --all-files
 
