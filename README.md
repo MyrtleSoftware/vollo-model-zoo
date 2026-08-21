@@ -16,6 +16,7 @@ Models in the zoo include:
 |                   | [TCN](#tcn)                                           | [`tcn.py`](./vollo_model_zoo/models/tcn.py)                                                                                                           |
 |                   | [WaveNet](#wavenet)                                   | [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)                                                                                                   |
 |                   | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
+| **Attention**     | [Sliding window attention](#sliding-window-attention) | [`sliding-window-attention.py`](./vollo_model_zoo/models/sliding-window-attention.py)                                                                 |
 | **Recurrent**     | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
 |                   | [GRU](#gru)                                           | [`gru.py`](./vollo_model_zoo/models/gru.py)                                                                                                           |
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
@@ -215,6 +216,50 @@ factorizing a standard convolution into two separate layers:
 
 In the Vollo model zoo implementation we focus on the canonical
 depthwise-pointwise factorisation pattern in 1D.
+
+### Sliding window attention
+
+Code/model: [`sliding-window-attention.py`](./vollo_model_zoo/models/sliding-window-attention.py)
+
+Sliding window (or _local_) attention is the form of attention that streams.
+Full self-attention keeps every past timestep resident and re-attends over all
+of them, so both the state and the work per new timestep grow with the sequence;
+a window bounds the context to the last `window_size` timesteps, which fixes
+both. This is the attention primitive in models such as
+[Longformer](https://arxiv.org/abs/2004.05150) and
+[Mistral](https://arxiv.org/abs/2310.06825), usually interleaved with a few full
+attention layers to carry longer-range information.
+
+The Vollo implementation is a pre-norm transformer block -- a residual attention
+sublayer followed by a residual feed-forward sublayer -- wrapped in a
+`vollo_torch.nn.Scan`, with the rolling K and V windows held as the scan state.
+Each step evicts the oldest entry of each window and appends the arriving
+timestep's, so the compiled program consumes one timestep per inference and does
+a fixed amount of work however long the sequence runs.
+
+Two details in the file are worth reading for what they say about Vollo:
+
+- **Both attention matmuls take two activations**, because the K and V windows
+  are state rather than weights. Those are the
+  [dynamic weights](https://vollo.myrtle.ai/latest/data-dimension.html) cases,
+  which the file has to opt into, and each wants its matrix operand with the
+  contracted dimension second-innermost. The scores contract over features while
+  the output contracts over timesteps, which is why only the K window is
+  transposed where it is used.
+- **The warm-up mask rides through the score matmul.** A query must not attend to
+  the window slots no timestep has reached yet, and rather than detect emptiness
+  at runtime the key carries one extra feature holding an additive score bias:
+  the query's matching feature is a constant `1`, a real key appends a `0`, and
+  the scan's initial window holds `-inf` there, which the softmax turns into a
+  zero weight. `mask_warmup` is swept both ways so the cost of that extra feature
+  is visible in the table.
+
+The [tests](./tests/test_sliding_window_attention.py) check the streamed window
+against a dense band-masked attention over the whole sequence, which is the
+readable statement of what the scan state is supposed to be doing.
+
+Note this model needs Vollo SDK 28.0.0 or newer: that is the release where the
+compiler gained the dynamic-weight matmuls it is built out of.
 
 ### LSTM
 
