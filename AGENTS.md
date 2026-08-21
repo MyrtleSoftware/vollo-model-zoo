@@ -367,7 +367,7 @@ nnir = vt.fx.nnir.to_nnir(model)
 print(nnir)                                # <-- the whole point
 streamed, out_axis = nnir.streaming_transform(1)   # same time_axis as _vm passes
 print(streamed)                            # <-- diff against the above
-program = streamed.to_program(vc.Config.v80_c6b32())
+program = streamed.to_program(vc.Config.amd_v80_c6b32())
 program.pack()                             # AllocationError surfaces here, not earlier
 ```
 
