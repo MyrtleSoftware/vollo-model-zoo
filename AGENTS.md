@@ -264,14 +264,16 @@ shape usually failed here — read
 per-op, rather than guessing. Matmul contraction and reshape bite zoo models
 most often and both have worked examples there.
 
-Repo convention: `[a b! c]` marks `b` as the data dimension, and `mamba2.py`
-tracks `!` on every intermediate. Keep that up in shape-juggling code — it is the
-fastest way to see why a compile failed.
+The `[a b! c]` notation marking `b` as the data dimension is the docs' own; the
+repo convention is carrying it into shape comments on every intermediate
+(`mamba2.py`). Keep that up in shape-juggling code — it is the fastest way to see
+why a compile failed.
 
 `allow_dynamic_weights=True` unlocks the matmul cases the default contraction
 rule rejects, which is why the scan-based (`gru`, `ssm`, `mamba2`) and
-large-linear (`resmlp`) models set it. Advanced: expect higher latency and more
-tensor RAM, so reach for it when a matmul won't compile, not to make one faster.
+large-linear (`resmlp`) models set it. The docs call it advanced, with
+"non-obvious performance characteristics" that *potentially* cost latency and
+tensor RAM — so reach for it when a matmul won't compile, not to make one faster.
 
 ### Precision
 
@@ -299,9 +301,11 @@ What that means here:
 
 ### Cost model
 
-- Configs are `<cores>×<block size>`: `c6b32` (V80, V80LL, IA-420f, NT400D11) or
-  `c3b64` (IA-840f). Feature dims that are multiples of the block size map
-  cleanly onto the compute units — hence sweeps using sizes like `32 * 6 * 4`.
+- Configs are `<cores>×<block size>`: `c6b32` (V80, V80LL, IA-420f, NT400D11) is
+  6 cores of block size 32, `c3b64` (IA-840f) 3 of 64 — `Config.num_cores` and
+  `.block_size` confirm it. Work rounds up to whole blocks: a 385-feature MLP
+  costs the same as 400 and ~4.5% more cycles than 384, hence sweeps using sizes
+  like `32 * 6 * 4`.
 - The VM is a **near cycle-accurate** instruction-level simulation modelling
   **no host↔accelerator IO**. The smallest zoo models compile to well under 1 µs
   of compute, so for those **IO dominates end-to-end latency**; get IO figures
