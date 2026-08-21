@@ -28,9 +28,7 @@ jobs:
         run: |
           # The compiler and VM come from PyPI, so upgrading the lock is all it
           # takes to benchmark a new SDK -- and committing that lock is what
-          # gives `uv run zoo` users the latest Vollo. Only the two Vollo
-          # packages are upgraded: a torch bump would move the numbers for
-          # reasons that have nothing to do with the SDK release.
+          # gives `uv run zoo` users the latest Vollo. 
           uv lock --upgrade-package vollo-compiler --upgrade-package vollo-torch
 
       - name: Install dependencies
@@ -43,10 +41,7 @@ jobs:
         id: identity
         run: |
           # A benchmark run is identified by the SDK it measures *and* the zoo
-          # version that defined the models, so a zoo-only change is not
-          # mistaken for a run we already have. Ask the installed package
-          # rather than rebuilding the string here, so there is one definition
-          # of it (vollo_model_zoo/version.py).
+          # version that defined the models.
           SDK=$(uv run --no-sync python -c 'from vollo_model_zoo.version import vollo_version; print(vollo_version())')
           ZOO=$(uv run --no-sync python -c 'from vollo_model_zoo.version import zoo_version; print(zoo_version())')
           VERSION=$(uv run --no-sync python -c 'from vollo_model_zoo.version import benchmark_version; print(benchmark_version())')
