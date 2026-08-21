@@ -98,25 +98,36 @@ uv run --no-sync python -c "import importlib.metadata as m; print(m.version('vol
 
 ### How CI does it instead
 
-`update_benchmarks.yml` uses a different mechanism, worth knowing when you are
-reproducing or debugging one of its PRs: it sets `UV_FIND_LINKS` to the
-extracted SDK's `python/` directory for the whole job and then lets a normal
-`uv sync` resolve against it:
+`update_benchmarks.yml` needs none of the above, because a **released** SDK's
+`vollo-compiler` / `vollo-torch` wheels are on PyPI: it just moves the lock and
+lets a normal `uv sync` follow.
 
 ```fish
-set -x UV_FIND_LINKS (pwd)/build/vollo-sdk/python/
-
-uv sync --all-extras --dev \
-  --upgrade-package vollo-compiler --upgrade-package vollo-torch \
-  --reinstall-package vollo-compiler --reinstall-package vollo-torch
+uv lock --upgrade-package vollo-compiler --upgrade-package vollo-torch
+uv sync --all-extras --dev
 ```
 
-The trade-off is the mirror image of the recipe above: `--upgrade-package`
-re-resolves and **rewrites `uv.lock`** to the new version, which is why later
-`uv run`s don't need `--no-sync` — the lock itself now names the new SDK, and
-`UV_FIND_LINKS` keeps the wheels findable. Use this when you want CI's exact
-behaviour and don't mind a dirty lock file (CI's `add-paths` never commits it);
-use `uv pip install` above when the lock must stay untouched.
+Two things follow that are worth knowing when reproducing one of its PRs:
+
+- The **lock file is part of the PR** (`add-paths` includes `uv.lock`), so
+  merging it is what gives `uv run zoo` users the new compiler. It also means
+  `ci.yml` runs the whole test suite against the new SDK on that PR — a red run
+  there is the regression signal, not a flake to retry.
+- A PR appears for either of two independent reasons: a new SDK on PyPI (the
+  lock moves) or a zoo version bump (the benchmark file name is new). The
+  benchmark run itself is still gated on the file name, so a lock-only PR
+  carries no new numbers.
+- The **declared floor follows the lock**: the job rewrites
+  `vollo-compiler>=` / `vollo-torch>=` in `pyproject.toml` to the version it
+  locked, and `tests/test_version.py::test_vollo_floor_matches_the_lock` fails
+  if the two drift. So the floor is not a support claim about older SDKs — it
+  names the one version the zoo is tested against. Write models against the
+  current compiler and don't hand-edit the floor to something older; if you
+  need the zoo to keep working on an older SDK, that has to become a CI leg
+  (`uv lock --resolution lowest-direct`) rather than a number in a file.
+
+The `.run` bundle is still the only route to an **unreleased** SDK, which is
+what the two recipes above are for.
 
 ### What to expect from a newer SDK
 
@@ -146,7 +157,10 @@ measured. Bump it in the same PR as:
   `main()`, a constructor default;
 - a change to `vm.py`, which sets the compile options every model is measured
   with;
-- a dependency change that alters compilation.
+- a dependency change that alters compilation — but *not* the weekly
+  `vollo-compiler` / `vollo-torch` lock bump: the SDK version is already the
+  other half of the benchmark identity, so bumping the zoo alongside it would
+  only spend a run re-measuring unchanged models.
 
 Don't bump for README prose, tests, or the reporting tooling (`plot.py`,
 `report.py`, `parse.py`) — those can't move a latency, and a bump would spend a

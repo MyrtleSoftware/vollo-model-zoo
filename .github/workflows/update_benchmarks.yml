@@ -8,8 +8,6 @@ on:
 jobs:
   update-benchmarks:
     runs-on: self-hosted
-    env:
-      UV_FIND_LINKS: ${{ github.workspace }}/build/vollo-sdk/python/
     steps:
       - uses: actions/checkout@v4
         with:
@@ -19,36 +17,70 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-glob: "pyproject.toml"
+          cache-dependency-glob: "uv.lock"
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version-file: ".python-version"
 
-      - name: Get latest Vollo SDK version
-        id: vollo-version
+      - name: Upgrade Vollo to the latest release
         run: |
-          VERSION=$(curl -s https://api.github.com/repos/MyrtleSoftware/vollo-sdk/releases/latest | jq -r .tag_name)
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "latest version is ${VERSION}"
+          # The compiler and VM come from PyPI, so upgrading the lock is all it
+          # takes to benchmark a new SDK -- and committing that lock is what
+          # gives `uv run zoo` users the latest Vollo. Only the two Vollo
+          # packages are upgraded: a torch bump would move the numbers for
+          # reasons that have nothing to do with the SDK release.
+          uv lock --upgrade-package vollo-compiler --upgrade-package vollo-torch
+
+      - name: Follow the lock with the declared floor
+        run: |
+          # The zoo declares the SDK it is actually tested and benchmarked
+          # against, rather than an older version nobody checks, so the floor
+          # tracks the lock. `tests/test_version.py` asserts the two agree, and
+          # `uv.lock` records the specifier as well as the resolved version --
+          # hence the re-lock.
+          python3 - <<'PY'
+          import pathlib, re, tomllib
+
+          lock = tomllib.loads(pathlib.Path("uv.lock").read_text())
+          sdk = next(p["version"] for p in lock["package"] if p["name"] == "vollo-compiler")
+
+          pyproject = pathlib.Path("pyproject.toml")
+          pyproject.write_text(
+              re.sub(
+                  r'"vollo-(compiler|torch)>=[^"]+"',
+                  lambda m: f'"vollo-{m.group(1)}>={sdk}"',
+                  pyproject.read_text(),
+              )
+          )
+          print(f"declared floor is now vollo >= {sdk}")
+          PY
+
+          uv lock
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Check versions
+        run: uv pip list
 
       - name: Resolve benchmark identity
         id: identity
         run: |
           # A benchmark run is identified by the SDK it measures *and* the zoo
           # version that defined the models, so a zoo-only change is not
-          # mistaken for a run we already have. This builds the same string as
-          # `benchmark_version` in vollo_model_zoo/version.py -- keep the two in
-          # step. The zoo version comes from pyproject.toml, which is what uv
-          # installs the version from (tests/test_version.py checks they agree).
-          VERSION=${{ steps.vollo-version.outputs.version }}
-          VER_NUM=${VERSION#v}
-          ZOO_VER=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
-          echo "sdk=${VER_NUM}" >> $GITHUB_OUTPUT
-          echo "zoo=${ZOO_VER}" >> $GITHUB_OUTPUT
-          echo "file=benchmarks/vollo_${VER_NUM}+zoo.${ZOO_VER}.json" >> $GITHUB_OUTPUT
-          echo "benchmarking Vollo SDK ${VER_NUM} with model zoo ${ZOO_VER}"
+          # mistaken for a run we already have. Ask the installed package
+          # rather than rebuilding the string here, so there is one definition
+          # of it (vollo_model_zoo/version.py).
+          SDK=$(uv run --no-sync python -c 'from vollo_model_zoo.version import vollo_version; print(vollo_version())')
+          ZOO=$(uv run --no-sync python -c 'from vollo_model_zoo.version import zoo_version; print(zoo_version())')
+          VERSION=$(uv run --no-sync python -c 'from vollo_model_zoo.version import benchmark_version; print(benchmark_version())')
+
+          echo "sdk=${SDK}" >> $GITHUB_OUTPUT
+          echo "zoo=${ZOO}" >> $GITHUB_OUTPUT
+          echo "file=benchmarks/vollo_${VERSION}.json" >> $GITHUB_OUTPUT
+          echo "benchmarking Vollo SDK ${SDK} with model zoo ${ZOO}"
 
       - name: Check if benchmark already exists
         id: check-version
@@ -62,64 +94,77 @@ jobs:
             echo "should_update=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Download and extract Vollo SDK
-        if: steps.check-version.outputs.should_update == 'true'
-        run: |
-          VER_NUM=${{ steps.identity.outputs.sdk }}
-          SDK_FILE="vollo-sdk-${VER_NUM}.run"
-          TAG=${{ steps.vollo-version.outputs.version }}
-          URL="https://github.com/MyrtleSoftware/vollo-sdk/releases/download/${TAG}/${SDK_FILE}"
-
-          mkdir -p build
-          echo "Downloading $URL ..."
-          curl -L -o "build/${SDK_FILE}" "${URL}"
-
-          echo "Extracting $SDK_FILE ..."
-          chmod +x "build/${SDK_FILE}"
-          ./build/${SDK_FILE} --target build/vollo-sdk --noexec --accept > /dev/null
-
-      - name: Install dependencies
-        if: steps.check-version.outputs.should_update == 'true'
-        run: |
-          uv sync --all-extras --dev \
-            --upgrade-package vollo-compiler \
-            --upgrade-package vollo-torch \
-            --reinstall-package vollo-compiler \
-            --reinstall-package vollo-torch
-
-      - name: Check versions
-        if: steps.check-version.outputs.should_update == 'true'
-        run: uv pip list
-
       - name: Run benchmarks
         if: steps.check-version.outputs.should_update == 'true'
-        run: uv run benchmark --json_output "${{ steps.identity.outputs.file }}"
+        run: uv run --no-sync benchmark --json_output "${{ steps.identity.outputs.file }}"
 
       - name: Update plots
         if: steps.check-version.outputs.should_update == 'true'
-        run: uv run plot ./benchmarks/*.json
+        run: uv run --no-sync plot ./benchmarks/*.json
 
       - name: Update report
         if: steps.check-version.outputs.should_update == 'true'
-        run: uv run report "${{ steps.identity.outputs.file }}" --plots ./plots/*.svg
+        run: uv run --no-sync report "${{ steps.identity.outputs.file }}" --plots ./plots/*.svg
+
+      - name: Compose pull request
+        id: pr
+        run: |
+          # Two independent reasons to open a PR, and either can happen alone:
+          # a new SDK on PyPI (lock moves), or a zoo version bump that makes
+          # the benchmark file name new (numbers move, lock does not). Say which
+          # one this is rather than claiming both.
+          SDK="${{ steps.identity.outputs.sdk }}"
+          ZOO="${{ steps.identity.outputs.zoo }}"
+          BENCHMARKED="${{ steps.check-version.outputs.should_update }}"
+
+          LOCKED=false
+          git diff --quiet -- uv.lock || LOCKED=true
+
+          if [ "$BENCHMARKED" = "true" ]; then
+            TITLE="Update Benchmarks: Vollo SDK ${SDK}, model zoo ${ZOO}"
+          else
+            TITLE="Update lock file: Vollo SDK ${SDK}"
+          fi
+
+          echo "title=${TITLE}" >> $GITHUB_OUTPUT
+
+          {
+            echo "body<<PR_BODY_EOF"
+            echo "This is an automated PR from \`update_benchmarks.yml\`."
+            echo
+            if [ "$LOCKED" = "true" ]; then
+              echo "- Locked \`vollo-compiler\` and \`vollo-torch\` to ${SDK}, so \`uv run zoo\` uses it, and raised the declared floor in \`pyproject.toml\` to match"
+            fi
+            if [ "$BENCHMARKED" = "true" ]; then
+              echo "- Added \`${{ steps.identity.outputs.file }}\`, measured by model zoo ${ZOO}"
+              echo "- Regenerated plots in \`plots/\`"
+              echo "- Updated benchmark report in \`benchmarks/README.md\`"
+            else
+              echo "- Benchmarks unchanged: \`${{ steps.identity.outputs.file }}\` already exists"
+            fi
+            if [ "$LOCKED" = "true" ]; then
+              echo
+              echo "CI on this PR runs the test suite against the newly locked SDK, so a red run here is a real regression in Vollo ${SDK} or in a model's compatibility with it."
+            fi
+            echo "PR_BODY_EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
-        if: steps.check-version.outputs.should_update == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "benchmarks: update for Vollo SDK ${{ steps.identity.outputs.sdk }}, model zoo ${{ steps.identity.outputs.zoo }}"
-          title: "Update Benchmarks: Vollo SDK ${{ steps.identity.outputs.sdk }}, model zoo ${{ steps.identity.outputs.zoo }}"
-          body: |
-            This is an automated PR to update the benchmarks, plots, and report for Vollo SDK ${{ steps.identity.outputs.sdk }} as measured by model zoo ${{ steps.identity.outputs.zoo }}.
-
-            - Added `${{ steps.identity.outputs.file }}`
-            - Regenerated plots in `plots/`
-            - Updated benchmark report in `benchmarks/README.md`
-          branch: "automation/update-benchmarks-${{ steps.identity.outputs.sdk }}-zoo-${{ steps.identity.outputs.zoo }}"
+          commit-message: "${{ steps.pr.outputs.title }}"
+          title: "${{ steps.pr.outputs.title }}"
+          body: "${{ steps.pr.outputs.body }}"
+          branch: "automation/vollo-${{ steps.identity.outputs.sdk }}-zoo-${{ steps.identity.outputs.zoo }}"
           base: main
           delete-branch: true
+          # No `if:` on this step: the action no-ops when none of these paths
+          # changed, which is the "already benchmarked, lock already current"
+          # case.
           add-paths: |
+            pyproject.toml
+            uv.lock
             benchmarks/README.md
             benchmarks/*.json
             plots/*.svg
