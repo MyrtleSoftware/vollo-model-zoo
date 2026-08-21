@@ -184,7 +184,6 @@ def vollo_multi_model_info(
 
     results = []
     for model_index, entry in enumerate(entries):
-        entry_meta = {"entry_point": entry.name, **(entry.meta or {})}
         results.append(
             Ok(
                 config=config,
@@ -202,7 +201,7 @@ def vollo_multi_model_info(
                         spaced=False,
                     )
                 ),
-                meta=entry_meta,
+                meta={"prog": entry.name, **(entry.meta or {})},
             )
         )
 

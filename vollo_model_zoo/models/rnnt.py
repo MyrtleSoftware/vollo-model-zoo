@@ -363,7 +363,7 @@ def _vm(
     return vollo_multi_model_info(
         [
             MultiModelEntry(
-                name="prediction_joint",
+                name="predictor",
                 model=prediction,
                 inputs=(
                     torch.randn(time, batch, pred_n_hid),  # embed
@@ -371,12 +371,12 @@ def _vm(
                 ),
                 streaming_axis=(0, 0),
                 meta={
-                    "joint_n_hid": joint_n_hid,
-                    "pred_n_hid": pred_n_hid,
+                    "hidden": pred_n_hid,
+                    "joint_hidden": joint_n_hid,
                 },
             ),
             MultiModelEntry(
-                name="encoder_joint",
+                name="encoder",
                 model=encoder,
                 inputs=(
                     torch.randn(time, batch, in_feats),  # feats_0
@@ -387,8 +387,8 @@ def _vm(
                 ),
                 streaming_axis=(0, 0, 0),
                 meta={
-                    "enc_n_hid": enc_n_hid,
-                    "joint_n_hid": joint_n_hid,
+                    "hidden": enc_n_hid,
+                    "joint_hidden": joint_n_hid,
                 },
             ),
         ],

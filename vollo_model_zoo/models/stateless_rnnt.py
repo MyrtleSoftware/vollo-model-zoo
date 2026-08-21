@@ -307,7 +307,7 @@ def _vm(
     return vollo_multi_model_info(
         [
             MultiModelEntry(
-                name="prediction_joint",
+                name="predictor",
                 model=prediction,
                 inputs=(
                     torch.randn(batch, pred_n_hid),  # embed
@@ -316,12 +316,12 @@ def _vm(
                     pred_state.clone(),
                 ),
                 meta={
-                    "joint_n_hid": joint_n_hid,
-                    "pred_n_hid": pred_n_hid,
+                    "hidden": pred_n_hid,
+                    "joint_hidden": joint_n_hid,
                 },
             ),
             MultiModelEntry(
-                name="encoder_joint",
+                name="encoder",
                 model=encoder,
                 inputs=(
                     torch.randn(batch, in_feats),  # feats_0
@@ -333,8 +333,8 @@ def _vm(
                     post_state.clone(),
                 ),
                 meta={
-                    "enc_n_hid": enc_n_hid,
-                    "joint_n_hid": joint_n_hid,
+                    "hidden": enc_n_hid,
+                    "joint_hidden": joint_n_hid,
                 },
             ),
         ],
