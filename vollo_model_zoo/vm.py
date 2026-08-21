@@ -12,6 +12,15 @@ from beartype import beartype
 from beartype.typing import Callable, Optional, Union
 from vollo_compiler import AllocationError, SaveError
 
+# Names changed over time, fallback to depreciated for backwards-compat
+_CONFIG_CONSTRUCTORS = {
+    "V80": ("amd_v80_c6b32", "v80_c6b32"),
+    "V80LL": ("amd_v80ll_c6b32", "v80ll_c6b32"),
+    "IA-420f": ("bittware_ia420f_c6b32", "ia_420f_c6b32"),
+    "IA-840f": ("bittware_ia840f_c3b64", "ia_840f_c3b64"),
+    "NT400D11": ("napatech_nt400d11_c6b32", "nt400d11_c6b32"),
+}
+
 
 @beartype
 def _get_configs() -> dict[str, vc.Config]:
@@ -20,16 +29,11 @@ def _get_configs() -> dict[str, vc.Config]:
     """
     configs = {}
 
-    if hasattr(vc.Config, "v80_c6b32"):
-        configs["V80"] = vc.Config.v80_c6b32()
-    if hasattr(vc.Config, "v80ll_c6b32"):
-        configs["V80LL"] = vc.Config.v80ll_c6b32()
-    if hasattr(vc.Config, "ia_420f_c6b32"):
-        configs["IA-420f"] = vc.Config.ia_420f_c6b32()
-    if hasattr(vc.Config, "ia_840f_c3b64"):
-        configs["IA-840f"] = vc.Config.ia_840f_c3b64()
-    if hasattr(vc.Config, "nt400d11_c6b32"):
-        configs["NT400D11"] = vc.Config.nt400d11_c6b32()
+    for name, constructors in _CONFIG_CONSTRUCTORS.items():
+        for constructor in constructors:
+            if hasattr(vc.Config, constructor):
+                configs[name] = getattr(vc.Config, constructor)()
+                break
 
     return configs
 
