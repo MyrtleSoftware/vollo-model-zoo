@@ -19,7 +19,7 @@ class _LSTMStack(nn.Module):
     @beartype
     def __init__(self, input_size: int, hidden_size: int, num_layers: int) -> None:
         """Apply optimized Vollo LSTM cells while keeping cell state internal.
-        
+
         Args:
                input_size:           Features in the input to the first layer
                hidden_size:          Features in each layer's hidden state
@@ -86,9 +86,9 @@ class _PredictionJointStep(nn.Module):
 
     def forward(
         self,
-        inputs: Sequence[Tensor],  # (embed, encoding)
-        hidden: Tensor,  # [pred_rnn_layers, batch, pred_n_hid]
-    ) -> tuple[tuple[Tensor, Tensor], Tensor]:  # (prediction, logits), hidden
+        inputs: Sequence[Tensor],
+        hidden: Tensor,
+    ) -> tuple[tuple[Tensor, Tensor], Tensor]:
         """Run the prediction network and joint network for one token.
 
         Args:
@@ -106,8 +106,7 @@ class _PredictionJointStep(nn.Module):
         """
         embed, encoding = inputs
 
-        precision = vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext()
-        with precision:
+        with vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext():
             prediction, hidden = self.lstm(embed, hidden)
             prediction = self.joint_pred(prediction)
             logits = self.joint_network(encoding + prediction)
@@ -209,11 +208,11 @@ class _EncoderJointStep(nn.Module):
 
     def forward(
         self,
-        inputs: Sequence[Tensor],  # (feats_0, feats_1, prediction)
-        state: Sequence[Tensor],  # (pre_hidden, post_hidden)
+        inputs: Sequence[Tensor],
+        state: Sequence[Tensor],
     ) -> tuple[
-        tuple[Tensor, Tensor],  # (encoding, logits)
-        tuple[Tensor, Tensor],  # (pre_hidden, post_hidden)
+        tuple[Tensor, Tensor],
+        tuple[Tensor, Tensor],
     ]:
         """Encode a pair of feature frames and compute joint logits.
 
@@ -236,8 +235,7 @@ class _EncoderJointStep(nn.Module):
         feats_0, feats_1, prediction = inputs
         pre_hidden, post_hidden = state
 
-        precision = vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext()
-        with precision:
+        with vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext():
             pre_0, pre_hidden = self.pre_rnn(feats_0, pre_hidden)
             pre_1, pre_hidden = self.pre_rnn(feats_1, pre_hidden)
             output, post_hidden = self.post_rnn(
@@ -379,7 +377,9 @@ def _vm(
                 inputs=(
                     torch.randn(time, batch, in_feats),  # feats_0
                     torch.randn(time, batch, in_feats),  # feats_1
-                    torch.randn(time, batch, joint_n_hid),  # output from prediction/joint
+                    torch.randn(
+                        time, batch, joint_n_hid
+                    ),  # output from prediction/joint
                 ),
                 streaming_axis=(0, 0, 0),
             ),

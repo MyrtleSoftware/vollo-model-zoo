@@ -34,10 +34,10 @@ class _ManualLSTMCell(nn.Module):
 
     def forward(
         self,
-        x: Tensor,  # [batch, input_size]
-        h: Tensor,  # [batch, hidden_size]
-        c: Tensor,  # [batch, hidden_size]
-    ) -> tuple[Tensor, Tensor]:  # h, c
+        x: Tensor,
+        h: Tensor,
+        c: Tensor,
+    ) -> tuple[Tensor, Tensor]:
         """Run one explicit-state LSTM cell.
 
         Args:
@@ -84,10 +84,10 @@ class _ManualLSTMStack(nn.Module):
 
     def forward(
         self,
-        x: Tensor,  # [batch, input_size]
-        h: Tensor,  # [num_layers, batch, hidden_size]
-        c: Tensor,  # [num_layers, batch, hidden_size]
-    ) -> tuple[Tensor, Tensor, Tensor]:  # output, h, c
+        x: Tensor,
+        h: Tensor,
+        c: Tensor,
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """Run one time step through every explicit-state LSTM layer.
 
         Args:
@@ -147,11 +147,11 @@ class StatelessPredictionJoint(nn.Module):
 
     def forward(
         self,
-        embed: Tensor,  # [batch, pred_n_hid]
-        encoding: Tensor,  # [batch, joint_n_hid]
-        h: Tensor,  # [pred_rnn_layers, batch, pred_n_hid]
-        c: Tensor,  # [pred_rnn_layers, batch, pred_n_hid]
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor]:  # prediction, logits, h, c
+        embed: Tensor,
+        encoding: Tensor,
+        h: Tensor,
+        c: Tensor,
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
         """Run the prediction network and joint network for one token.
 
         Args:
@@ -167,8 +167,7 @@ class StatelessPredictionJoint(nn.Module):
             the state tensors keep the shapes of ``h`` and ``c`` and must be
             supplied to the next prediction call.
         """
-        precision = vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext()
-        with precision:
+        with vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext():
             prediction, h, c = self.lstm(embed, h, c)
             prediction = self.joint_pred(prediction)
             logits = self.joint_network(encoding + prediction)
@@ -211,20 +210,20 @@ class StatelessEncoderJoint(nn.Module):
 
     def forward(
         self,
-        feats_0: Tensor,  # [batch, in_feats]
-        feats_1: Tensor,  # [batch, in_feats]
-        prediction: Tensor,  # [batch, joint_n_hid]
-        pre_h: Tensor,  # [enc_pre_rnn_layers, batch, enc_n_hid]
-        pre_c: Tensor,  # [enc_pre_rnn_layers, batch, enc_n_hid]
-        post_h: Tensor,  # [enc_post_rnn_layers, batch, enc_n_hid]
-        post_c: Tensor,  # [enc_post_rnn_layers, batch, enc_n_hid]
+        feats_0: Tensor,
+        feats_1: Tensor,
+        prediction: Tensor,
+        pre_h: Tensor,
+        pre_c: Tensor,
+        post_h: Tensor,
+        post_c: Tensor,
     ) -> tuple[
-        Tensor,  # encoding
-        Tensor,  # logits
-        Tensor,  # pre_h
-        Tensor,  # pre_c
-        Tensor,  # post_h
-        Tensor,  # post_c
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
     ]:
         """Encode a pair of feature frames and compute joint logits.
 
@@ -246,8 +245,7 @@ class StatelessEncoderJoint(nn.Module):
             ``logits`` is ``[batch, n_classes]``; the four state tensors keep
             their input shapes and must be supplied to the next encoder call.
         """
-        precision = vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext()
-        with precision:
+        with vollo_torch.Fp8Weights() if self.fp8_weights else nullcontext():
             pre_0, pre_h, pre_c = self.pre_rnn(feats_0, pre_h, pre_c)
             pre_1, pre_h, pre_c = self.pre_rnn(feats_1, pre_h, pre_c)
             output, post_h, post_c = self.post_rnn(
