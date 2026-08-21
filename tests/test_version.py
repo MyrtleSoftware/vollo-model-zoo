@@ -2,7 +2,6 @@ import tomllib
 from pathlib import Path
 
 from beartype import beartype
-from packaging.requirements import Requirement
 from packaging.version import parse as parse_version
 
 from vollo_model_zoo.version import (
@@ -59,36 +58,3 @@ def test_installed_zoo_version_matches_pyproject():
         expected = tomllib.load(f)["project"]["version"]
 
     assert zoo_version() == expected, "stale venv? re-run without `--no-sync`"
-
-
-@beartype
-def test_vollo_floor_matches_the_lock():
-    """
-    The declared floor is the SDK the zoo is actually tested and benchmarked
-    against, so it follows `uv.lock` rather than naming an older version
-    nothing checks. `update_benchmarks.yml` moves both together when it
-    upgrades Vollo; this catches a hand-edit that moves only one.
-    """
-    root = Path(__file__).parent.parent
-
-    with open(root / "pyproject.toml", "rb") as f:
-        dependencies = tomllib.load(f)["project"]["dependencies"]
-
-    with open(root / "uv.lock", "rb") as f:
-        packages = tomllib.load(f)["package"]
-
-    locked = {p["name"]: p["version"] for p in packages}
-
-    floors = {
-        req.name: req
-        for req in map(Requirement, dependencies)
-        if req.name in ("vollo-compiler", "vollo-torch")
-    }
-
-    assert set(floors) == {"vollo-compiler", "vollo-torch"}
-
-    for name, req in floors.items():
-        assert str(req.specifier) == f">={locked[name]}", (
-            f"{name} is locked at {locked[name]} but pyproject declares "
-            f"{name}{req.specifier}; raise the floor to match the lock"
-        )

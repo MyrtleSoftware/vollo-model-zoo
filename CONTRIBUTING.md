@@ -37,6 +37,19 @@ You can run all the models in the zoo with:
 uv run pytest
 ```
 
+## The Vollo SDK version
+
+`uv.lock` pins the `vollo-compiler` / `vollo-torch` the zoo is developed and
+tested against; `pyproject.toml` declares them without a version bound on
+purpose, because no older SDK is tested. A weekly workflow moves the lock to
+each new release and re-measures the benchmarks, so writing a model against the
+current compiler is the expected thing to do — don't add a floor to
+`pyproject.toml` to record which features a model needs.
+
+If you need to compile against a different SDK (an unreleased build, or an
+older release), point uv at a directory of wheels rather than editing the
+dependency; see the recipes in [AGENTS.md](./AGENTS.md).
+
 ## Versioning
 
 The [benchmarks](./benchmarks/README.md) are re-measured by a weekly workflow,

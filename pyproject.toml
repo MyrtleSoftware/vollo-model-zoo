@@ -6,10 +6,10 @@ description = "Exemplar models for the Vollo SDK "
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-  # Floor = the version in uv.lock, i.e. the SDK actually tested and
-  # benchmarked; update_benchmarks.yml moves both together. See AGENTS.md.
-  "vollo-compiler>=27.0.0",
-  "vollo-torch>=27.0.0",
+  # Unbounded on purpose: the SDK version the zoo is tested against is the one
+  # in uv.lock, which the weekly benchmark workflow moves. See AGENTS.md.
+  "vollo-compiler",
+  "vollo-torch",
   "beartype",
   "torch",
   "matplotlib",

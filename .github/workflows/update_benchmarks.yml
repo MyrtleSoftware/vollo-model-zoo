@@ -33,32 +33,6 @@ jobs:
           # reasons that have nothing to do with the SDK release.
           uv lock --upgrade-package vollo-compiler --upgrade-package vollo-torch
 
-      - name: Follow the lock with the declared floor
-        run: |
-          # The zoo declares the SDK it is actually tested and benchmarked
-          # against, rather than an older version nobody checks, so the floor
-          # tracks the lock. `tests/test_version.py` asserts the two agree, and
-          # `uv.lock` records the specifier as well as the resolved version --
-          # hence the re-lock.
-          python3 - <<'PY'
-          import pathlib, re, tomllib
-
-          lock = tomllib.loads(pathlib.Path("uv.lock").read_text())
-          sdk = next(p["version"] for p in lock["package"] if p["name"] == "vollo-compiler")
-
-          pyproject = pathlib.Path("pyproject.toml")
-          pyproject.write_text(
-              re.sub(
-                  r'"vollo-(compiler|torch)>=[^"]+"',
-                  lambda m: f'"vollo-{m.group(1)}>={sdk}"',
-                  pyproject.read_text(),
-              )
-          )
-          print(f"declared floor is now vollo >= {sdk}")
-          PY
-
-          uv lock
-
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
@@ -133,7 +107,7 @@ jobs:
             echo "This is an automated PR from \`update_benchmarks.yml\`."
             echo
             if [ "$LOCKED" = "true" ]; then
-              echo "- Locked \`vollo-compiler\` and \`vollo-torch\` to ${SDK}, so \`uv run zoo\` uses it, and raised the declared floor in \`pyproject.toml\` to match"
+              echo "- Locked \`vollo-compiler\` and \`vollo-torch\` to ${SDK}, so \`uv run zoo\` uses it"
             fi
             if [ "$BENCHMARKED" = "true" ]; then
               echo "- Added \`${{ steps.identity.outputs.file }}\`, measured by model zoo ${ZOO}"
@@ -163,7 +137,6 @@ jobs:
           # changed, which is the "already benchmarked, lock already current"
           # case.
           add-paths: |
-            pyproject.toml
             uv.lock
             benchmarks/README.md
             benchmarks/*.json

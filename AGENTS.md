@@ -53,9 +53,11 @@ thanks to its `__main__` block — useful when iterating on one model.
 
 ## Running against a different Vollo SDK
 
-`vollo-compiler` / `vollo-torch` come from PyPI, pinned by `uv.lock`. Two
-things override that: a released `.run` bundle, or a locally built (unreleased)
-SDK. Both work the same way — point uv at a directory of wheels.
+`vollo-compiler` / `vollo-torch` come from PyPI, pinned by `uv.lock` — which is
+the single source of truth for the SDK version the zoo is written and tested
+against, since `pyproject.toml` declares no bound. Two things override that: a
+released `.run` bundle, or a locally built (unreleased) SDK. Both work the same
+way — point uv at a directory of wheels.
 
 ### Building an unreleased SDK from a myrtlepkgs checkout (Myrtle devs)
 
@@ -107,7 +109,7 @@ uv lock --upgrade-package vollo-compiler --upgrade-package vollo-torch
 uv sync --all-extras --dev
 ```
 
-Two things follow that are worth knowing when reproducing one of its PRs:
+Three things follow that are worth knowing when reproducing one of its PRs:
 
 - The **lock file is part of the PR** (`add-paths` includes `uv.lock`), so
   merging it is what gives `uv run zoo` users the new compiler. It also means
@@ -117,14 +119,14 @@ Two things follow that are worth knowing when reproducing one of its PRs:
   lock moves) or a zoo version bump (the benchmark file name is new). The
   benchmark run itself is still gated on the file name, so a lock-only PR
   carries no new numbers.
-- The **declared floor follows the lock**: the job rewrites
-  `vollo-compiler>=` / `vollo-torch>=` in `pyproject.toml` to the version it
-  locked, and `tests/test_version.py::test_vollo_floor_matches_the_lock` fails
-  if the two drift. So the floor is not a support claim about older SDKs — it
-  names the one version the zoo is tested against. Write models against the
-  current compiler and don't hand-edit the floor to something older; if you
-  need the zoo to keep working on an older SDK, that has to become a CI leg
-  (`uv lock --resolution lowest-direct`) rather than a number in a file.
+- Only the **locked** version is ever tested, so `pyproject.toml` deliberately
+  declares `vollo-compiler` / `vollo-torch` with **no version bound**: a floor
+  there would be a support claim about older SDKs that nothing checks. Write
+  models against the current compiler, and don't add a floor to document one —
+  `uv.lock` is the answer to "which SDK was this measured with". If you ever
+  need the zoo to keep working on an older SDK, that has to be a CI leg
+  (`uv lock --resolution lowest-direct`, which needs floors on *every* direct
+  dependency) rather than a number in a file.
 
 The `.run` bundle is still the only route to an **unreleased** SDK, which is
 what the two recipes above are for.

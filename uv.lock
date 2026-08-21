@@ -1432,8 +1432,8 @@ requires-dist = [
     { name = "pandas" },
     { name = "torch" },
     { name = "tqdm" },
-    { name = "vollo-compiler", specifier = ">=27.0.0" },
-    { name = "vollo-torch", specifier = ">=27.0.0" },
+    { name = "vollo-compiler" },
+    { name = "vollo-torch" },
 ]
 
 [package.metadata.requires-dev]
