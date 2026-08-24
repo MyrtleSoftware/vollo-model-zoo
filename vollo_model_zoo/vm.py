@@ -14,6 +14,7 @@ from vollo_compiler import AllocationError, SaveError
 
 # Names changed over time, fallback to depreciated for backwards-compat
 _CONFIG_CONSTRUCTORS = {
+    "V80plus": ("amd_v80_c6b32", "v80_c6b32"),
     "V80": ("amd_v80_c6b32", "v80_c6b32"),
     "V80LL": ("amd_v80ll_c6b32", "v80ll_c6b32"),
     "IA-420f": ("bittware_ia420f_c6b32", "ia_420f_c6b32"),
@@ -34,7 +35,8 @@ def _get_configs() -> dict[str, vc.Config]:
             if hasattr(vc.Config, constructor):
                 configs[name] = getattr(vc.Config, constructor)()
                 break
-
+        if name == "V80plus" and configs[name]:
+            configs[name].num_cores *= 4
     return configs
 
 
@@ -128,6 +130,7 @@ def vollo_info(
     meta: Optional[dict[str, Union[int, float, str]]] = None,
     allow_dynamic_weights: bool = False,
     quick_compile: bool = False,
+    allow_unserializable: bool = False,
 ) -> Result:
     """
     For a given model/input compile it to a vollo program and return
@@ -142,6 +145,7 @@ def vollo_info(
             config=_config(config),
             allow_dynamic_weights=allow_dynamic_weights,
             quick_compile=quick_compile,
+            allow_unserializable=allow_unserializable,
         )
     except (AllocationError, SaveError, ValueError) as e:
         return e
@@ -287,6 +291,7 @@ def _vollo_compile(
     config: vc.Config,
     allow_dynamic_weights: bool = False,
     quick_compile: bool = False,
+    allow_unserializable: bool = False,
     **kwargs,
 ) -> vc.Program:
     """
@@ -303,10 +308,13 @@ def _vollo_compile(
         nnir, _ = nnir.streaming_transform(time_axis)
 
     program = nnir.to_program(
-        config, quick_compile=quick_compile, allow_dynamic_weights=allow_dynamic_weights
+        config,
+        quick_compile=quick_compile,
+        allow_dynamic_weights=allow_dynamic_weights,
+        allow_unserializable=allow_unserializable,
     )
-
-    program.pack()  # Should raise error if it doesn't fit
+    if not allow_unserializable:
+        program.pack()  # Should raise error if it doesn't fit
 
     return program
 

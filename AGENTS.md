@@ -326,7 +326,7 @@ What that means here:
 
 ## `vm.py` API
 
-- `CONFIGS`: `{"V80", "V80LL", "IA-420f", "IA-840f", "NT400D11"}` → `vc.Config`,
+- `CONFIGS`: `{"V80plus", "V80", "V80LL", "IA-420f", "IA-840f", "NT400D11"}` → `vc.Config`,
   built with `hasattr` probes so the repo still works against older SDKs missing
   a config. Add new configs the same defensive way.
 - `config_supports(config, feature) -> bool` probes `Config.features`, e.g.

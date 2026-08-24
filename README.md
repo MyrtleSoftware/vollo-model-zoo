@@ -22,6 +22,7 @@ Models in the zoo include:
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
 |                   | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
+|                   | [Mamba-2 LM](#mamba-2-lm)                             | [`mamba2lm.py`](./vollo_model_zoo/models/mamba2lm.py)                                                                                                 |
 | **Attention**     | [Sliding window attention](#sliding-window-attention) | [`swa.py`](./vollo_model_zoo/models/swa.py)                                                                                                           |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM
@@ -392,6 +393,30 @@ projections, depthwise convolution and scan wrapped in a
 than sharing one wide recurrence. This reduces cross-core communication. The
 final RMS norm and output projection are partitioned along with them, under
 `distributed_norm` (on by default).
+
+### Mamba 2 LM
+
+Code/model: [`mamba2lm.py`](./vollo_model_zoo/models/mamba2lm.py)
+
+Mamba2LM is a decoder-only language model built from the zoo's
+[Mamba-2](#mamba-2) mixer. The architecture follows
+[nanochat](https://github.com/karpathy/nanochat), with the transformer's
+self-attention layers swapped for Mamba-2 layers: a token embedding, a stack of
+pre-norm blocks pairing a Mamba-2 mixer with a squared-ReLU MLP, then a final
+RMSNorm and an LM head, whose vocabulary is padded to a clean shape as per the
+original implementation. `get_logits` slices the padding back off and 
+applies `tanh` softcapping. Where the other Mamba files are a single mixer, 
+this one is the whole network, and it shows how to compose an existing zoo model file into a
+larger one.
+
+Because the SSM state is recurrent rather than a growing KV cache, the streamed
+program consumes **one token per inference** with all of its state resident in
+tensor RAM — the cost per token is constant in the sequence length, which is
+what makes autoregressive decode a good fit for Vollo. Token embedding stays on
+the host (`embed`); the compiled model takes embeddings and returns logits.
+
+To convert a trained nanochat-style Mamba-2 LM checkpoint to this model's state
+dict, see `convert_state_dict` in the model file.
 
 ### Sliding window attention
 
