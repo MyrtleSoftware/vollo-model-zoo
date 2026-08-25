@@ -260,7 +260,7 @@ class StatelessEncoderJoint(nn.Module):
 
 
 @beartype
-def _vm(
+def multi_model_entries(
     *,
     n_classes: int,
     pred_n_hid: int,
@@ -271,10 +271,9 @@ def _vm(
     enc_post_rnn_layers: int,
     joint_n_hid: int,
     fp8_weights: bool,
-    config: str,
 ) -> list:
-    """Compile the explicit-state prediction and encoder entry points."""
-    from vollo_model_zoo.vm import MultiModelEntry, vollo_multi_model_info
+    """Construct the two entry points with one shared joint network."""
+    from vollo_model_zoo.vm import MultiModelEntry
 
     joint_network = nn.Sequential(
         nn.ReLU(),
@@ -304,40 +303,70 @@ def _vm(
     pre_state = torch.zeros(enc_pre_rnn_layers, batch, enc_n_hid)
     post_state = torch.zeros(enc_post_rnn_layers, batch, enc_n_hid)
 
+    return [
+        MultiModelEntry(
+            name="predictor",
+            model=prediction,
+            inputs=(
+                torch.randn(batch, pred_n_hid),  # embed
+                torch.randn(batch, joint_n_hid),  # output from encoder/joint
+                pred_state,
+                pred_state.clone(),
+            ),
+            meta={
+                "hidden": pred_n_hid,
+                "joint_hidden": joint_n_hid,
+            },
+        ),
+        MultiModelEntry(
+            name="encoder",
+            model=encoder,
+            inputs=(
+                torch.randn(batch, in_feats),  # feats_0
+                torch.randn(batch, in_feats),  # feats_1
+                torch.randn(batch, joint_n_hid),  # output from prediction/joint
+                pre_state,
+                pre_state.clone(),
+                post_state,
+                post_state.clone(),
+            ),
+            meta={
+                "hidden": enc_n_hid,
+                "joint_hidden": joint_n_hid,
+            },
+        ),
+    ]
+
+
+@beartype
+def _vm(
+    *,
+    n_classes: int,
+    pred_n_hid: int,
+    pred_rnn_layers: int,
+    in_feats: int,
+    enc_n_hid: int,
+    enc_pre_rnn_layers: int,
+    enc_post_rnn_layers: int,
+    joint_n_hid: int,
+    fp8_weights: bool,
+    config: str,
+) -> list:
+    """Compile the explicit-state prediction and encoder entry points."""
+    from vollo_model_zoo.vm import vollo_multi_model_info
+
     return vollo_multi_model_info(
-        [
-            MultiModelEntry(
-                name="predictor",
-                model=prediction,
-                inputs=(
-                    torch.randn(batch, pred_n_hid),  # embed
-                    torch.randn(batch, joint_n_hid),  # output from encoder/joint
-                    pred_state,
-                    pred_state.clone(),
-                ),
-                meta={
-                    "hidden": pred_n_hid,
-                    "joint_hidden": joint_n_hid,
-                },
-            ),
-            MultiModelEntry(
-                name="encoder",
-                model=encoder,
-                inputs=(
-                    torch.randn(batch, in_feats),  # feats_0
-                    torch.randn(batch, in_feats),  # feats_1
-                    torch.randn(batch, joint_n_hid),  # output from prediction/joint
-                    pre_state,
-                    pre_state.clone(),
-                    post_state,
-                    post_state.clone(),
-                ),
-                meta={
-                    "hidden": enc_n_hid,
-                    "joint_hidden": joint_n_hid,
-                },
-            ),
-        ],
+        multi_model_entries(
+            n_classes=n_classes,
+            pred_n_hid=pred_n_hid,
+            pred_rnn_layers=pred_rnn_layers,
+            in_feats=in_feats,
+            enc_n_hid=enc_n_hid,
+            enc_pre_rnn_layers=enc_pre_rnn_layers,
+            enc_post_rnn_layers=enc_post_rnn_layers,
+            joint_n_hid=joint_n_hid,
+            fp8_weights=fp8_weights,
+        ),
         config=config,
     )
 
