@@ -28,14 +28,13 @@ def dense_reference(block, x: torch.Tensor, window_size: int) -> torch.Tensor:
     Returns:
         Tensor of shape (Time, dim)
     """
-    step = block.step
+    step = block.scan.step
     H, dh = step.heads, step.dim_head
     time = x.shape[0]
 
-    h = step.attn_norm(x)
-    q = step.to_q(h).view(time, H, dh) * step.scale
-    k = step.to_k(h).view(time, H, dh)
-    v = step.to_v(h).view(time, H, dh)
+    q = step.proj_q(x).view(time, H, dh) * step.scale
+    k = step.proj_k(x).view(time, H, dh)
+    v = step.proj_v(x).view(time, H, dh)
 
     scores = torch.einsum("ihd,jhd->hij", q, k)  # [heads, Time, Time]
 
@@ -46,7 +45,7 @@ def dense_reference(block, x: torch.Tensor, window_size: int) -> torch.Tensor:
     attn = torch.softmax(scores.masked_fill(~attends_to, float("-inf")), dim=-1)
     out = torch.einsum("hij,jhd->ihd", attn, v).reshape(time, H * dh)
 
-    return x + step.to_out(out)
+    return x + step.proj_o(out)
 
 
 @beartype
