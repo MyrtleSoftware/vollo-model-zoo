@@ -6,25 +6,6 @@ import vollo_torch
 from beartype import beartype
 from torch import nn
 
-# The K/V window starts empty and fills as timesteps arrive, and a query must not
-# attend to the slots that have not been filled yet. Rather than detect emptiness
-# at runtime, a third scan state carries one additive score per window slot:
-# `_EMPTY_BIAS` while nothing has been written to that slot, and 0 once a real key
-# has slid into it. Added to the scores, it gives an empty slot a softmax weight
-# of exp(-inf) == 0. Vollo has propagated infinities through `exp` correctly since
-# SDK 28.0.0; on an older compiler a large negative value underflows to the same
-# weight.
-#
-# The tempting alternative is to carry the bias in one extra key feature, weighted
-# by a constant 1 in the query, so that it rides through the score matmul that is
-# happening anyway. Measurably slower: that matmul then contracts over
-# `dim_head + 1` features, and `dim_head` is normally a multiple of the block
-# size, so the one odd feature buys a whole extra block of work across the whole
-# window. Sliding a `window`-element vector and adding it to the scores costs a
-# short concatenation and one pointwise add on a tensor the model already
-# materialises.
-_EMPTY_BIAS = float("-inf")
-
 
 class SlidingWindowAttention(nn.Module):
     @beartype
@@ -38,8 +19,8 @@ class SlidingWindowAttention(nn.Module):
         mask_warmup: bool = True,
     ):
         """
-        A pre-norm self-attention sublayer that is causal and windowed: each
-        timestep attends to itself and the `window_size - 1` timesteps before it.
+        A self-attention sublayer that is causal and windowed: each timestep
+        attends to itself and the `window_size - 1` timesteps before it.
 
         The rolling K/V window is held as `vollo_torch.nn.Scan` state, so the
         block streams: one timestep in, one timestep out, with a fixed amount of
@@ -58,8 +39,8 @@ class SlidingWindowAttention(nn.Module):
             mask_warmup: Whether to mask the window slots that have not been
                          filled yet, over the first `window_size - 1` timesteps
                          of a sequence. Costs a third scan state and a pointwise
-                         add (see `_EMPTY_BIAS`); turn it off if the accelerator
-                         is only ever read after streaming in a warm-up sequence
+                         add; turn it off if the accelerator is only ever read
+                         after streaming in a warm-up sequence
         """
         super().__init__()
 
@@ -77,10 +58,8 @@ class SlidingWindowAttention(nn.Module):
         )
 
         if mask_warmup:
-            # Every slot starts empty, and every head masks the same slots, so
-            # one vector over the window serves all of them.
             self.bias_0 = nn.Buffer(
-                torch.full((window_size,), _EMPTY_BIAS), persistent=False
+                torch.full((window_size,), float("-inf")), persistent=False
             )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -118,7 +97,6 @@ class _SlidingWindowAttentionStep(nn.Module):
 
         inner_dim = heads * dim_head
 
-        self.attn_norm = nn.LayerNorm(dim)
         self.to_q = nn.Linear(dim, inner_dim, bias=bias)
         self.to_k = nn.Linear(dim, inner_dim, bias=bias)
         self.to_v = nn.Linear(dim, inner_dim, bias=bias)
@@ -144,10 +122,9 @@ class _SlidingWindowAttentionStep(nn.Module):
         k_win, v_win = state[0], state[1]
         H, dh = self.heads, self.dim_head
 
-        h = self.attn_norm(x)
-        q = self.to_q(h).view(H, dh) * self.scale  # [h dh!]
-        k = self.to_k(h).view(H, dh)  # [h dh!]
-        v = self.to_v(h).view(H, dh)  # [h dh!]
+        q = self.to_q(x).view(H, dh) * self.scale  # [h dh!]
+        k = self.to_k(x).view(H, dh)  # [h dh!]
+        v = self.to_v(x).view(H, dh)  # [h dh!]
 
         # Slide the windows: evict the oldest entry, append this timestep's.
         k_win = torch.cat([k_win[:, 1:, :], k.unsqueeze(1)], dim=1)  # [h w dh!]
