@@ -45,7 +45,7 @@ def dense_reference(block, x: torch.Tensor, window_size: int) -> torch.Tensor:
     attn = torch.softmax(scores.masked_fill(~attends_to, float("-inf")), dim=-1)
     out = torch.einsum("hij,jhd->ihd", attn, v).reshape(time, H * dh)
 
-    return x + step.proj_o(out)
+    return step.proj_o(out)
 
 
 @beartype

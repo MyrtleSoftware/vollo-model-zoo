@@ -153,14 +153,14 @@ class _SlidingWindowAttentionStep(nn.Module):
         # [h 1 w!] @ [h w dh!] -> [h 1 dh!] -> [h dh!] -> [inner!]
         out = (attn @ v_win).squeeze(1).reshape(self.heads * self.dim_head)
 
-        x = x + self.proj_o(out)
+        y = self.proj_o(out)
 
         new_state = [k_win, v_win]
 
         if self.mask_warmup:
             new_state.append(bias_win)
 
-        return x, new_state
+        return y, new_state
 
 
 @beartype
