@@ -98,15 +98,12 @@ class _SlidingWindowAttentionStep(nn.Module):
 
         inner_dim = heads * dim_head
 
-        self.to_q = nn.Linear(dim, inner_dim, bias=bias)
-        self.to_k = nn.Linear(dim, inner_dim, bias=bias)
-        self.to_v = nn.Linear(dim, inner_dim, bias=bias)
-        self.to_out = nn.Linear(inner_dim, dim, bias=bias)
+        self.proj_q = nn.Linear(dim, inner_dim, bias=bias)
+        self.proj_k = nn.Linear(dim, inner_dim, bias=bias)
+        self.proj_v = nn.Linear(dim, inner_dim, bias=bias)
+        self.proj_o = nn.Linear(inner_dim, dim, bias=bias)
 
         if mask_warmup:
-            # The bias an arriving timestep slides in: its slot is real, so it
-            # carries none. A buffer rather than `new_zeros`, so it is a
-            # compile-time constant with no data dimension.
             self.new_slot_bias = nn.Buffer(torch.zeros(1), persistent=False)
 
     def forward(self, x: torch.Tensor, state: list[torch.Tensor]):
@@ -120,16 +117,21 @@ class _SlidingWindowAttentionStep(nn.Module):
         Returns:
             (Tensor of shape (dim!), the updated state)
         """
-        k_win, v_win = state[0], state[1]
-        H, dh = self.heads, self.dim_head
+        k_win, v_win, bias_win = (
+            state[0],
+            state[1],
+            state[2] if self.mask_warmup else None,
+        )
 
-        q = self.to_q(x).view(H, dh) * self.scale  # [h dh!]
-        k = self.to_k(x).view(H, dh)  # [h dh!]
-        v = self.to_v(x).view(H, dh)  # [h dh!]
+        q = self.proj_q(x).view(self.heads, self.dim_head) * self.scale  # [h dh!]
+        k = self.proj_k(x).view(self.heads, self.dim_head)  # [h dh!]
+        v = self.proj_v(x).view(self.heads, self.dim_head)  # [h dh!]
 
         # Slide the windows: evict the oldest entry, append this timestep's.
         k_win = torch.cat([k_win[:, 1:, :], k.unsqueeze(1)], dim=1)  # [h w dh!]
         v_win = torch.cat([v_win[:, 1:, :], v.unsqueeze(1)], dim=1)  # [h w dh!]
+        if bias_win is not None:
+            bias_win = torch.cat([bias_win[1:], self.new_slot_bias])  # [w!]
 
         # Both matmuls have two activations as operands, since the windows are
         # state rather than weights, so both are dynamic-weight matmuls (hence
@@ -144,20 +146,19 @@ class _SlidingWindowAttentionStep(nn.Module):
         scores = q.unsqueeze(1) @ k_win.transpose(1, 2)
 
         if self.mask_warmup:
-            # Slide the biases the same way, then broadcast them over the heads.
-            bias = torch.cat([state[2][1:], self.new_slot_bias])  # [w!]
-            scores = scores + bias  # [h 1 w!]
+            # Bias the scores
+            scores = scores + bias_win  # [h 1 w!]
 
         attn = torch.softmax(scores, dim=-1)
         # [h 1 w!] @ [h w dh!] -> [h 1 dh!] -> [h dh!] -> [inner!]
-        out = (attn @ v_win).squeeze(1).reshape(H * dh)
+        out = (attn @ v_win).squeeze(1).reshape(self.heads * self.dim_head)
 
-        x = x + self.to_out(out)
+        x = x + self.proj_o(out)
 
         new_state = [k_win, v_win]
 
         if self.mask_warmup:
-            new_state.append(bias)
+            new_state.append(bias_win)
 
         return x, new_state
 
