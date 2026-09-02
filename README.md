@@ -245,17 +245,21 @@ Two details in the file are worth reading for what they say about Vollo:
   contracted dimension second-innermost. The scores contract over features while
   the output contracts over timesteps, which is why only the K window is
   transposed where it is used.
-- **The warm-up mask rides through the score matmul.** A query must not attend to
-  the window slots no timestep has reached yet, and rather than detect emptiness
-  at runtime the key carries one extra feature holding an additive score bias:
-  the query's matching feature is a constant `1`, a real key appends a `0`, and
-  the scan's initial window holds `-inf` there, which the softmax turns into a
-  zero weight. `mask_warmup` is swept both ways so the cost of that extra feature
-  is visible in the table.
+- **The warm-up mask is a placeholder in the scan state.** A query must not
+  attend to the window slots no timestep has reached yet, and rather than detect
+  emptiness at runtime a third state carries one additive score per slot: `-inf`
+  while nothing has been written to that slot, `0` once a real key has slid into
+  it, which the softmax turns into a zero weight. The tempting alternative is to
+  fold that bias into one extra key feature, weighted by a constant `1` in the
+  query, so that it rides through the score matmul that is happening anyway --
+  but `dim_head` is normally a multiple of the block size, so the one odd feature
+  buys a whole extra block of work across the whole window, and the separate
+  state measures faster. `mask_warmup` is swept both ways so what is left of the
+  cost is visible in the table.
 
-The [tests](./tests/test_swa.py) check the streamed window
-against a dense band-masked attention over the whole sequence, which is the
-readable statement of what the scan state is supposed to be doing.
+The [tests](./tests/test_swa.py) check the streamed window against a dense
+band-masked attention over the whole sequence, which is the readable statement
+of what the scan state is supposed to be doing.
 
 Note this model needs Vollo SDK 28.0.0 or newer: that is the release where the
 compiler gained the dynamic-weight matmuls it is built out of.

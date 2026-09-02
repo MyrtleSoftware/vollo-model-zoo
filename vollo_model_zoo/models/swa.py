@@ -8,13 +8,21 @@ from torch import nn
 
 # The K/V window starts empty and fills as timesteps arrive, and a query must not
 # attend to the slots that have not been filled yet. Rather than detect emptiness
-# at runtime, the key gets one extra feature carrying an additive score bias: the
-# query's matching feature is a constant 1, a real key appends a 0 (no bias), and
-# the window's initial state holds `_EMPTY_BIAS` in that feature. The bias then
-# rides through the score matmul that is happening anyway, and the softmax gives
-# an empty slot a weight of exp(-inf) == 0. Vollo has propagated infinities
-# through `exp` correctly since SDK 28.0.0; on an older compiler a large negative
-# value underflows to the same weight.
+# at runtime, a third scan state carries one additive score per window slot:
+# `_EMPTY_BIAS` while nothing has been written to that slot, and 0 once a real key
+# has slid into it. Added to the scores, it gives an empty slot a softmax weight
+# of exp(-inf) == 0. Vollo has propagated infinities through `exp` correctly since
+# SDK 28.0.0; on an older compiler a large negative value underflows to the same
+# weight.
+#
+# The tempting alternative is to carry the bias in one extra key feature, weighted
+# by a constant 1 in the query, so that it rides through the score matmul that is
+# happening anyway. Measurably slower: that matmul then contracts over
+# `dim_head + 1` features, and `dim_head` is normally a multiple of the block
+# size, so the one odd feature buys a whole extra block of work across the whole
+# window. Sliding a `window`-element vector and adding it to the scores costs a
+# short concatenation and one pointwise add on a tensor the model already
+# materialises.
 _EMPTY_BIAS = float("-inf")
 
 
@@ -49,25 +57,31 @@ class SlidingWindowAttention(nn.Module):
             bias:        Whether the linear layers use biases
             mask_warmup: Whether to mask the window slots that have not been
                          filled yet, over the first `window_size - 1` timesteps
-                         of a sequence. Costs one extra key feature (see
-                         `_EMPTY_BIAS`); turn it off if the accelerator is only
-                         ever read after streaming in a warm-up sequence
+                         of a sequence. Costs a third scan state and a pointwise
+                         add (see `_EMPTY_BIAS`); turn it off if the accelerator
+                         is only ever read after streaming in a warm-up sequence
         """
         super().__init__()
+
+        self.mask_warmup = mask_warmup
 
         self.step = _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask_warmup)
         self.scan = vollo_torch.nn.Scan(self.step)
 
-        k_0 = torch.zeros(heads, window_size, dim_head + int(mask_warmup))
-
-        if mask_warmup:
-            k_0[:, :, -1] = _EMPTY_BIAS
-
-        self.k_0 = nn.Buffer(k_0, persistent=False)
+        self.k_0 = nn.Buffer(
+            torch.zeros(heads, window_size, dim_head), persistent=False
+        )
 
         self.v_0 = nn.Buffer(
             torch.zeros(heads, window_size, dim_head), persistent=False
         )
+
+        if mask_warmup:
+            # Every slot starts empty, and every head masks the same slots, so
+            # one vector over the window serves all of them.
+            self.bias_0 = nn.Buffer(
+                torch.full((window_size,), _EMPTY_BIAS), persistent=False
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -77,7 +91,12 @@ class SlidingWindowAttention(nn.Module):
         Returns:
             x: Tensor of shape (Time, dim)
         """
-        return self.scan(x, [self.k_0, self.v_0])
+        state = [self.k_0, self.v_0]
+
+        if self.mask_warmup:
+            state.append(self.bias_0)
+
+        return self.scan(x, state)
 
 
 class _SlidingWindowAttentionStep(nn.Module):
@@ -106,40 +125,32 @@ class _SlidingWindowAttentionStep(nn.Module):
         self.to_out = nn.Linear(inner_dim, dim, bias=bias)
 
         if mask_warmup:
-            # The mask feature: the query weights the bias by one, and an
-            # arriving key is real so it carries no bias. Buffers rather than
-            # `new_ones`/`new_zeros`, so they are compile-time constants with no
-            # data dimension.
-            self.q_mask_feature = nn.Buffer(torch.ones(heads, 1), persistent=False)
-            self.k_mask_feature = nn.Buffer(torch.zeros(heads, 1), persistent=False)
+            # The bias an arriving timestep slides in: its slot is real, so it
+            # carries none. A buffer rather than `new_zeros`, so it is a
+            # compile-time constant with no data dimension.
+            self.new_slot_bias = nn.Buffer(torch.zeros(1), persistent=False)
 
     def forward(self, x: torch.Tensor, state: list[torch.Tensor]):
         """
         Args:
             x:     Tensor of shape (dim!), one timestep
-            state: [K window, V window] of shapes (heads, window, f!) and
-                   (heads, window, dim_head!), where f is dim_head plus the mask
-                   feature
+            state: [K window, V window], both of shape (heads, window,
+                   dim_head!), plus -- when masking warm-up -- the per-slot
+                   additive score biases, of shape (window!)
 
         Returns:
             (Tensor of shape (dim!), the updated state)
         """
-        k_win, v_win = state
+        k_win, v_win = state[0], state[1]
         H, dh = self.heads, self.dim_head
 
         h = self.attn_norm(x)
-        # The scale goes on the query rather than the scores so that the mask
-        # bias, which is applied inside the score matmul, is not scaled with them.
         q = self.to_q(h).view(H, dh) * self.scale  # [h dh!]
         k = self.to_k(h).view(H, dh)  # [h dh!]
         v = self.to_v(h).view(H, dh)  # [h dh!]
 
-        if self.mask_warmup:
-            q = torch.cat([q, self.q_mask_feature], dim=-1)  # [h f!]
-            k = torch.cat([k, self.k_mask_feature], dim=-1)  # [h f!]
-
         # Slide the windows: evict the oldest entry, append this timestep's.
-        k_win = torch.cat([k_win[:, 1:, :], k.unsqueeze(1)], dim=1)  # [h w f!]
+        k_win = torch.cat([k_win[:, 1:, :], k.unsqueeze(1)], dim=1)  # [h w dh!]
         v_win = torch.cat([v_win[:, 1:, :], v.unsqueeze(1)], dim=1)  # [h w dh!]
 
         # Both matmuls have two activations as operands, since the windows are
@@ -151,14 +162,26 @@ class _SlidingWindowAttentionStep(nn.Module):
         # it into how the window is read, and storing the K window the other way
         # round to begin with compiles to exactly the same program.
         #
-        # [h 1 f!] @ [h f! w] -> [h 1 w!]
-        attn = torch.softmax(q.unsqueeze(1) @ k_win.transpose(1, 2), dim=-1)
+        # [h 1 dh!] @ [h dh! w] -> [h 1 w!]
+        scores = q.unsqueeze(1) @ k_win.transpose(1, 2)
+
+        if self.mask_warmup:
+            # Slide the biases the same way, then broadcast them over the heads.
+            bias = torch.cat([state[2][1:], self.new_slot_bias])  # [w!]
+            scores = scores + bias  # [h 1 w!]
+
+        attn = torch.softmax(scores, dim=-1)
         # [h 1 w!] @ [h w dh!] -> [h 1 dh!] -> [h dh!] -> [inner!]
         out = (attn @ v_win).squeeze(1).reshape(H * dh)
 
         x = x + self.to_out(out)
 
-        return x, [k_win, v_win]
+        new_state = [k_win, v_win]
+
+        if self.mask_warmup:
+            new_state.append(bias)
+
+        return x, new_state
 
 
 @beartype
