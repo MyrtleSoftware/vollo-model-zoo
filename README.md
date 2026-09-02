@@ -230,11 +230,15 @@ both. This is the attention primitive in models such as
 [Mistral](https://arxiv.org/abs/2310.06825), usually interleaved with a few full
 attention layers to carry longer-range information.
 
-The Vollo implementation is a pre-norm residual attention sublayer wrapped in a
-`vollo_torch.nn.Scan`, with the rolling K and V windows held as the scan state.
-Each step evicts the oldest entry of each window and appends the arriving
-timestep's, so the compiled program consumes one timestep per inference and does
-a fixed amount of work however long the sequence runs.
+The Vollo implementation is a pre-norm transformer block: a residual windowed
+attention sublayer followed by a residual SwiGLU feed-forward sublayer, each
+behind an RMSNorm. The attention is wrapped in a `vollo_torch.nn.Scan` with the
+rolling K and V windows held as the scan state; each step evicts the oldest
+entry of each window and appends the arriving timestep's, so the compiled
+program consumes one timestep per inference and does a fixed amount of work
+however long the sequence runs. `SlidingWindowAttention` is the bare attention
+layer and is usable on its own -- the norms and the residual adds belong to
+`SlidingWindowBlock`, which is what the size sweep measures.
 
 Two details in the file are worth reading for what they say about Vollo:
 
@@ -259,7 +263,8 @@ Two details in the file are worth reading for what they say about Vollo:
 
 The [tests](./tests/test_swa.py) check the streamed window against a dense
 band-masked attention over the whole sequence, which is the readable statement
-of what the scan state is supposed to be doing.
+of what the scan state is supposed to be doing, and check that the block wires
+its two sublayers the way its docstring draws them.
 
 Note this model needs Vollo SDK 28.0.0 or newer: that is the release where the
 compiler gained the dynamic-weight matmuls it is built out of.

@@ -11,6 +11,7 @@ class SlidingWindowAttention(nn.Module):
     @beartype
     def __init__(
         self,
+        *,
         dim: int,
         heads: int,
         dim_head: int,
@@ -22,8 +23,8 @@ class SlidingWindowAttention(nn.Module):
         A self-attention sublayer that is causal and windowed: each timestep
         attends to itself and the `window_size - 1` timesteps before it.
 
-        The rolling K/V window is held as `vollo_torch.nn.Scan` state, so the
-        block streams: one timestep in, one timestep out, with a fixed amount of
+        The rolling K/V window is held as `vollo_torch.nn.Scan` state, so it
+        streams: one timestep in, one timestep out, with a fixed amount of
         state and a fixed amount of work per timestep however long the sequence
         gets. That is what makes attention viable at low latency -- full
         self-attention keeps the whole sequence resident and its per-timestep
@@ -77,6 +78,82 @@ class SlidingWindowAttention(nn.Module):
             state.append(self.bias_0)
 
         return self.scan(x, state)
+
+
+class SlidingWindowBlock(nn.Module):
+    @beartype
+    def __init__(
+        self,
+        *,
+        dim: int,
+        heads: int,
+        dim_head: int,
+        window_size: int,
+        bias: bool = True,
+        mask_warmup: bool = True,
+        expand: float = 2.0,
+    ):
+        """
+        A sliding window transformer block, given input `x`:
+
+        ```math
+        y1 <- rms-norm(x)
+        y2 <- SWA(y1)
+        y3 <- x + y2
+
+        y4 <- rms-norm(y3)
+        y5 <- FFN(y4)
+        y6 <- y3 + y5
+        ```
+
+        The FFN uses an swiglu activation with expansion size of `expand`.
+
+        Both sublayers are pre-norm and residual, and the norms and the residual
+        adds live out here rather than inside the `Scan`: they are pointwise, so
+        the streaming transform handles them wherever they sit, and keeping them
+        out leaves `SlidingWindowAttention` a plain attention layer.
+
+        Args:
+            expand: FFN hidden dimension as a multiple of `dim`; every other
+                    argument is `SlidingWindowAttention`'s
+        """
+        super().__init__()
+
+        # SwiGLU multiplies the gate by the value, so the hidden dimension the
+        # FFN comes back down from is `hidden`, not `2 * hidden`. Kept unfused
+        # -- `ffn-swiglu.py` sweeps `fuse` and shows that folding `ffn_1` and
+        # `ffn_2` into one wider projection can cost latency rather than save it.
+        hidden = int(dim * expand)
+
+        self.attn_norm = nn.RMSNorm(dim, eps=1e-5)
+        self.attn = SlidingWindowAttention(
+            dim=dim,
+            heads=heads,
+            dim_head=dim_head,
+            window_size=window_size,
+            bias=bias,
+            mask_warmup=mask_warmup,
+        )
+
+        self.ffn_norm = nn.RMSNorm(dim, eps=1e-5)
+        self.ffn_1 = nn.Linear(dim, hidden, bias=bias)
+        self.ffn_2 = nn.Linear(dim, hidden, bias=bias)
+        self.ffn_3 = nn.Linear(hidden, dim, bias=bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: Tensor of shape (Time, dim)
+
+        Returns:
+            x: Tensor of shape (Time, dim)
+        """
+        x = x + self.attn(self.attn_norm(x))
+
+        h = self.ffn_norm(x)
+        h = self.ffn_3(torch.nn.functional.silu(self.ffn_1(h)) * self.ffn_2(h))
+
+        return x + h
 
 
 class _SlidingWindowAttentionStep(nn.Module):
@@ -172,18 +249,20 @@ def _vm(
     layers: int,
     config: str,
     mask_warmup: bool = True,
+    expand: float = 2.0,
 ):
     from vollo_model_zoo.vm import vollo_info
 
     input = torch.randn(2, dim)
 
     model = nn.Sequential().extend(
-        SlidingWindowAttention(
+        SlidingWindowBlock(
             dim=dim,
             heads=heads,
             dim_head=dim_head,
             window_size=window_size,
             mask_warmup=mask_warmup,
+            expand=expand,
         )
         for _ in range(layers)
     )
@@ -199,6 +278,7 @@ def _vm(
             dim=dim,
             heads=heads,
             dim_head=dim_head,
+            ffn=int(dim * expand),
             window=window_size,
             layers=layers,
             masked=mask_warmup,
@@ -221,11 +301,11 @@ def main(config: str = "V80") -> Generator:
             layers=1,
             mask_warmup=False,
         ),
+        # ~1M parameter baseline: with heads * dim_head == dim and expand == 2,
+        # a block holds 4 * dim^2 in the attention projections and 6 * dim^2 in
+        # the FFN, so 10 * dim^2 + O(dim), and 10 * 320^2 approx 1M
+        dict(dim=320, heads=5, dim_head=64, window_size=16, layers=1),
         dict(dim=288, heads=3, dim_head=96, window_size=16, layers=2),
-        # ~1M parameter baseline: with heads * dim_head == dim, a sublayer holds
-        # its four projections and so 4 * dim^2 + O(dim) parameters, and
-        # 3 * 4 * 288^2 approx 1M
-        dict(dim=288, heads=3, dim_head=96, window_size=16, layers=3),
         dict(dim=384, heads=6, dim_head=64, window_size=32, layers=2),
     ]:
         yield _vm(**x, config=config)
