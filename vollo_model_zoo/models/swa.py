@@ -46,8 +46,9 @@ class SlidingWindowAttention(nn.Module):
 
         self.mask_warmup = mask_warmup
 
-        self.step = _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask_warmup)
-        self.scan = vollo_torch.nn.Scan(self.step)
+        self.scan = vollo_torch.nn.Scan(
+            _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask_warmup)
+        )
 
         self.k_0 = nn.Buffer(
             torch.zeros(heads, window_size, dim_head), persistent=False
@@ -57,7 +58,7 @@ class SlidingWindowAttention(nn.Module):
             torch.zeros(heads, window_size, dim_head), persistent=False
         )
 
-        if mask_warmup:
+        if self.mask_warmup:
             self.bias_0 = nn.Buffer(
                 torch.full((window_size,), float("-inf")), persistent=False
             )
