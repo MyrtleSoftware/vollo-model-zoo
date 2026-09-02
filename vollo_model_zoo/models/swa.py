@@ -25,15 +25,13 @@ class SlidingWindowAttention(nn.Module):
         dim: int,
         heads: int,
         dim_head: int,
-        mlp_dim: int,
         window_size: int,
         bias: bool = True,
         mask_warmup: bool = True,
     ):
         """
-        A pre-norm transformer block whose self-attention is causal and windowed:
-        each timestep attends to itself and the `window_size - 1` timesteps
-        before it.
+        A pre-norm self-attention sublayer that is causal and windowed: each
+        timestep attends to itself and the `window_size - 1` timesteps before it.
 
         The rolling K/V window is held as `vollo_torch.nn.Scan` state, so the
         block streams: one timestep in, one timestep out, with a fixed amount of
@@ -46,7 +44,6 @@ class SlidingWindowAttention(nn.Module):
             dim:         Input/output dimension
             heads:       Number of attention heads
             dim_head:    Dimension of each attention head
-            mlp_dim:     Hidden dimension of the feed-forward sublayer
             window_size: Number of timesteps a query attends over, itself
                          included; also the length of the K/V scan state
             bias:        Whether the linear layers use biases
@@ -58,17 +55,16 @@ class SlidingWindowAttention(nn.Module):
         """
         super().__init__()
 
-        self.step = _SlidingWindowAttentionStep(
-            dim, heads, dim_head, mlp_dim, bias, mask_warmup
-        )
+        self.step = _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask_warmup)
         self.scan = vollo_torch.nn.Scan(self.step)
 
-        # Zoo convention: a scan's initial state is a non-persistent buffer, so
-        # `.to()` moves it without it polluting the state dict.
         k_0 = torch.zeros(heads, window_size, dim_head + int(mask_warmup))
+
         if mask_warmup:
             k_0[:, :, -1] = _EMPTY_BIAS
+
         self.k_0 = nn.Buffer(k_0, persistent=False)
+
         self.v_0 = nn.Buffer(
             torch.zeros(heads, window_size, dim_head), persistent=False
         )
@@ -91,7 +87,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         dim: int,
         heads: int,
         dim_head: int,
-        mlp_dim: int,
         bias: bool,
         mask_warmup: bool,
     ):
@@ -109,13 +104,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         self.to_k = nn.Linear(dim, inner_dim, bias=bias)
         self.to_v = nn.Linear(dim, inner_dim, bias=bias)
         self.to_out = nn.Linear(inner_dim, dim, bias=bias)
-
-        self.mlp_norm = nn.LayerNorm(dim)
-        self.mlp = nn.Sequential(
-            nn.Linear(dim, mlp_dim, bias=bias),
-            nn.GELU(),
-            nn.Linear(mlp_dim, dim, bias=bias),
-        )
 
         if mask_warmup:
             # The mask feature: the query weights the bias by one, and an
@@ -169,7 +157,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         out = (attn @ v_win).squeeze(1).reshape(H * dh)
 
         x = x + self.to_out(out)
-        x = x + self.mlp(self.mlp_norm(x))
 
         return x, [k_win, v_win]
 
@@ -179,7 +166,6 @@ def _vm(
     dim: int,
     heads: int,
     dim_head: int,
-    mlp_dim: int,
     window_size: int,
     layers: int,
     config: str,
@@ -194,7 +180,6 @@ def _vm(
             dim=dim,
             heads=heads,
             dim_head=dim_head,
-            mlp_dim=mlp_dim,
             window_size=window_size,
             mask_warmup=mask_warmup,
         )
@@ -212,7 +197,6 @@ def _vm(
             dim=dim,
             heads=heads,
             dim_head=dim_head,
-            mlp=mlp_dim,
             window=window_size,
             layers=layers,
             masked=mask_warmup,
@@ -223,23 +207,24 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=192, heads=3, dim_head=64, mlp_dim=768, window_size=16, layers=1),
-        dict(dim=192, heads=3, dim_head=64, mlp_dim=768, window_size=64, layers=1),
-        # ~1M parameter baseline: with heads * dim_head == dim and mlp == 4 * dim
-        # a block holds 12 * dim^2 + O(dim) parameters, and 12 * 288^2 approx 1M
-        dict(dim=288, heads=3, dim_head=96, mlp_dim=1152, window_size=16, layers=1),
-        dict(dim=288, heads=3, dim_head=96, mlp_dim=1152, window_size=64, layers=1),
+        dict(dim=192, heads=3, dim_head=64, window_size=16, layers=1),
+        dict(dim=192, heads=3, dim_head=64, window_size=64, layers=1),
+        dict(dim=288, heads=3, dim_head=96, window_size=16, layers=1),
+        dict(dim=288, heads=3, dim_head=96, window_size=64, layers=1),
         dict(
             dim=288,
             heads=3,
             dim_head=96,
-            mlp_dim=1152,
             window_size=64,
             layers=1,
             mask_warmup=False,
         ),
-        dict(dim=288, heads=3, dim_head=96, mlp_dim=1152, window_size=16, layers=2),
-        dict(dim=384, heads=6, dim_head=64, mlp_dim=1536, window_size=32, layers=2),
+        dict(dim=288, heads=3, dim_head=96, window_size=16, layers=2),
+        # ~1M parameter baseline: with heads * dim_head == dim, a sublayer holds
+        # its four projections and so 4 * dim^2 + O(dim) parameters, and
+        # 3 * 4 * 288^2 approx 1M
+        dict(dim=288, heads=3, dim_head=96, window_size=16, layers=3),
+        dict(dim=384, heads=6, dim_head=64, window_size=32, layers=2),
     ]:
         yield _vm(**x, config=config)
 

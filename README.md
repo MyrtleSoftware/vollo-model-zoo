@@ -16,7 +16,7 @@ Models in the zoo include:
 |                   | [TCN](#tcn)                                           | [`tcn.py`](./vollo_model_zoo/models/tcn.py)                                                                                                           |
 |                   | [WaveNet](#wavenet)                                   | [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)                                                                                                   |
 |                   | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
-| **Attention**     | [Sliding window attention](#sliding-window-attention) | [`sliding-window-attention.py`](./vollo_model_zoo/models/sliding-window-attention.py)                                                                 |
+| **Attention**     | [Sliding window attention](#sliding-window-attention) | [`swa.py`](./vollo_model_zoo/models/swa.py)                                                                 |
 | **Recurrent**     | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
 |                   | [GRU](#gru)                                           | [`gru.py`](./vollo_model_zoo/models/gru.py)                                                                                                           |
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
@@ -219,7 +219,7 @@ depthwise-pointwise factorisation pattern in 1D.
 
 ### Sliding window attention
 
-Code/model: [`sliding-window-attention.py`](./vollo_model_zoo/models/sliding-window-attention.py)
+Code/model: [`swa.py`](./vollo_model_zoo/models/swa.py)
 
 Sliding window (or _local_) attention is the form of attention that streams.
 Full self-attention keeps every past timestep resident and re-attends over all
@@ -230,8 +230,7 @@ both. This is the attention primitive in models such as
 [Mistral](https://arxiv.org/abs/2310.06825), usually interleaved with a few full
 attention layers to carry longer-range information.
 
-The Vollo implementation is a pre-norm transformer block -- a residual attention
-sublayer followed by a residual feed-forward sublayer -- wrapped in a
+The Vollo implementation is a pre-norm residual attention sublayer wrapped in a
 `vollo_torch.nn.Scan`, with the rolling K and V windows held as the scan state.
 Each step evicts the oldest entry of each window and appends the arriving
 timestep's, so the compiled program consumes one timestep per inference and does
@@ -254,7 +253,7 @@ Two details in the file are worth reading for what they say about Vollo:
   zero weight. `mask_warmup` is swept both ways so the cost of that extra feature
   is visible in the table.
 
-The [tests](./tests/test_sliding_window_attention.py) check the streamed window
+The [tests](./tests/test_swa.py) check the streamed window
 against a dense band-masked attention over the whole sequence, which is the
 readable statement of what the scan state is supposed to be doing.
 

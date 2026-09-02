@@ -238,8 +238,7 @@ does this, so use them to place a new one:
 
 - `1` for `[B, T, F]`: `slp`, `mlp`, `mlp-res-rms`, `lstm`, `ffn-swiglu`, `moe`
 - `2` for conv models with `[B, C, T]`: `cnn`, `tcn`, `wavenet`, `mobilenet`
-- `0` for `[T, D]` step-style models: `gru`, `ssm`, `mamba1`, `mamba2`,
-  `sliding-window-attention`
+- `0` for `[T, D]` step-style models: `gru`, `ssm`, `mamba1`, `mamba2`, `swa`
 - `None` for genuinely non-streaming models: `resmlp`, which annotates why
 
 Two `vollo_torch` building blocks make a model streaming-transformable

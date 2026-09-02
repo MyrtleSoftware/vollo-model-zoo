@@ -8,18 +8,12 @@ get subtly wrong, and it is all checkable against a dense attention written over
 the whole sequence.
 """
 
-import importlib
-
 import torch
 from beartype import beartype
 
-sliding_window_attention = importlib.import_module(
-    "vollo_model_zoo.models.sliding-window-attention"
-)
+from vollo_model_zoo.models.swa import SlidingWindowAttention
 
-SlidingWindowAttention = sliding_window_attention.SlidingWindowAttention
-
-DIM, HEADS, DIM_HEAD, MLP_DIM = 32, 2, 16, 64
+DIM, HEADS, DIM_HEAD = 32, 2, 16
 
 
 @beartype
@@ -52,9 +46,7 @@ def dense_reference(block, x: torch.Tensor, window_size: int) -> torch.Tensor:
     attn = torch.softmax(scores.masked_fill(~attends_to, float("-inf")), dim=-1)
     out = torch.einsum("hij,jhd->ihd", attn, v).reshape(time, H * dh)
 
-    y = x + step.to_out(out)
-
-    return y + step.mlp(step.mlp_norm(y))
+    return x + step.to_out(out)
 
 
 @beartype
@@ -65,7 +57,6 @@ def build(window_size: int, mask_warmup: bool = True) -> SlidingWindowAttention:
         dim=DIM,
         heads=HEADS,
         dim_head=DIM_HEAD,
-        mlp_dim=MLP_DIM,
         window_size=window_size,
         mask_warmup=mask_warmup,
     ).eval()
