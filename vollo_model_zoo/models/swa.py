@@ -353,6 +353,7 @@ def _vm(
         quick_compile=True,
         meta=dict(
             masked=mask,
+            partitions=head_partitions if head_partitions is not None else 0,
             dim=dim,
             dim_head=dim_head,
             window=window_size,
