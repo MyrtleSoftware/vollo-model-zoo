@@ -25,13 +25,6 @@ class SlidingWindowAttention(nn.Module):
         A self-attention sublayer that is causal and windowed: each timestep
         attends to itself and the `window_size - 1` timesteps before it.
 
-        The rolling K/V window is held as `vollo_torch.nn.Scan` state, so it
-        streams: one timestep in, one timestep out, with a fixed amount of
-        state and a fixed amount of work per timestep however long the sequence
-        gets. That is what makes attention viable at low latency -- full
-        self-attention keeps the whole sequence resident and its per-timestep
-        cost grows with the sequence length.
-
         Args:
             dim:         Input/output dimension
             heads:       Number of attention heads
@@ -74,10 +67,7 @@ class SlidingWindowAttention(nn.Module):
                     f"({head_partitions}), or the groups are uneven and the "
                     f"busiest core sets the latency"
                 )
-            # Each group projects, attends and applies its own slice of the
-            # output projection; the biases of the four projections are per
-            # group except `proj_o`'s, which is added once to the summed
-            # partials rather than `head_partitions` times.
+
             self.scans = nn.ModuleList(
                 vollo_torch.nn.Scan(
                     _SlidingWindowAttentionStep(
