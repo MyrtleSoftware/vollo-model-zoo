@@ -19,7 +19,6 @@ class SlidingWindowAttention(nn.Module):
         window_size: int,
         bias: bool = True,
         mask: bool = True,
-        late_norm: bool = True,
         head_partitions: Optional[int] = None,
     ):
         """
@@ -39,17 +38,6 @@ class SlidingWindowAttention(nn.Module):
                              of a sequence. Costs a third scan state and a pointwise
                              add; turn it off if the accelerator is only ever read
                              after streaming in a warm-up sequence
-            late_norm:       Whether to normalise the attention weights after the
-                             value matmul rather than before it -- the same
-                             arithmetic either way (see the comment at the
-                             softmax), but it shortens the step's critical path.
-                             Worth 3-4% of both latencies on a model partitioned
-                             over its heads, which is what `head_partitions`
-                             below is for. Unpartitioned it is a trade rather
-                             than a win: still ~2-5% off `latency_spaced`, but up
-                             to 22% onto `latency_contiguous` on a 6-core config,
-                             so turn it off if you run one scan over all the
-                             heads and stream back-to-back
             head_partitions: How many head groups to split the heads into,
                              group `p` pinned to core `p`. Must divide `heads`, and
                              must not exceed the cores in the target Vollo config.
@@ -79,15 +67,13 @@ class SlidingWindowAttention(nn.Module):
 
         if head_partitions is None:
             self.scan = vollo_torch.nn.Scan(
-                _SlidingWindowAttentionStep(
-                    dim, heads_per_scan, dim_head, bias, mask, late_norm
-                )
+                _SlidingWindowAttentionStep(dim, heads_per_scan, dim_head, bias, mask)
             )
         else:
             self.scans = nn.ModuleList(
                 vollo_torch.nn.Scan(
                     _SlidingWindowAttentionStep(
-                        dim, heads_per_scan, dim_head, bias, mask, late_norm
+                        dim, heads_per_scan, dim_head, bias, mask
                     )
                 )
                 for _ in range(head_partitions)
@@ -185,7 +171,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         dim_head: int,
         bias: bool,
         mask: bool,
-        late_norm: bool,
     ):
         """
         The scan function, see SlidingWindowAttention for arguments.
@@ -196,7 +181,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         self.dim_head = dim_head
         self.scale = dim_head**-0.5
         self.mask = mask
-        self.late_norm = late_norm
 
         inner_dim = heads * dim_head
 
@@ -235,10 +219,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         if bias_win is not None:
             bias_win = torch.cat([bias_win[1:], self.new_slot_bias])  # [w!]
 
-        # Free: the compiler folds a constant scale into `proj_q`, so this
-        # emits no instruction. But keep it *below* the window slides -- the
-        # emission order decides the schedule, and hoisting it up to `proj_q`
-        # measures 1% slower for an identical program.
+        # Compiler folds this into matmul above
         q = q * self.scale
 
         # [h 1 dh!] @ [h dh! w] -> [h 1 w!]
@@ -248,29 +229,10 @@ class _SlidingWindowAttentionStep(nn.Module):
             # The bias will mask the unfilled windows from the softmax
             scores = scores + bias_win  # [h 1 w!]
 
-        if self.late_norm:
-            # The softmax written out, so that its division can move to the far
-            # side of the value matmul (see `late_norm`):
-            #
-            #     softmax(s) @ V == (exp(s) @ V) / sum(exp(s))
-            #
-            # The sum then runs alongside the value matmul instead of ahead of
-            # it, which is what shortens the step's critical path. Nothing is
-            # lost by not calling `torch.softmax`: Vollo has no reduce-max, so
-            # it compiles to this same unshifted exp/sum/divide anyway --
-            # writing it out is only what makes the reordering expressible.
-            e = torch.exp(scores)  # [h 1 w!]
+        attn = torch.softmax(scores, dim=-1)
 
-            # [h 1 w!] @ [h w dh!] -> [h 1 dh!], the divide broadcast over dh
-            out = (e @ v_win) / e.sum(-1, keepdim=True)  # [h 1 dh!]
-        else:
-            attn = torch.softmax(scores, dim=-1)  # [h 1 w!]
-
-            # [h 1 w!] @ [h w dh!] -> [h 1 dh!]
-            out = attn @ v_win  # [h 1 dh!]
-
-        # [h 1 dh!] -> [h dh!] -> [inner!]
-        out = out.squeeze(1).reshape(self.heads * self.dim_head)
+        # [h 1 w!] @ [h w dh!] -> [h 1 dh!] -> [h dh!] -> [inner!]
+        out = (attn @ v_win).squeeze(1).reshape(self.heads * self.dim_head)
 
         new_state = [k_win, v_win]
 
@@ -291,7 +253,6 @@ class SlidingWindowBlock(nn.Module):
         window_size: int,
         bias: bool = True,
         mask: bool = True,
-        late_norm: bool = True,
         head_partitions: Optional[int] = None,
         expand: float = 2.0,
     ):
@@ -325,7 +286,6 @@ class SlidingWindowBlock(nn.Module):
             window_size=window_size,
             bias=bias,
             mask=mask,
-            late_norm=late_norm,
             head_partitions=head_partitions,
         )
 
@@ -358,7 +318,6 @@ def _vm(
     layers: int,
     config: str,
     mask: bool,
-    late_norm: bool,
     expand: float,
     heads: int = 6,
 ):
@@ -379,7 +338,6 @@ def _vm(
             dim_head=32,
             window_size=window_size,
             mask=mask,
-            late_norm=late_norm,
             head_partitions=head_partitions,
             expand=expand,
         )
@@ -395,7 +353,6 @@ def _vm(
         quick_compile=True,
         meta=dict(
             masked=mask,
-            late_norm=late_norm,
             partitions=head_partitions if head_partitions is not None else 0,
             dim=dim,
             window=window_size,
@@ -407,23 +364,16 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     for x in [
-        dict(dim=32 * 6, window_size=16, layers=1, mask=True, late_norm=True),
-        dict(dim=32 * 6, window_size=32, layers=1, mask=True, late_norm=True),
-        dict(dim=32 * 6, window_size=64, layers=1, mask=True, late_norm=True),
+        dict(dim=32 * 6, window_size=16, layers=1, mask=True, expand=2.0),
+        dict(dim=32 * 6, window_size=32, layers=1, mask=True, expand=2.0),
+        dict(dim=32 * 6, window_size=64, layers=1, mask=True, expand=2.0),
         # ~1M parameter baseline
-        dict(dim=32 * 7, window_size=32, layers=2, mask=True, late_norm=True),
-        dict(dim=32 * 7, window_size=32, layers=2, mask=False, late_norm=True),
-        # The baseline again with the softmax normalised before the value
-        # matmul instead of after it. Paired so the critical path `late_norm`
-        # shortens is visible as a number: it is a win on both latencies for
-        # every config here, since all of them partition these six heads over
-        # their cores. Run one scan over all six and the sign of the
-        # `contiguous` half flips -- see the `late_norm` docstring.
-        dict(dim=32 * 7, window_size=32, layers=2, mask=True, late_norm=False),
+        dict(dim=32 * 7, window_size=32, layers=2, mask=True, expand=2.0),
+        dict(dim=32 * 7, window_size=32, layers=2, mask=False, expand=2.0),
         # big
-        dict(dim=32 * 12, window_size=32, layers=6, mask=True, late_norm=True),
+        dict(dim=32 * 12, window_size=32, layers=6, mask=True, expand=2.0),
     ]:
-        yield _vm(**x, expand=2.0, config=config)
+        yield _vm(**x, config=config)
 
 
 if __name__ == "__main__":
