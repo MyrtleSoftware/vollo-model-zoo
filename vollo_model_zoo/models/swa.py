@@ -353,11 +353,11 @@ def _vm(
         allow_dynamic_weights=True,
         quick_compile=True,
         meta=dict(
+            masked=mask,
             dim=dim,
             dim_head=dim_head,
             window=window_size,
             layers=layers,
-            masked=mask,
         ),
     )
 
@@ -369,11 +369,12 @@ def main(config: str = "V80") -> Generator:
     for x in [
         dict(dim=32 * 6, dim_head=32, window_size=16, layers=1, mask=True),
         dict(dim=32 * 6, dim_head=32, window_size=32, layers=1, mask=True),
+        dict(dim=32 * 6, dim_head=32, window_size=64, layers=1, mask=True),
         # ~1M parameter baseline
-        dict(dim=32 * 11, dim_head=32, window_size=32, layers=1, mask=True),
-        dict(dim=32 * 12, dim_head=32, window_size=32, layers=1, mask=True),
+        dict(dim=32 * 7, dim_head=32, window_size=32, layers=2, mask=True),
+        dict(dim=32 * 7, dim_head=32, window_size=32, layers=2, mask=False),
+        # big
         dict(dim=32 * 12, dim_head=32, window_size=32, layers=6, mask=True),
-        dict(dim=32 * 12, dim_head=32, window_size=32, layers=6, mask=False),
     ]:
         yield _vm(**x, config=config)
 
