@@ -240,7 +240,7 @@ however long the sequence runs. `SlidingWindowAttention` is the bare attention
 layer and is usable on its own -- the norms and the residual adds belong to
 `SlidingWindowBlock`, which is what the size sweep measures.
 
-Two details in the file are worth reading for what they say about Vollo:
+Three details in the file are worth reading for what they say about Vollo:
 
 - **Both attention matmuls take two activations**, because the K and V windows
   are state rather than weights. Those are the
@@ -260,6 +260,19 @@ Two details in the file are worth reading for what they say about Vollo:
   buys a whole extra block of work across the whole window, and the separate
   state measures faster. `mask_warmup` is swept both ways so what is left of the
   cost is visible in the table.
+- **The softmax's division is reassociated to buy latency.** `softmax(s) @ V`
+  and `(exp(s) @ V) / sum(exp(s))` are the same arithmetic, but in the second
+  the sum no longer sits between the exp and the value matmul: it is computed
+  alongside that matmul rather than ahead of it, which takes a step out of the
+  chain the output waits on. Vollo's cost is dominated by the length of that
+  chain and not by how many instructions it issues -- this reordering *adds*
+  instructions and still comes out ahead. It is worth 2-5% of `latency_spaced`
+  at every size on both core configurations, and costs up to 24% of
+  `latency_contiguous` at the widest ones, so it is a dial rather than a win:
+  `late_norm` selects it, and the sweep runs the largest size both ways so the
+  trade is visible in the table. Writing the softmax out by hand gives up
+  nothing, because Vollo has no reduce-max: `torch.softmax` compiles to this
+  same unshifted exp / sum / divide regardless.
 
 The [tests](./tests/test_swa.py) check the streamed window against a dense
 band-masked attention over the whole sequence, which is the readable statement
