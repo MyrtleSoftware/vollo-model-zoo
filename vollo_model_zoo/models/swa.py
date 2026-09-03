@@ -31,7 +31,8 @@ class SlidingWindowAttention(nn.Module):
             dim_head:    Dimension of each attention head
             window_size: Number of timesteps a query attends over, itself
                          included; also the length of the K/V scan state
-            bias:        Whether the linear layers use biases
+            bias:        Whether the query, key and value projections use
+                         biases.
             mask_warmup: Whether to mask the window slots that have not been
                          filled yet, over the first `window_size - 1` timesteps
                          of a sequence. Costs a third scan state and a pointwise
@@ -39,12 +40,7 @@ class SlidingWindowAttention(nn.Module):
                          after streaming in a warm-up sequence
             head_partitions: How many head groups to split the heads into,
                          group `p` pinned to core `p`. Must divide `heads`, and
-                         must not exceed the cores in the target Vollo config --
-                         which this module cannot see, so asking for more cores
-                         than the config has fails at compile time rather than
-                         here. `None`, the default, leaves the layer as one
-                         graph for the compiler to place. See the note above
-                         `_tree_sum` for what partitioning buys
+                         must not exceed the cores in the target Vollo config.
         """
         super().__init__()
 
@@ -76,12 +72,10 @@ class SlidingWindowAttention(nn.Module):
                         dim_head,
                         bias,
                         mask_warmup,
-                        partial=True,
                     )
                 )
                 for _ in range(head_partitions)
             )
-            self.out_bias = nn.Parameter(torch.zeros(dim)) if bias else None
 
         self.register_load_state_dict_pre_hook(self._load_any_partitioning)
 
@@ -124,9 +118,7 @@ class SlidingWindowAttention(nn.Module):
             with vollo_torch.CorePartition([p]):
                 partials.append(scan(x, state))
 
-        y = _tree_sum(partials)
-
-        return y if self.out_bias is None else y + self.out_bias
+        return _tree_sum(partials)
 
     # Which projection weights split across the head groups, and along which
     # axis: the three inputs by output feature, `proj_o` by input feature.
@@ -142,7 +134,6 @@ class SlidingWindowAttention(nn.Module):
         """
         step = f"{prefix}scan.step."
         scans = f"{prefix}scans."
-        bias_key = f"{prefix}out_bias"
 
         saved = sorted(
             {
@@ -165,9 +156,6 @@ class SlidingWindowAttention(nn.Module):
                             [state_dict.pop(key) for key in keys], dim=dim
                         )
 
-            if bias_key in state_dict:
-                state_dict[f"{step}proj_o.bias"] = state_dict.pop(bias_key)
-
             for key in [key for key in state_dict if key.startswith(scans)]:
                 state_dict.pop(key)
         else:
@@ -180,12 +168,7 @@ class SlidingWindowAttention(nn.Module):
 
                 bias = state_dict.pop(f"{step}{name}.bias", None)
 
-                if bias is None:
-                    continue
-
-                if name == "proj_o":
-                    state_dict[bias_key] = bias
-                else:
+                if bias is not None:
                     for p, chunk in enumerate(bias.chunk(self.head_partitions)):
                         state_dict[f"{scans}{p}.step.{name}.bias"] = chunk
 
@@ -307,7 +290,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         dim_head: int,
         bias: bool,
         mask_warmup: bool,
-        partial: bool = False,
     ):
         super().__init__()
 
@@ -321,7 +303,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         self.proj_q = nn.Linear(dim, inner_dim, bias=bias)
         self.proj_k = nn.Linear(dim, inner_dim, bias=bias)
         self.proj_v = nn.Linear(dim, inner_dim, bias=bias)
-        self.proj_o = nn.Linear(inner_dim, dim, bias=bias and not partial)
+        self.proj_o = nn.Linear(inner_dim, dim, bias=False)
 
         if mask_warmup:
             self.new_slot_bias = nn.Buffer(torch.zeros(1), persistent=False)
