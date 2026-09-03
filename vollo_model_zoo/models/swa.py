@@ -18,7 +18,7 @@ class SlidingWindowAttention(nn.Module):
         dim_head: int,
         window_size: int,
         bias: bool = True,
-        mask_warmup: bool = True,
+        mask: bool = True,
         head_partitions: Optional[int] = None,
     ):
         """
@@ -33,7 +33,7 @@ class SlidingWindowAttention(nn.Module):
                          included; also the length of the K/V scan state
             bias:        Whether the query, key and value projections use
                          biases.
-            mask_warmup: Whether to mask the window slots that have not been
+            mask: Whether to mask the window slots that have not been
                          filled yet, over the first `window_size - 1` timesteps
                          of a sequence. Costs a third scan state and a pointwise
                          add; turn it off if the accelerator is only ever read
@@ -44,12 +44,12 @@ class SlidingWindowAttention(nn.Module):
         """
         super().__init__()
 
-        self.mask_warmup = mask_warmup
+        self.mask = mask
         self.head_partitions = head_partitions
 
         if head_partitions is None:
             self.scan = vollo_torch.nn.Scan(
-                _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask_warmup)
+                _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask)
             )
         else:
             if not 1 <= head_partitions <= heads:
@@ -71,7 +71,7 @@ class SlidingWindowAttention(nn.Module):
                         heads // head_partitions,
                         dim_head,
                         bias,
-                        mask_warmup,
+                        mask,
                     )
                 )
                 for _ in range(head_partitions)
@@ -91,7 +91,7 @@ class SlidingWindowAttention(nn.Module):
             torch.zeros(heads_per_scan, window_size, dim_head), persistent=False
         )
 
-        if self.mask_warmup:
+        if self.mask:
             self.bias_0 = nn.Buffer(
                 torch.full((window_size,), float("-inf")), persistent=False
             )
@@ -106,7 +106,7 @@ class SlidingWindowAttention(nn.Module):
         """
         state = [self.k_0, self.v_0]
 
-        if self.mask_warmup:
+        if self.mask:
             state.append(self.bias_0)
 
         if self.head_partitions is None:
@@ -211,7 +211,7 @@ class SlidingWindowBlock(nn.Module):
         dim_head: int,
         window_size: int,
         bias: bool = True,
-        mask_warmup: bool = True,
+        mask: bool = True,
         head_partitions: Optional[int] = None,
         expand: float = 2.0,
     ):
@@ -256,7 +256,7 @@ class SlidingWindowBlock(nn.Module):
             dim_head=dim_head,
             window_size=window_size,
             bias=bias,
-            mask_warmup=mask_warmup,
+            mask=mask,
             head_partitions=head_partitions,
         )
 
@@ -289,14 +289,14 @@ class _SlidingWindowAttentionStep(nn.Module):
         heads: int,
         dim_head: int,
         bias: bool,
-        mask_warmup: bool,
+        mask: bool,
     ):
         super().__init__()
 
         self.heads = heads
         self.dim_head = dim_head
         self.scale = dim_head**-0.5
-        self.mask_warmup = mask_warmup
+        self.mask = mask
 
         inner_dim = heads * dim_head
 
@@ -305,7 +305,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         self.proj_v = nn.Linear(dim, inner_dim, bias=bias)
         self.proj_o = nn.Linear(inner_dim, dim, bias=False)
 
-        if mask_warmup:
+        if mask:
             self.new_slot_bias = nn.Buffer(torch.zeros(1), persistent=False)
 
     def forward(self, x: torch.Tensor, state: list[torch.Tensor]):
@@ -322,7 +322,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         k_win, v_win, bias_win = (
             state[0],
             state[1],
-            state[2] if self.mask_warmup else None,
+            state[2] if self.mask else None,
         )
 
         q = self.proj_q(x).view(self.heads, self.dim_head)  # [h dh!]
@@ -352,7 +352,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         # [h 1 dh!] @ [h dh! w] -> [h 1 w!]
         scores = (q * self.scale).unsqueeze(1) @ k_win.transpose(1, 2)
 
-        if self.mask_warmup:
+        if self.mask:
             # Bias the scores
             scores = scores + bias_win  # [h 1 w!]
 
@@ -364,7 +364,7 @@ class _SlidingWindowAttentionStep(nn.Module):
 
         new_state = [k_win, v_win]
 
-        if self.mask_warmup:
+        if self.mask:
             new_state.append(bias_win)
 
         return y, new_state
@@ -373,12 +373,12 @@ class _SlidingWindowAttentionStep(nn.Module):
 @beartype
 def _vm(
     dim: int,
-    heads: int,
-    dim_head: int,
     window_size: int,
     layers: int,
     config: str,
-    mask_warmup: bool = True,
+    mask: bool,
+    dim_head: int = 64,
+    heads: int = 6,
     partition: bool = False,
     expand: float = 2.0,
 ):
@@ -397,7 +397,7 @@ def _vm(
             heads=heads,
             dim_head=dim_head,
             window_size=window_size,
-            mask_warmup=mask_warmup,
+            mask=mask,
             head_partitions=head_partitions,
             expand=expand,
         )
@@ -411,7 +411,7 @@ def _vm(
         ffn=int(dim * expand),
         window=window_size,
         layers=layers,
-        masked=mask_warmup,
+        masked=mask,
     )
 
     if head_partitions is not None:
@@ -433,35 +433,7 @@ def main(config: str = "V80") -> Generator:
     # Every size runs six heads, so that `head_partitions` can put one group on
     # each core of a six-core config and two on each core of a three-core one.
     for x in [
-        dict(dim=192, heads=6, dim_head=32, window_size=16, layers=1),
-        dict(dim=192, heads=6, dim_head=32, window_size=64, layers=1),
-        # ~1M parameter baseline: a block holds 4 * dim * inner in the attention
-        # projections and 6 * dim^2 in the FFN, so at inner == 2 * dim that is
-        # 14 * dim^2 + O(dim), and 2 * 14 * 192^2 approx 1M
-        dict(dim=192, heads=6, dim_head=64, window_size=16, layers=2),
-        dict(dim=384, heads=6, dim_head=64, window_size=16, layers=1),
-        dict(dim=384, heads=6, dim_head=64, window_size=64, layers=1),
-        dict(
-            dim=384,
-            heads=6,
-            dim_head=64,
-            window_size=64,
-            layers=1,
-            mask_warmup=False,
-        ),
-        # Partitioning is a dial rather than a win (see `_tree_sum`), and a long
-        # window is where it reads most clearly: it gives up spaced latency for
-        # contiguous latency on the six-core configs, and takes both down on the
-        # three-core one.
-        dict(
-            dim=384,
-            heads=6,
-            dim_head=64,
-            window_size=64,
-            layers=1,
-            partition=True,
-        ),
-        dict(dim=384, heads=6, dim_head=64, window_size=32, layers=2),
+        dict(dim=32 * 6, heads=6, dim_head=32, window_size=32, layers=1, mask=True),
     ]:
         yield _vm(**x, config=config)
 
