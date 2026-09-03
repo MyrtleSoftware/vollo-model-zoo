@@ -355,6 +355,14 @@ attention sublayer followed by a residual SwiGLU feed-forward sublayer, each
 behind an RMSNorm. This model uses similar headwise partitioning as the zoo's
 Mamba2 implementation.
 
+The window is what lets attention stream. The attention step is wrapped in a
+`vollo_torch.nn.Scan`, so the streaming transform turns a model written over a
+whole sequence into a program that consumes one timestep per inference and
+holds its K/V window in the accelerator's tensor RAM: the KV cache stays on the
+card between inferences, and the host sends a single timestep rather than a
+growing context. `window_size` fixes how much of it there is, so the state and
+the work per inference are constant in the sequence length.
+
 ## Other utilities
 
 Alongside the primary `zoo` command a few utilities are available to run in
