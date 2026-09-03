@@ -51,9 +51,7 @@ def dense_reference(
 
 
 @beartype
-def build_layer(
-    window_size: int, mask_warmup: bool = True, late_norm: bool = True
-) -> SlidingWindowAttention:
+def build_layer(window_size: int, mask_warmup: bool = True) -> SlidingWindowAttention:
     torch.manual_seed(0)
 
     return SlidingWindowAttention(
@@ -62,7 +60,6 @@ def build_layer(
         dim_head=DIM_HEAD,
         window_size=window_size,
         mask_warmup=mask_warmup,
-        late_norm=late_norm,
     ).eval()
 
 
@@ -146,22 +143,3 @@ def test_block_is_two_pre_norm_residual_sublayers():
         expected = attended + block.ffn_3(gated)
 
     torch.testing.assert_close(got, expected)
-
-
-@beartype
-def test_late_norm_is_a_reassociation():
-    """
-    `late_norm` moves the softmax's division to the far side of the value
-    matmul, which is a reassociation of the same arithmetic and nothing more:
-    the two settings agree over the warm-up timesteps as well as the streaming
-    ones, so the flag is a pure latency choice.
-    """
-    window_size = 4
-    early = build_layer(window_size, late_norm=False)
-    late = build_layer(window_size, late_norm=True)
-    late.load_state_dict(early.state_dict())
-
-    x = torch.randn(16, DIM)
-
-    with torch.no_grad():
-        torch.testing.assert_close(late(x), early(x))

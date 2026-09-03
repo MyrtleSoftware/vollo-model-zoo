@@ -18,7 +18,6 @@ class SlidingWindowAttention(nn.Module):
         window_size: int,
         bias: bool = True,
         mask_warmup: bool = True,
-        late_norm: bool = True,
     ):
         """
         A self-attention sublayer that is causal and windowed: each timestep
@@ -43,23 +42,13 @@ class SlidingWindowAttention(nn.Module):
                          of a sequence. Costs a third scan state and a pointwise
                          add; turn it off if the accelerator is only ever read
                          after streaming in a warm-up sequence
-            late_norm:   Whether to normalise the attention weights after the
-                         value matmul rather than before it -- the same
-                         arithmetic either way (see the comment at the
-                         softmax). It trades the two latency metrics against
-                         each other: every shape measured gets 2-5% off
-                         `latency_spaced`, but the widest ones pay up to 24% of
-                         `latency_contiguous`, so turn it off for sustained
-                         back-to-back streaming
         """
         super().__init__()
 
         self.mask_warmup = mask_warmup
 
         self.scan = vollo_torch.nn.Scan(
-            _SlidingWindowAttentionStep(
-                dim, heads, dim_head, bias, mask_warmup, late_norm
-            )
+            _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask_warmup)
         )
 
         self.k_0 = nn.Buffer(
@@ -102,7 +91,6 @@ class SlidingWindowBlock(nn.Module):
         window_size: int,
         bias: bool = True,
         mask_warmup: bool = True,
-        late_norm: bool = True,
         expand: float = 2.0,
     ):
         """
@@ -145,7 +133,6 @@ class SlidingWindowBlock(nn.Module):
             window_size=window_size,
             bias=bias,
             mask_warmup=mask_warmup,
-            late_norm=late_norm,
         )
 
         self.ffn_norm = nn.RMSNorm(dim, eps=1e-5)
@@ -178,7 +165,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         dim_head: int,
         bias: bool,
         mask_warmup: bool,
-        late_norm: bool,
     ):
         super().__init__()
 
@@ -186,7 +172,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         self.dim_head = dim_head
         self.scale = dim_head**-0.5
         self.mask_warmup = mask_warmup
-        self.late_norm = late_norm
 
         inner_dim = heads * dim_head
 
@@ -241,26 +226,9 @@ class _SlidingWindowAttentionStep(nn.Module):
             # Bias the scores
             scores = scores + bias_win  # [h 1 w!]
 
-        if self.late_norm:
-            # The softmax written out, so that its division can move to the far
-            # side of the value matmul (see `late_norm`):
-            #
-            #     softmax(s) @ V == (exp(s) @ V) / sum(exp(s))
-            #
-            # Nothing is lost by not calling `torch.softmax`: Vollo has no
-            # reduce-max, so it compiles to this same unshifted exp / sum /
-            # divide anyway -- writing it out is only what makes the reordering
-            # expressible.
-            e = torch.exp(scores)  # [h 1 w!]
-            # [h 1 w!] @ [h w dh!] -> [h 1 dh!]
-            out = (e @ v_win) / e.sum(-1, keepdim=True)  # [h 1 dh!]
-        else:
-            attn = torch.softmax(scores, dim=-1)  # [h 1 w!]
-            # [h 1 w!] @ [h w dh!] -> [h 1 dh!]
-            out = attn @ v_win
-
-        # [h 1 dh!] -> [h dh!] -> [inner!]
-        out = out.squeeze(1).reshape(self.heads * self.dim_head)
+        attn = torch.softmax(scores, dim=-1)
+        # [h 1 w!] @ [h w dh!] -> [h 1 dh!] -> [h dh!] -> [inner!]
+        out = (attn @ v_win).squeeze(1).reshape(self.heads * self.dim_head)
 
         y = self.proj_o(out)
 
@@ -281,7 +249,6 @@ def _vm(
     layers: int,
     config: str,
     mask_warmup: bool = True,
-    late_norm: bool = True,
     expand: float = 2.0,
 ):
     from vollo_model_zoo.vm import vollo_info
@@ -295,7 +262,6 @@ def _vm(
             dim_head=dim_head,
             window_size=window_size,
             mask_warmup=mask_warmup,
-            late_norm=late_norm,
             expand=expand,
         )
         for _ in range(layers)
@@ -316,7 +282,6 @@ def _vm(
             window=window_size,
             layers=layers,
             masked=mask_warmup,
-            late_norm=late_norm,
         ),
     )
 
@@ -342,16 +307,6 @@ def main(config: str = "V80") -> Generator:
         dict(dim=320, heads=5, dim_head=64, window_size=16, layers=1),
         dict(dim=288, heads=3, dim_head=96, window_size=16, layers=2),
         dict(dim=384, heads=6, dim_head=64, window_size=32, layers=2),
-        # The widest size is where `late_norm` gives up the most contiguous
-        # latency for the spaced latency it buys, so it is swept both ways here.
-        dict(
-            dim=384,
-            heads=6,
-            dim_head=64,
-            window_size=32,
-            layers=2,
-            late_norm=False,
-        ),
     ]:
         yield _vm(**x, config=config)
 
