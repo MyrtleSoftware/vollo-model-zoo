@@ -21,6 +21,7 @@ Models in the zoo include:
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
 |                   | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
+| **Attention**     | [Sliding window attention](#sliding-window-attention) | [`swa.py`](./vollo_model_zoo/models/swa.py)                                                                                                           |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM
 and calculate the compute-latency for any of these models. Alternatively, have
@@ -336,6 +337,31 @@ projections, depthwise convolution and scan wrapped in a
 than sharing one wide recurrence. This reduces cross-core communication. The
 final RMS norm and output projection are partitioned along with them, under
 `distributed_norm` (on by default).
+
+### Sliding window attention
+
+Code/model: [`swa.py`](./vollo_model_zoo/models/swa.py)
+
+Sliding window (or _local_) attention is a form of attention that streams. Full
+self-attention keeps every past timestep resident and re-attends over all of
+them, so both the state and the work per new timestep grow with the sequence; a
+window bounds the context to the last `window_size` timesteps, which fixes
+both. This is the attention primitive in models such as
+[Longformer](https://arxiv.org/abs/2004.05150) and
+[Mistral](https://arxiv.org/abs/2310.06825).
+
+The Vollo implementation is a pre-norm transformer block: a residual windowed
+attention sublayer followed by a residual SwiGLU feed-forward sublayer, each
+behind an RMSNorm. This model uses similar headwise partitioning as the zoo's
+Mamba2 implementation.
+
+The window is what lets attention stream. The attention step is wrapped in a
+`vollo_torch.nn.Scan`, so the streaming transform turns a model written over a
+whole sequence into a program that consumes one timestep per inference and
+holds its K/V window in the accelerator's tensor RAM: the KV cache stays on the
+card between inferences, and the host sends a single timestep rather than a
+growing context. `window_size` fixes how much of it there is, so the state and
+the work per inference are constant in the sequence length.
 
 ## Other utilities
 

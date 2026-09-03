@@ -238,7 +238,7 @@ does this, so use them to place a new one:
 
 - `1` for `[B, T, F]`: `slp`, `mlp`, `mlp-res-rms`, `lstm`, `ffn-swiglu`, `moe`
 - `2` for conv models with `[B, C, T]`: `cnn`, `tcn`, `wavenet`, `mobilenet`
-- `0` for `[T, D]` step-style models: `gru`, `ssm`, `mamba1`, `mamba2`
+- `0` for `[T, D]` step-style models: `gru`, `ssm`, `mamba1`, `mamba2`, `swa`
 - `None` for genuinely non-streaming models: `resmlp`, which annotates why
 
 Two `vollo_torch` building blocks make a model streaming-transformable
@@ -270,8 +270,9 @@ repo convention is carrying it into shape comments on every intermediate
 why a compile failed.
 
 `allow_dynamic_weights=True` unlocks the matmul cases the default contraction
-rule rejects, which is why the scan-based (`gru`, `ssm`, `mamba2`) and
-large-linear (`resmlp`) models set it. The docs call it advanced, with
+rule rejects, which is why the scan-based (`gru`, `ssm`, `mamba2`, `swa`) and
+large-linear (`resmlp`) models set it — `swa` is the clearest case, since
+without it both of its attention matmuls fail as "dynamic MatMul detected". The docs call it advanced, with
 "non-obvious performance characteristics" that *potentially* cost latency and
 tensor RAM — so reach for it when a matmul won't compile, not to make one faster.
 
@@ -321,7 +322,7 @@ What that means here:
   show a GPU-style fused gate/value projection _slowing down_ a Vollo program.
   Preserve that kind of pedagogical pairing.
 - `quick_compile=True` skips optimization passes to cut compile time (`mamba1`,
-  `mamba2`); drop it when chasing the last few percent.
+  `mamba2`, `swa`); drop it when chasing the last few percent.
 
 ## `vm.py` API
 
