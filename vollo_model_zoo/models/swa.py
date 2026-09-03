@@ -320,17 +320,14 @@ def _vm(
     mask: bool,
     dim_head: int = 64,
     heads: int = 6,
-    partition: bool = False,
     expand: float = 2.0,
 ):
     from vollo_model_zoo.vm import CONFIGS, vollo_info
 
     input = torch.randn(2, dim)
 
-    cores = CONFIGS[config].num_cores
-
     # Try to partition across all cores
-    if partition and heads % cores == 0:
+    if heads % (cores := CONFIGS[config].num_cores) == 0:
         head_partitions = cores
     else:
         head_partitions = None
@@ -348,17 +345,6 @@ def _vm(
         for _ in range(layers)
     )
 
-    meta = dict(
-        dim=dim,
-        dim_head=dim_head,
-        window=window_size,
-        layers=layers,
-        masked=mask,
-    )
-
-    if head_partitions is not None:
-        meta["partitions"] = head_partitions
-
     return vollo_info(
         model,
         input,
@@ -366,7 +352,13 @@ def _vm(
         time_axis=0,
         allow_dynamic_weights=True,
         quick_compile=True,
-        meta=meta,
+        meta=dict(
+            dim=dim,
+            dim_head=dim_head,
+            window=window_size,
+            layers=layers,
+            masked=mask,
+        ),
     )
 
 
@@ -375,17 +367,15 @@ def main(config: str = "V80") -> Generator:
     # Every size runs six heads, so that `head_partitions` can put one group on
     # each core of a six-core config and two on each core of a three-core one.
     for x in [
+        dict(dim=32 * 6, dim_head=32, window_size=16, layers=1, mask=True),
         dict(dim=32 * 6, dim_head=32, window_size=32, layers=1, mask=True),
-        # ~1M parameter baseline, the size models are compared at: with six
-        # 32-wide heads and expand == 2, a block holds 6 * dim^2 in the FFN and
-        # 768 * dim + O(dim) in the attention projections, and that reaches 1M
-        # at dim = 352.
+        # ~1M parameter baseline
         dict(dim=32 * 11, dim_head=32, window_size=32, layers=1, mask=True),
         dict(dim=32 * 12, dim_head=32, window_size=32, layers=1, mask=True),
         dict(dim=32 * 12, dim_head=32, window_size=32, layers=6, mask=True),
+        dict(dim=32 * 12, dim_head=32, window_size=32, layers=6, mask=False),
     ]:
-        for p in [True, False]:
-            yield _vm(**x, config=config, partition=p)
+        yield _vm(**x, config=config)
 
 
 if __name__ == "__main__":
