@@ -1,7 +1,7 @@
 [project]
 name = "vollo-model-zoo"
 # Bump on any change that moves the benchmarks; see AGENTS.md.
-version = "0.3.0"
+version = "0.4.0"
 description = "Exemplar models for the Vollo SDK "
 readme = "README.md"
 requires-python = ">=3.13"

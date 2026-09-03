@@ -363,6 +363,17 @@ card between inferences, and the host sends a single timestep rather than a
 growing context. `window_size` fixes how much of it there is, so the state and
 the work per inference are constant in the sequence length.
 
+Two of the file's flags exist to show that a Vollo program's latency is set by
+the length of its dependency chain rather than by how much arithmetic it does.
+`head_partitions` pins each group of heads to its own core, keeping the output
+projection outside the split so no cross-core sum is needed. `late_norm`
+reassociates the softmax, `softmax(s) @ V` becoming `(exp(s) @ V) / sum(exp(s))`
+so that the normalising sum runs alongside the value matmul instead of ahead of
+it -- identical arithmetic, a shorter critical path, and 3-4% off both
+latencies. The sweep pairs `late_norm` both ways at the baseline size so the
+difference reads as a number; the flag's docstring records the one case where it
+is a trade rather than a win.
+
 ## Other utilities
 
 Alongside the primary `zoo` command a few utilities are available to run in
