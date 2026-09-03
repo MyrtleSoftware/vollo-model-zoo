@@ -198,6 +198,27 @@ def test_a_partitioned_checkpoint_loads_unpartitioned(head_partitions: int):
 
 
 @beartype
+@pytest.mark.parametrize("saved,loaded", [(2, 3), (3, 6), (6, 2), (1, 6), (6, 1)])
+def test_a_partitioned_checkpoint_loads_at_another_partitioning(
+    saved: int, loaded: int
+):
+    """
+    And between two partitionings, which is the pair `_vm` actually asks for:
+    it partitions over the cores of the target config, so a checkpoint trained
+    against a six-core V80 has to load into the three-way split of an IA-840f.
+    """
+    window_size = 4
+    src = build_layer(window_size, heads=6, dim_head=DIM // 6, head_partitions=saved)
+    dst = build_layer(window_size, heads=6, dim_head=DIM // 6, head_partitions=loaded)
+    dst.load_state_dict(src.state_dict())
+
+    x = torch.randn(16, DIM)
+
+    with torch.no_grad():
+        torch.testing.assert_close(dst(x), src(x))
+
+
+@beartype
 def test_partitioning_rejects_uneven_head_groups():
     """
     Uneven head groups leave one core holding more heads than the rest, and
