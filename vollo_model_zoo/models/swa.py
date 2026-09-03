@@ -133,13 +133,13 @@ class SlidingWindowAttention(nn.Module):
             }
         )
 
-        if bool(saved) == (self.head_partitions is not None):
-            return
-
         # The projections that split across the head groups, by output feature.
         # `proj_o` is not among them: it lives outside the partitioning.
         split_axes = ("proj_q", "proj_k", "proj_v")
 
+        # Merge whatever the checkpoint holds into one wide tensor per
+        # projection, then split that the way this model holds it. Both halves
+        # run when the checkpoint and the model are partitioned differently.
         if saved:
             for name in split_axes:
                 for suffix in ("weight", "bias"):
@@ -152,7 +152,8 @@ class SlidingWindowAttention(nn.Module):
 
             for key in [key for key in state_dict if key.startswith(scans)]:
                 state_dict.pop(key)
-        else:
+
+        if self.head_partitions is not None:
             for name in split_axes:
                 for suffix in ("weight", "bias"):
                     tensor = state_dict.pop(f"{step}{name}.{suffix}", None)
