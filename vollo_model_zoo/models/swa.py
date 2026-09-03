@@ -206,11 +206,10 @@ class _SlidingWindowAttentionStep(nn.Module):
             state. The output projection is the caller's, so that partitioning
             does not split it
         """
-        k_win, v_win, bias_win = (
-            state[0],
-            state[1],
-            state[2] if self.mask else None,
-        )
+        if self.mask:
+            k_win, v_win, bias_win = state
+        else:
+            (k_win, v_win), bias_win = state, None
 
         q = self.proj_q(x).view(self.heads, self.dim_head)  # [h dh!]
         k = self.proj_k(x).view(self.heads, self.dim_head)  # [h dh!]
@@ -225,7 +224,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         # [h 1 dh!] @ [h dh! w] -> [h 1 w!]
         scores = (q * self.scale).unsqueeze(1) @ k_win.transpose(1, 2)
 
-        if self.mask:
+        if bias_win is not None:
             # Bias the scores
             scores = scores + bias_win  # [h 1 w!]
 
@@ -236,7 +235,7 @@ class _SlidingWindowAttentionStep(nn.Module):
 
         new_state = [k_win, v_win]
 
-        if self.mask:
+        if bias_win is not None:
             new_state.append(bias_win)
 
         return out, new_state
