@@ -219,6 +219,20 @@ def test_a_partitioned_checkpoint_loads_at_another_partitioning(
 
 
 @beartype
+@pytest.mark.parametrize("window_size", [0, 1])
+def test_a_window_must_hold_at_least_two_timesteps(window_size: int):
+    """
+    Neither degenerate window is caught by anything downstream: `window_size=1`
+    runs in PyTorch and then fails to compile, because the eviction slice takes
+    nothing from a one-slot window, and `window_size=0` grows its state from no
+    slots to one on the first timestep -- `Scan` does not check that the state
+    keeps its shape -- leaving a layer that quietly behaves as `window_size=1`.
+    """
+    with pytest.raises(ValueError, match="at least 2"):
+        build_layer(window_size)
+
+
+@beartype
 def test_partitioning_rejects_uneven_head_groups():
     """
     Uneven head groups leave one core holding more heads than the rest, and

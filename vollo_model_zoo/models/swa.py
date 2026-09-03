@@ -44,6 +44,9 @@ class SlidingWindowAttention(nn.Module):
         """
         super().__init__()
 
+        if window_size < 2:
+            raise ValueError(f"window_size ({window_size}) must be at least 2")
+
         self.mask = mask
         self.head_partitions = head_partitions
 
