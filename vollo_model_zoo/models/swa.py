@@ -360,8 +360,6 @@ def _vm(
 
 @beartype
 def main(config: str = "V80") -> Generator:
-    # Every size runs six heads, so that `head_partitions` can put one group on
-    # each core of a six-core config and two on each core of a three-core one.
     for x in [
         dict(dim=32 * 6, window_size=16, layers=1, mask=True, expand=2.0),
         dict(dim=32 * 6, window_size=32, layers=1, mask=True, expand=2.0),
