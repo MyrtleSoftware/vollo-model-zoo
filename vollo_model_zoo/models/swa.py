@@ -8,23 +8,6 @@ from beartype import beartype
 from torch import nn
 
 
-# Partitioning pins each group of heads -- its projections, its window and its
-# attention -- to one core, and only the output projection spans them. Keeping
-# that projection *outside* the partitioning is what makes partitioning pay:
-# splitting it too leaves one partial projection per group and a sum crossing
-# every core, and that sum cost more than the parallelism bought (measured on
-# Vollo 28.1.2: hoisting it out is 3-7% of a partitioned block, and turns
-# partitioning from a 2-4% spaced-latency cost into a 3-6% saving). What crosses
-# cores now is one concatenation of the groups' outputs, which the projection
-# then contracts.
-#
-# What decides whether to partition at all is how many heads land on one core.
-# One head per core is the happy case; at three heads per core the spaced
-# latency goes up 15-25% instead. So partition as finely as the config allows,
-# which is why `main`'s sweep runs six heads -- one group per core on the
-# six-core configs, two heads per core on the three-core one -- and why `_vm`
-# takes the group count from the config. `head_partitions=1` puts every head on
-# core 0 and is the degenerate end of that, not a cheap "all cores" option.
 class SlidingWindowAttention(nn.Module):
     @beartype
     def __init__(
@@ -43,21 +26,21 @@ class SlidingWindowAttention(nn.Module):
         attends to itself and the `window_size - 1` timesteps before it.
 
         Args:
-            dim:         Input/output dimension
-            heads:       Number of attention heads
-            dim_head:    Dimension of each attention head
-            window_size: Number of timesteps a query attends over, itself
-                         included; also the length of the K/V scan state
-            bias:        Whether the query, key and value projections use
-                         biases.
-            mask: Whether to mask the window slots that have not been
-                         filled yet, over the first `window_size - 1` timesteps
-                         of a sequence. Costs a third scan state and a pointwise
-                         add; turn it off if the accelerator is only ever read
-                         after streaming in a warm-up sequence
+            dim:             Input/output dimension
+            heads:           Number of attention heads
+            dim_head:        Dimension of each attention head
+            window_size:     Number of timesteps a query attends over, itself
+                             included; also the length of the K/V scan state
+            bias:            Whether the query, key, value, and output projections
+                             use biases.
+            mask:            Whether to mask the window slots that have not been
+                             filled yet, over the first `window_size - 1` timesteps
+                             of a sequence. Costs a third scan state and a pointwise
+                             add; turn it off if the accelerator is only ever read
+                             after streaming in a warm-up sequence
             head_partitions: How many head groups to split the heads into,
-                         group `p` pinned to core `p`. Must divide `heads`, and
-                         must not exceed the cores in the target Vollo config.
+                             group `p` pinned to core `p`. Must divide `heads`, and
+                             must not exceed the cores in the target Vollo config.
         """
         super().__init__()
 
@@ -84,28 +67,18 @@ class SlidingWindowAttention(nn.Module):
             self.scans = nn.ModuleList(
                 vollo_torch.nn.Scan(
                     _SlidingWindowAttentionStep(
-                        dim,
-                        heads // head_partitions,
-                        dim_head,
-                        bias,
-                        mask,
+                        dim, heads // head_partitions, dim_head, bias, mask
                     )
                 )
                 for _ in range(head_partitions)
             )
 
-        # The output projection is deliberately outside the partitioning: each
-        # group emits its own heads' outputs, they are concatenated back into
-        # the whole inner vector, and one projection contracts it. See the note
-        # above the class.
-        self.proj_o = nn.Linear(heads * dim_head, dim, bias=False)
+        self.proj_o = nn.Linear(heads * dim_head, dim, bias=bias)
 
-        self.register_load_state_dict_pre_hook(self._load_any_partitioning)
+        # Same zeros initial buffer for each head partition
 
         heads_per_scan = heads if head_partitions is None else heads // head_partitions
 
-        # One initial window, shared by every group: they are all zeros, and a
-        # buffer read in several partitions is still one compile-time constant.
         self.k_0 = nn.Buffer(
             torch.zeros(heads_per_scan, window_size, dim_head), persistent=False
         )
@@ -118,6 +91,8 @@ class SlidingWindowAttention(nn.Module):
             self.bias_0 = nn.Buffer(
                 torch.full((window_size,), float("-inf")), persistent=False
             )
+
+        self.register_load_state_dict_pre_hook(self._load_any_partitioning)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -146,10 +121,6 @@ class SlidingWindowAttention(nn.Module):
     def _load_any_partitioning(self, _module, state_dict, prefix, *_hook_args):
         """
         Let a checkpoint saved at one `head_partitions` load at any other.
-
-        Partitioning changes where the projections run, not what they compute,
-        so the two layouts differ by a concatenation: train once, then choose
-        the partitioning per deployment.
         """
         step = f"{prefix}scan.step."
         scans = f"{prefix}scans."
@@ -203,6 +174,9 @@ class _SlidingWindowAttentionStep(nn.Module):
         bias: bool,
         mask: bool,
     ):
+        """
+        The scan function, see SlidingWindowAttention for arguments
+        """
         super().__init__()
 
         self.heads = heads
