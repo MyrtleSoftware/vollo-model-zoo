@@ -240,7 +240,7 @@ however long the sequence runs. `SlidingWindowAttention` is the bare attention
 layer and is usable on its own -- the norms and the residual adds belong to
 `SlidingWindowBlock`, which is what the size sweep measures.
 
-Two details in the file are worth reading for what they say about Vollo:
+Three details in the file are worth reading for what they say about Vollo:
 
 - **Both attention matmuls take two activations**, because the K and V windows
   are state rather than weights. Those are the
@@ -260,6 +260,17 @@ Two details in the file are worth reading for what they say about Vollo:
   buys a whole extra block of work across the whole window, and the separate
   state measures faster. `mask_warmup` is swept both ways so what is left of the
   cost is visible in the table.
+- **Core partitioning is a dial, and which way it pays depends on the board.**
+  `head_partitions` pins each group of heads -- its projections, its window and
+  its attention -- to its own cores, leaving one partial output projection per
+  group to be summed across them. On the six-core configs that costs 5-7% of
+  `latency_spaced` and takes 17-22% off `latency_contiguous` at the wider sizes;
+  on the three-core `IA-840f`, where one group lands per core, it takes 1-7% off
+  `latency_spaced` *and* 11-31% off `latency_contiguous` at `dim >= 288`, so it
+  wins outright there. It is off by default, and swept at the long-window size
+  where the split reads most clearly. Weights are unaffected -- a checkpoint loads at any
+  partitioning -- and the sum crossing cores is pairwise rather than chained,
+  because the partials arrive in parallel and a chain would serialise them.
 
 The [tests](./tests/test_swa.py) check the streamed window against a dense
 band-masked attention over the whole sequence, which is the readable statement

@@ -1,5 +1,7 @@
+import math
 from collections.abc import Generator
 from pathlib import Path
+from typing import Optional
 
 import torch
 import vollo_torch
@@ -18,6 +20,8 @@ class SlidingWindowAttention(nn.Module):
         window_size: int,
         bias: bool = True,
         mask_warmup: bool = True,
+        head_partitions: Optional[int] = None,
+        num_cores: int = 6,
     ):
         """
         A self-attention sublayer that is causal and windowed: each timestep
@@ -42,21 +46,79 @@ class SlidingWindowAttention(nn.Module):
                          of a sequence. Costs a third scan state and a pointwise
                          add; turn it off if the accelerator is only ever read
                          after streaming in a warm-up sequence
+            head_partitions: How many head groups to split the heads into, each
+                         pinned to its own `num_cores // head_partitions` cores.
+                         `None` leaves the whole layer as one graph for the
+                         compiler to place, which is what the sweep measures.
+                         See the note above `_tree_sum` for what it buys
+            num_cores:   Cores in the target Vollo config, which
+                         `head_partitions` has to divide. Only read when
+                         partitioning
         """
         super().__init__()
 
         self.mask_warmup = mask_warmup
+        self.head_partitions = head_partitions
 
-        self.scan = vollo_torch.nn.Scan(
-            _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask_warmup)
-        )
+        if head_partitions is None:
+            self.scan = vollo_torch.nn.Scan(
+                _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask_warmup)
+            )
+        else:
+            if not 1 <= head_partitions <= heads:
+                raise ValueError(
+                    f"head_partitions ({head_partitions}) must be between 1 and "
+                    f"the number of heads ({heads})"
+                )
+            if heads % head_partitions:
+                raise ValueError(
+                    f"heads ({heads}) must be a multiple of head_partitions "
+                    f"({head_partitions}), or the groups are uneven and the "
+                    f"busiest core sets the latency"
+                )
+            if num_cores % head_partitions:
+                raise ValueError(
+                    f"num_cores ({num_cores}) must be a multiple of "
+                    f"head_partitions ({head_partitions}): uneven cores per "
+                    f"group is a latency cliff, not a gradual cost"
+                )
 
+            per_group = num_cores // head_partitions
+            self.cores = [
+                list(range(p * per_group, (p + 1) * per_group))
+                for p in range(head_partitions)
+            ]
+            # Each group projects, attends and applies its own slice of the
+            # output projection; the biases of the four projections are per
+            # group except `proj_o`'s, which is added once to the summed
+            # partials rather than `head_partitions` times.
+            self.scans = nn.ModuleList(
+                vollo_torch.nn.Scan(
+                    _SlidingWindowAttentionStep(
+                        dim,
+                        heads // head_partitions,
+                        dim_head,
+                        bias,
+                        mask_warmup,
+                        partial=True,
+                    )
+                )
+                for _ in range(head_partitions)
+            )
+            self.out_bias = nn.Parameter(torch.zeros(dim)) if bias else None
+
+        self.register_load_state_dict_pre_hook(self._load_any_partitioning)
+
+        heads_per_scan = heads if head_partitions is None else heads // head_partitions
+
+        # One initial window, shared by every group: they are all zeros, and a
+        # buffer read in several partitions is still one compile-time constant.
         self.k_0 = nn.Buffer(
-            torch.zeros(heads, window_size, dim_head), persistent=False
+            torch.zeros(heads_per_scan, window_size, dim_head), persistent=False
         )
 
         self.v_0 = nn.Buffer(
-            torch.zeros(heads, window_size, dim_head), persistent=False
+            torch.zeros(heads_per_scan, window_size, dim_head), persistent=False
         )
 
         if self.mask_warmup:
@@ -77,7 +139,112 @@ class SlidingWindowAttention(nn.Module):
         if self.mask_warmup:
             state.append(self.bias_0)
 
-        return self.scan(x, state)
+        if self.head_partitions is None:
+            return self.scan(x, state)
+
+        partials = []
+
+        for scan, cores in zip(self.scans, self.cores):
+            with vollo_torch.CorePartition(cores):
+                partials.append(scan(x, state))
+
+        y = _tree_sum(partials)
+
+        return y if self.out_bias is None else y + self.out_bias
+
+    # Which projection weights split across the head groups, and along which
+    # axis: the three inputs by output feature, `proj_o` by input feature.
+    _SPLIT_AXES = (("proj_q", 0), ("proj_k", 0), ("proj_v", 0), ("proj_o", 1))
+
+    def _load_any_partitioning(self, _module, state_dict, prefix, *_hook_args):
+        """
+        Let a checkpoint saved at one `head_partitions` load at any other.
+
+        Partitioning changes where the projections run, not what they compute,
+        so the two layouts differ by a concatenation: train once, then choose
+        the partitioning per deployment.
+        """
+        step = f"{prefix}scan.step."
+        scans = f"{prefix}scans."
+        bias_key = f"{prefix}out_bias"
+
+        saved = sorted(
+            {
+                int(key[len(scans) :].split(".")[0])
+                for key in state_dict
+                if key.startswith(scans)
+            }
+        )
+
+        if bool(saved) == (self.head_partitions is not None):
+            return
+
+        if saved:
+            for name, axis in self._SPLIT_AXES:
+                for suffix, dim in (("weight", axis), ("bias", 0)):
+                    keys = [f"{scans}{p}.step.{name}.{suffix}" for p in saved]
+
+                    if all(key in state_dict for key in keys):
+                        state_dict[f"{step}{name}.{suffix}"] = torch.cat(
+                            [state_dict.pop(key) for key in keys], dim=dim
+                        )
+
+            if bias_key in state_dict:
+                state_dict[f"{step}proj_o.bias"] = state_dict.pop(bias_key)
+
+            for key in [key for key in state_dict if key.startswith(scans)]:
+                state_dict.pop(key)
+        else:
+            for name, axis in self._SPLIT_AXES:
+                weight = state_dict.pop(f"{step}{name}.weight", None)
+
+                if weight is not None:
+                    for p, chunk in enumerate(weight.chunk(self.head_partitions, axis)):
+                        state_dict[f"{scans}{p}.step.{name}.weight"] = chunk
+
+                bias = state_dict.pop(f"{step}{name}.bias", None)
+
+                if bias is None:
+                    continue
+
+                if name == "proj_o":
+                    state_dict[bias_key] = bias
+                else:
+                    for p, chunk in enumerate(bias.chunk(self.head_partitions)):
+                        state_dict[f"{scans}{p}.step.{name}.bias"] = chunk
+
+
+# Partitioning the heads pins each group's projections, window and attention to
+# its own cores, and turns `proj_o` into one partial projection per group that
+# has to be summed. That sum is the only thing crossing cores, so it is summed
+# pairwise rather than in a chain: the partials become available in parallel,
+# and a chain would serialise them behind each other.
+#
+# It is a dial rather than a win, and it pulls the two latency metrics apart in
+# opposite directions on the two core counts (measured on Vollo 28.1.2, one
+# group per core unless noted, against `head_partitions=None`):
+#
+#   c6b32 (V80, V80LL, IA-420f, NT400D11), 6 cores, so 2 cores per group at
+#   3 heads: costs 5-7% of `latency_spaced`, and takes 17-22% off
+#   `latency_contiguous` at dim=384 or window=64 (and nothing at the narrowest
+#   sizes) -- so worth it only for sustained back-to-back streaming.
+#
+#   c3b64 (IA-840f), 3 cores, so one group per core: takes 1-7% off
+#   `latency_spaced` *and* 11-31% off `latency_contiguous` at dim >= 288
+#   (neutral at dim=192) -- a win on both metrics, so worth it there.
+#
+# One group spanning every core compiles to the same program as no partitioning
+# at all, so `head_partitions=1` is a no-op rather than a third option.
+def _tree_sum(partials: list[torch.Tensor]) -> torch.Tensor:
+    parts = list(partials)
+
+    while len(parts) > 1:
+        parts = [
+            parts[i] + parts[i + 1] if i + 1 < len(parts) else parts[i]
+            for i in range(0, len(parts), 2)
+        ]
+
+    return parts[0]
 
 
 class SlidingWindowBlock(nn.Module):
@@ -91,6 +258,8 @@ class SlidingWindowBlock(nn.Module):
         window_size: int,
         bias: bool = True,
         mask_warmup: bool = True,
+        head_partitions: Optional[int] = None,
+        num_cores: int = 6,
         expand: float = 2.0,
     ):
         """
@@ -115,7 +284,9 @@ class SlidingWindowBlock(nn.Module):
 
         Args:
             expand: FFN hidden dimension as a multiple of `dim`; every other
-                    argument is `SlidingWindowAttention`'s
+                    argument is `SlidingWindowAttention`'s, including
+                    `head_partitions`, which partitions the attention and
+                    leaves the FFN for the compiler to place
         """
         super().__init__()
 
@@ -133,6 +304,8 @@ class SlidingWindowBlock(nn.Module):
             window_size=window_size,
             bias=bias,
             mask_warmup=mask_warmup,
+            head_partitions=head_partitions,
+            num_cores=num_cores,
         )
 
         self.ffn_norm = nn.RMSNorm(dim, eps=1e-5)
@@ -165,6 +338,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         dim_head: int,
         bias: bool,
         mask_warmup: bool,
+        partial: bool = False,
     ):
         super().__init__()
 
@@ -178,7 +352,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         self.proj_q = nn.Linear(dim, inner_dim, bias=bias)
         self.proj_k = nn.Linear(dim, inner_dim, bias=bias)
         self.proj_v = nn.Linear(dim, inner_dim, bias=bias)
-        self.proj_o = nn.Linear(inner_dim, dim, bias=bias)
+        self.proj_o = nn.Linear(inner_dim, dim, bias=bias and not partial)
 
         if mask_warmup:
             self.new_slot_bias = nn.Buffer(torch.zeros(1), persistent=False)
@@ -200,7 +374,7 @@ class _SlidingWindowAttentionStep(nn.Module):
             state[2] if self.mask_warmup else None,
         )
 
-        q = self.proj_q(x).view(self.heads, self.dim_head) * self.scale  # [h dh!]
+        q = self.proj_q(x).view(self.heads, self.dim_head)  # [h dh!]
         k = self.proj_k(x).view(self.heads, self.dim_head)  # [h dh!]
         v = self.proj_v(x).view(self.heads, self.dim_head)  # [h dh!]
 
@@ -219,8 +393,13 @@ class _SlidingWindowAttentionStep(nn.Module):
         # it into how the window is read, and storing the K window the other way
         # round to begin with compiles to exactly the same program.
         #
+        # The `1/sqrt(dim_head)` scale is applied here rather than on `q` at the
+        # projection because it schedules better under `head_partitions`: the two
+        # graphs are the same nodes in a different order, and order feeds the
+        # compiler's op-to-core assignment (a wash unpartitioned, ~1% partitioned).
+        #
         # [h 1 dh!] @ [h dh! w] -> [h 1 w!]
-        scores = q.unsqueeze(1) @ k_win.transpose(1, 2)
+        scores = (q * self.scale).unsqueeze(1) @ k_win.transpose(1, 2)
 
         if self.mask_warmup:
             # Bias the scores
@@ -249,11 +428,18 @@ def _vm(
     layers: int,
     config: str,
     mask_warmup: bool = True,
+    partition: bool = False,
     expand: float = 2.0,
 ):
-    from vollo_model_zoo.vm import vollo_info
+    from vollo_model_zoo.vm import CONFIGS, vollo_info
 
     input = torch.randn(2, dim)
+
+    # One head group per core where the heads divide evenly over them, which is
+    # the granularity that measured best; `gcd` falls back to coarser groups,
+    # and to no partitioning at all when nothing divides.
+    num_cores = CONFIGS[config].num_cores
+    head_partitions = math.gcd(heads, num_cores) if partition else None
 
     model = nn.Sequential().extend(
         SlidingWindowBlock(
@@ -262,10 +448,25 @@ def _vm(
             dim_head=dim_head,
             window_size=window_size,
             mask_warmup=mask_warmup,
+            head_partitions=head_partitions,
+            num_cores=num_cores,
             expand=expand,
         )
         for _ in range(layers)
     )
+
+    meta = dict(
+        dim=dim,
+        heads=heads,
+        dim_head=dim_head,
+        ffn=int(dim * expand),
+        window=window_size,
+        layers=layers,
+        masked=mask_warmup,
+    )
+
+    if head_partitions is not None:
+        meta["partitions"] = f"{head_partitions}x{num_cores // head_partitions}c"
 
     return vollo_info(
         model,
@@ -274,15 +475,7 @@ def _vm(
         time_axis=0,
         allow_dynamic_weights=True,
         quick_compile=True,
-        meta=dict(
-            dim=dim,
-            heads=heads,
-            dim_head=dim_head,
-            ffn=int(dim * expand),
-            window=window_size,
-            layers=layers,
-            masked=mask_warmup,
-        ),
+        meta=meta,
     )
 
 
@@ -300,6 +493,18 @@ def main(config: str = "V80") -> Generator:
             window_size=64,
             layers=1,
             mask_warmup=False,
+        ),
+        # Partitioning is a dial rather than a win (see `_tree_sum`), and a long
+        # window at three heads is where it reads most clearly: it gives up
+        # spaced latency for contiguous on the six-core configs, and takes both
+        # down on the three-core one, where a head group lands per core.
+        dict(
+            dim=288,
+            heads=3,
+            dim_head=96,
+            window_size=64,
+            layers=1,
+            partition=True,
         ),
         # ~1M parameter baseline: with heads * dim_head == dim and expand == 2,
         # a block holds 4 * dim^2 in the attention projections and 6 * dim^2 in

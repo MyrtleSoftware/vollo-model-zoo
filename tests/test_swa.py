@@ -8,6 +8,7 @@ get subtly wrong, and it is all checkable against a dense attention written over
 the whole sequence.
 """
 
+import pytest
 import torch
 from beartype import beartype
 
@@ -51,15 +52,22 @@ def dense_reference(
 
 
 @beartype
-def build_layer(window_size: int, mask_warmup: bool = True) -> SlidingWindowAttention:
+def build_layer(
+    window_size: int,
+    mask_warmup: bool = True,
+    heads: int = HEADS,
+    dim_head: int = DIM_HEAD,
+    **kwargs,
+) -> SlidingWindowAttention:
     torch.manual_seed(0)
 
     return SlidingWindowAttention(
         dim=DIM,
-        heads=HEADS,
-        dim_head=DIM_HEAD,
+        heads=heads,
+        dim_head=dim_head,
         window_size=window_size,
         mask_warmup=mask_warmup,
+        **kwargs,
     ).eval()
 
 
@@ -143,3 +151,62 @@ def test_block_is_two_pre_norm_residual_sublayers():
         expected = attended + block.ffn_3(gated)
 
     torch.testing.assert_close(got, expected)
+
+
+@beartype
+@pytest.mark.parametrize("head_partitions", [1, 2, 3, 6])
+def test_head_partitioning_computes_the_same_attention(head_partitions: int):
+    """
+    Partitioning moves where the projections run, not what they compute, so a
+    partitioned layer matches an unpartitioned one once its checkpoint is
+    loaded -- the load hook doing the splitting -- to within the reassociation
+    of `proj_o`'s sum over the head groups.
+    """
+    window_size = 4
+    plain = build_layer(window_size, heads=6, dim_head=DIM // 6)
+    partitioned = build_layer(
+        window_size, heads=6, dim_head=DIM // 6, head_partitions=head_partitions
+    )
+    partitioned.load_state_dict(plain.state_dict())
+
+    x = torch.randn(16, DIM)
+
+    with torch.no_grad():
+        torch.testing.assert_close(partitioned(x), plain(x))
+
+
+@beartype
+@pytest.mark.parametrize("head_partitions", [1, 2, 3, 6])
+def test_a_partitioned_checkpoint_loads_unpartitioned(head_partitions: int):
+    """
+    And back the other way, so the partitioning is a deployment choice rather
+    than something baked into the weights.
+    """
+    window_size = 4
+    partitioned = build_layer(
+        window_size, heads=6, dim_head=DIM // 6, head_partitions=head_partitions
+    )
+    plain = build_layer(window_size, heads=6, dim_head=DIM // 6)
+    plain.load_state_dict(partitioned.state_dict())
+
+    x = torch.randn(16, DIM)
+
+    with torch.no_grad():
+        torch.testing.assert_close(plain(x), partitioned(x))
+
+
+@beartype
+def test_partitioning_rejects_uneven_splits():
+    """
+    Uneven head groups make one core the critical path, and uneven cores per
+    group is a latency cliff rather than a gradual cost, so both are errors
+    instead of warnings.
+    """
+    with pytest.raises(ValueError, match="multiple of head_partitions"):
+        build_layer(4, heads=6, dim_head=DIM // 6, head_partitions=4)
+
+    with pytest.raises(ValueError, match="uneven cores per"):
+        build_layer(4, heads=6, dim_head=DIM // 6, head_partitions=6, num_cores=4)
+
+    with pytest.raises(ValueError, match="between 1 and the number of heads"):
+        build_layer(4, heads=6, dim_head=DIM // 6, head_partitions=7)
