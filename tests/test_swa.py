@@ -196,17 +196,15 @@ def test_a_partitioned_checkpoint_loads_unpartitioned(head_partitions: int):
 
 
 @beartype
-def test_partitioning_rejects_uneven_splits():
+def test_partitioning_rejects_uneven_head_groups():
     """
-    Uneven head groups make one core the critical path, and uneven cores per
-    group is a latency cliff rather than a gradual cost, so both are errors
-    instead of warnings.
+    Uneven head groups leave one core holding more heads than the rest, and
+    that core sets the latency, so it is an error rather than a warning. How
+    many cores the config actually has is not visible here, so asking for more
+    groups than cores is left to the compiler.
     """
     with pytest.raises(ValueError, match="multiple of head_partitions"):
         build_layer(4, heads=6, dim_head=DIM // 6, head_partitions=4)
-
-    with pytest.raises(ValueError, match="uneven cores per"):
-        build_layer(4, heads=6, dim_head=DIM // 6, head_partitions=6, num_cores=4)
 
     with pytest.raises(ValueError, match="between 1 and the number of heads"):
         build_layer(4, heads=6, dim_head=DIM // 6, head_partitions=7)

@@ -261,15 +261,21 @@ Three details in the file are worth reading for what they say about Vollo:
   state measures faster. `mask_warmup` is swept both ways so what is left of the
   cost is visible in the table.
 - **Core partitioning is a dial, and which way it pays depends on the board.**
-  `head_partitions` pins each group of heads -- its projections, its window and
-  its attention -- to its own cores, leaving one partial output projection per
-  group to be summed across them. On the six-core configs that costs 5-7% of
-  `latency_spaced` and takes 17-22% off `latency_contiguous` at the wider sizes;
-  on the three-core `IA-840f`, where one group lands per core, it takes 1-7% off
-  `latency_spaced` *and* 11-31% off `latency_contiguous` at `dim >= 288`, so it
-  wins outright there. It is off by default, and swept at the long-window size
-  where the split reads most clearly. Weights are unaffected -- a checkpoint loads at any
-  partitioning -- and the sum crossing cores is pairwise rather than chained,
+  `head_partitions` splits the heads into groups and pins group `p` -- its
+  projections, its window and its attention -- to core `p`, leaving one partial
+  output projection per group to be summed across the cores. On the six-core
+  configs that costs ~4% of `latency_spaced` and takes 22-38% off
+  `latency_contiguous` at the wider sizes; on the three-core `IA-840f` it is
+  slightly *better* on both, so it is worth having there outright. It is off by
+  default and swept at the long-window size, where the split reads most clearly.
+
+  What decides it is how many heads land on one core: a group of one head is
+  happy on one core, but at three heads per core the spaced latency goes up
+  15-25% rather than 4%, so partition as finely as the config allows. Every
+  size in the sweep runs six heads for that reason -- one group per core on the
+  six-core configs, two heads per core on the three-core one -- and `_vm` takes
+  the group count from the config. Weights are unaffected: a checkpoint loads
+  at any partitioning. The sum crossing cores is pairwise rather than chained,
   because the partials arrive in parallel and a chain would serialise them.
 
 The [tests](./tests/test_swa.py) check the streamed window against a dense

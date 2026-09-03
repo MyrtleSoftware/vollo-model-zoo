@@ -1,4 +1,3 @@
-import math
 from collections.abc import Generator
 from pathlib import Path
 from typing import Optional
@@ -21,7 +20,6 @@ class SlidingWindowAttention(nn.Module):
         bias: bool = True,
         mask_warmup: bool = True,
         head_partitions: Optional[int] = None,
-        num_cores: int = 6,
     ):
         """
         A self-attention sublayer that is causal and windowed: each timestep
@@ -46,14 +44,14 @@ class SlidingWindowAttention(nn.Module):
                          of a sequence. Costs a third scan state and a pointwise
                          add; turn it off if the accelerator is only ever read
                          after streaming in a warm-up sequence
-            head_partitions: How many head groups to split the heads into, each
-                         pinned to its own `num_cores // head_partitions` cores.
-                         `None` leaves the whole layer as one graph for the
-                         compiler to place, which is what the sweep measures.
-                         See the note above `_tree_sum` for what it buys
-            num_cores:   Cores in the target Vollo config, which
-                         `head_partitions` has to divide. Only read when
-                         partitioning
+            head_partitions: How many head groups to split the heads into,
+                         group `p` pinned to core `p`. Must divide `heads`, and
+                         must not exceed the cores in the target Vollo config --
+                         which this module cannot see, so asking for more cores
+                         than the config has fails at compile time rather than
+                         here. `None`, the default, leaves the layer as one
+                         graph for the compiler to place. See the note above
+                         `_tree_sum` for what partitioning buys
         """
         super().__init__()
 
@@ -76,18 +74,6 @@ class SlidingWindowAttention(nn.Module):
                     f"({head_partitions}), or the groups are uneven and the "
                     f"busiest core sets the latency"
                 )
-            if num_cores % head_partitions:
-                raise ValueError(
-                    f"num_cores ({num_cores}) must be a multiple of "
-                    f"head_partitions ({head_partitions}): uneven cores per "
-                    f"group is a latency cliff, not a gradual cost"
-                )
-
-            per_group = num_cores // head_partitions
-            self.cores = [
-                list(range(p * per_group, (p + 1) * per_group))
-                for p in range(head_partitions)
-            ]
             # Each group projects, attends and applies its own slice of the
             # output projection; the biases of the four projections are per
             # group except `proj_o`'s, which is added once to the summed
@@ -144,8 +130,8 @@ class SlidingWindowAttention(nn.Module):
 
         partials = []
 
-        for scan, cores in zip(self.scans, self.cores):
-            with vollo_torch.CorePartition(cores):
+        for p, scan in enumerate(self.scans):
+            with vollo_torch.CorePartition([p]):
                 partials.append(scan(x, state))
 
         y = _tree_sum(partials)
@@ -215,26 +201,21 @@ class SlidingWindowAttention(nn.Module):
 
 
 # Partitioning the heads pins each group's projections, window and attention to
-# its own cores, and turns `proj_o` into one partial projection per group that
+# its own core, and turns `proj_o` into one partial projection per group that
 # has to be summed. That sum is the only thing crossing cores, so it is summed
 # pairwise rather than in a chain: the partials become available in parallel,
 # and a chain would serialise them behind each other.
 #
-# It is a dial rather than a win, and it pulls the two latency metrics apart in
-# opposite directions on the two core counts (measured on Vollo 28.1.2, one
-# group per core unless noted, against `head_partitions=None`):
+# It is a dial rather than a win, and how it pays depends on how much work lands
+# on each core. `main`'s sweep uses six heads so that one group lands per core on
+# the six-core configs and two per core on the three-core one; `_vm` picks the
+# group count from the config for that reason.
 #
-#   c6b32 (V80, V80LL, IA-420f, NT400D11), 6 cores, so 2 cores per group at
-#   3 heads: costs 5-7% of `latency_spaced`, and takes 17-22% off
-#   `latency_contiguous` at dim=384 or window=64 (and nothing at the narrowest
-#   sizes) -- so worth it only for sustained back-to-back streaming.
-#
-#   c3b64 (IA-840f), 3 cores, so one group per core: takes 1-7% off
-#   `latency_spaced` *and* 11-31% off `latency_contiguous` at dim >= 288
-#   (neutral at dim=192) -- a win on both metrics, so worth it there.
-#
-# One group spanning every core compiles to the same program as no partitioning
-# at all, so `head_partitions=1` is a no-op rather than a third option.
+# The number of heads a group holds is what matters: a group of one head is
+# happy on one core, but at three heads per core the spaced latency goes up by
+# 15-25% instead of 4-5%, so partition as finely as the config allows rather
+# than into a few fat groups. `head_partitions=1` puts every head on core 0 and
+# is the degenerate end of that, not a cheap "all cores" option.
 def _tree_sum(partials: list[torch.Tensor]) -> torch.Tensor:
     parts = list(partials)
 
@@ -259,7 +240,6 @@ class SlidingWindowBlock(nn.Module):
         bias: bool = True,
         mask_warmup: bool = True,
         head_partitions: Optional[int] = None,
-        num_cores: int = 6,
         expand: float = 2.0,
     ):
         """
@@ -305,7 +285,6 @@ class SlidingWindowBlock(nn.Module):
             bias=bias,
             mask_warmup=mask_warmup,
             head_partitions=head_partitions,
-            num_cores=num_cores,
         )
 
         self.ffn_norm = nn.RMSNorm(dim, eps=1e-5)
@@ -435,11 +414,10 @@ def _vm(
 
     input = torch.randn(2, dim)
 
-    # One head group per core where the heads divide evenly over them, which is
-    # the granularity that measured best; `gcd` falls back to coarser groups,
-    # and to no partitioning at all when nothing divides.
-    num_cores = CONFIGS[config].num_cores
-    head_partitions = math.gcd(heads, num_cores) if partition else None
+    # One head group per core, which is the finest split the config allows and
+    # so the one that measured best. Every size in the sweep has a head count
+    # that divides the core count of every config.
+    head_partitions = CONFIGS[config].num_cores if partition else None
 
     model = nn.Sequential().extend(
         SlidingWindowBlock(
@@ -449,7 +427,6 @@ def _vm(
             window_size=window_size,
             mask_warmup=mask_warmup,
             head_partitions=head_partitions,
-            num_cores=num_cores,
             expand=expand,
         )
         for _ in range(layers)
@@ -466,7 +443,7 @@ def _vm(
     )
 
     if head_partitions is not None:
-        meta["partitions"] = f"{head_partitions}x{num_cores // head_partitions}c"
+        meta["partitions"] = head_partitions
 
     return vollo_info(
         model,
@@ -481,36 +458,37 @@ def _vm(
 
 @beartype
 def main(config: str = "V80") -> Generator:
+    # Every size runs six heads, so that `head_partitions` can put one group on
+    # each core of a six-core config and two on each core of a three-core one.
     for x in [
-        dict(dim=192, heads=3, dim_head=64, window_size=16, layers=1),
-        dict(dim=192, heads=3, dim_head=64, window_size=64, layers=1),
-        dict(dim=288, heads=3, dim_head=96, window_size=16, layers=1),
-        dict(dim=288, heads=3, dim_head=96, window_size=64, layers=1),
+        dict(dim=192, heads=6, dim_head=32, window_size=16, layers=1),
+        dict(dim=192, heads=6, dim_head=32, window_size=64, layers=1),
+        # ~1M parameter baseline: a block holds 4 * dim * inner in the attention
+        # projections and 6 * dim^2 in the FFN, so at inner == 2 * dim that is
+        # 14 * dim^2 + O(dim), and 2 * 14 * 192^2 approx 1M
+        dict(dim=192, heads=6, dim_head=64, window_size=16, layers=2),
+        dict(dim=384, heads=6, dim_head=64, window_size=16, layers=1),
+        dict(dim=384, heads=6, dim_head=64, window_size=64, layers=1),
         dict(
-            dim=288,
-            heads=3,
-            dim_head=96,
+            dim=384,
+            heads=6,
+            dim_head=64,
             window_size=64,
             layers=1,
             mask_warmup=False,
         ),
         # Partitioning is a dial rather than a win (see `_tree_sum`), and a long
-        # window at three heads is where it reads most clearly: it gives up
-        # spaced latency for contiguous on the six-core configs, and takes both
-        # down on the three-core one, where a head group lands per core.
+        # window is where it reads most clearly: it gives up spaced latency for
+        # contiguous latency on the six-core configs, and takes both down on the
+        # three-core one.
         dict(
-            dim=288,
-            heads=3,
-            dim_head=96,
+            dim=384,
+            heads=6,
+            dim_head=64,
             window_size=64,
             layers=1,
             partition=True,
         ),
-        # ~1M parameter baseline: with heads * dim_head == dim and expand == 2,
-        # a block holds 4 * dim^2 in the attention projections and 6 * dim^2 in
-        # the FFN, so 10 * dim^2 + O(dim), and 10 * 320^2 approx 1M
-        dict(dim=320, heads=5, dim_head=64, window_size=16, layers=1),
-        dict(dim=288, heads=3, dim_head=96, window_size=16, layers=2),
         dict(dim=384, heads=6, dim_head=64, window_size=32, layers=2),
     ]:
         yield _vm(**x, config=config)
