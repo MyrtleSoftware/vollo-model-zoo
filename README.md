@@ -342,72 +342,18 @@ final RMS norm and output projection are partitioned along with them, under
 
 Code/model: [`swa.py`](./vollo_model_zoo/models/swa.py)
 
-Sliding window (or _local_) attention is a form of attention that streams.
-Full self-attention keeps every past timestep resident and re-attends over all
-of them, so both the state and the work per new timestep grow with the sequence;
-a window bounds the context to the last `window_size` timesteps, which fixes
+Sliding window (or _local_) attention is a form of attention that streams. Full
+self-attention keeps every past timestep resident and re-attends over all of
+them, so both the state and the work per new timestep grow with the sequence; a
+window bounds the context to the last `window_size` timesteps, which fixes
 both. This is the attention primitive in models such as
 [Longformer](https://arxiv.org/abs/2004.05150) and
-[Mistral](https://arxiv.org/abs/2310.06825), usually interleaved with a few full
-attention layers to carry longer-range information.
+[Mistral](https://arxiv.org/abs/2310.06825).
 
 The Vollo implementation is a pre-norm transformer block: a residual windowed
 attention sublayer followed by a residual SwiGLU feed-forward sublayer, each
-behind an RMSNorm. The attention is wrapped in a `vollo_torch.nn.Scan` with the
-rolling K and V windows held as the scan state; each step evicts the oldest
-entry of each window and appends the arriving timestep's, so the compiled
-program consumes one timestep per inference and does a fixed amount of work
-however long the sequence runs. `SlidingWindowAttention` is the bare attention
-layer and is usable on its own -- the norms and the residual adds belong to
-`SlidingWindowBlock`, which is what the size sweep measures.
-
-Three details in the file are worth reading for what they say about Vollo:
-
-- **Both attention matmuls take two activations**, because the K and V windows
-  are state rather than weights. Those are the
-  [dynamic weights](https://vollo.myrtle.ai/latest/data-dimension.html) cases,
-  which the file has to opt into, and each wants its matrix operand with the
-  contracted dimension second-innermost. The scores contract over features while
-  the output contracts over timesteps, which is why only the K window is
-  transposed where it is used.
-- **The warm-up mask is a placeholder in the scan state.** A query must not
-  attend to the window slots no timestep has reached yet, and rather than detect
-  emptiness at runtime a third state carries one additive score per slot: `-inf`
-  while nothing has been written to that slot, `0` once a real key has slid into
-  it, which the softmax turns into a zero weight. The tempting alternative is to
-  fold that bias into one extra key feature, weighted by a constant `1` in the
-  query, so that it rides through the score matmul that is happening anyway --
-  but `dim_head` is normally a multiple of the block size, so the one odd feature
-  buys a whole extra block of work across the whole window, and the separate
-  state measures faster. `mask` turns it off, for a deployment that is only
-  ever read after streaming in a warm-up sequence.
-- **Core partitioning pays only if the output projection stays out of it.**
-  `head_partitions` splits the heads into groups and pins group `p` -- its
-  projections, its window and its attention -- to core `p`. The output
-  projection is the one thing that spans the groups, and leaving it _outside_
-  the partitioning is what makes the whole thing worthwhile: splitting it too
-  gives one partial projection per group plus a sum crossing every core, and
-  that sum costs more than the parallelism buys. Hoisting it out is worth 3-7%
-  of a partitioned block and turns partitioning from a small spaced-latency
-  cost into a 3-6% saving, with 18-25% off `latency_contiguous` as well, on
-  both core counts. What crosses cores now is one concatenation of the groups'
-  outputs, which the single projection then contracts.
-
-  What decides whether to partition at all is how many heads land on one core:
-  one head per core is the happy case, but at three heads per core the spaced
-  latency goes up 15-25% instead, so partition as finely as the config allows.
-  Every size in the sweep runs six heads for that reason -- one group per core
-  on the six-core configs, two heads per core on the three-core one -- and
-  `_vm` takes the group count from the config, sweeping every size both ways.
-  Weights are unaffected: a checkpoint loads at any partitioning.
-
-The [tests](./tests/test_swa.py) check the streamed window against a dense
-band-masked attention over the whole sequence, which is the readable statement
-of what the scan state is supposed to be doing, and check that the block wires
-its two sublayers the way its docstring draws them.
-
-Note this model needs Vollo SDK 28.0.0 or newer: that is the release where the
-compiler gained the dynamic-weight matmuls it is built out of.
+behind an RMSNorm. This model uses similar headwise partitioning as the zoo's
+Mamba2 implementation.
 
 ## Other utilities
 
