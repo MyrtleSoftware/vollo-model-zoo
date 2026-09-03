@@ -317,9 +317,8 @@ def _vm(
     layers: int,
     config: str,
     mask: bool,
-    dim_head: int = 64,
+    expand: float,
     heads: int = 6,
-    expand: float = 2.0,
 ):
     from vollo_model_zoo.vm import CONFIGS, vollo_info
 
@@ -335,7 +334,7 @@ def _vm(
         SlidingWindowBlock(
             dim=dim,
             heads=heads,
-            dim_head=dim_head,
+            dim_head=32,
             window_size=window_size,
             mask=mask,
             head_partitions=head_partitions,
@@ -355,7 +354,6 @@ def _vm(
             masked=mask,
             partitions=head_partitions if head_partitions is not None else 0,
             dim=dim,
-            dim_head=dim_head,
             window=window_size,
             layers=layers,
         ),
@@ -367,14 +365,14 @@ def main(config: str = "V80") -> Generator:
     # Every size runs six heads, so that `head_partitions` can put one group on
     # each core of a six-core config and two on each core of a three-core one.
     for x in [
-        dict(dim=32 * 6, dim_head=32, window_size=16, layers=1, mask=True),
-        dict(dim=32 * 6, dim_head=32, window_size=32, layers=1, mask=True),
-        dict(dim=32 * 6, dim_head=32, window_size=64, layers=1, mask=True),
+        dict(dim=32 * 6, window_size=16, layers=1, mask=True, expand=2.0),
+        dict(dim=32 * 6, window_size=32, layers=1, mask=True, expand=2.0),
+        dict(dim=32 * 6, window_size=64, layers=1, mask=True, expand=2.0),
         # ~1M parameter baseline
-        dict(dim=32 * 7, dim_head=32, window_size=32, layers=2, mask=True),
-        dict(dim=32 * 7, dim_head=32, window_size=32, layers=2, mask=False),
+        dict(dim=32 * 7, window_size=32, layers=2, mask=True, expand=2.0),
+        dict(dim=32 * 7, window_size=32, layers=2, mask=False, expand=2.0),
         # big
-        dict(dim=32 * 12, dim_head=32, window_size=32, layers=6, mask=True),
+        dict(dim=32 * 12, window_size=32, layers=6, mask=True, expand=2.0),
     ]:
         yield _vm(**x, config=config)
 
