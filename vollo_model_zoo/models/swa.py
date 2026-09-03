@@ -175,7 +175,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         mask: bool,
     ):
         """
-        The scan function, see SlidingWindowAttention for arguments
+        The scan function, see SlidingWindowAttention for arguments.
         """
         super().__init__()
 
@@ -197,14 +197,14 @@ class _SlidingWindowAttentionStep(nn.Module):
         """
         Args:
             x:     Tensor of shape (dim!), one timestep
-            state: [K window, V window], both of shape (heads, window,
-                   dim_head!), plus -- when masking warm-up -- the per-slot
-                   additive score biases, of shape (window!)
+            state: [K window, V window], both of shape (heads, window, dim_head!),
+                   plus -- when masking warm-up -- the per-slot additive score
+                   biases, of shape (window!)
 
         Returns:
-            (This group's attention output, of shape (inner!), and the updated
+            This group's attention output, of shape (inner!), and the updated
             state. The output projection is the caller's, so that partitioning
-            does not split it)
+            does not split it
         """
         k_win, v_win, bias_win = (
             state[0],
@@ -222,20 +222,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         if bias_win is not None:
             bias_win = torch.cat([bias_win[1:], self.new_slot_bias])  # [w!]
 
-        # Both matmuls have two activations as operands, since the windows are
-        # state rather than weights, so both are dynamic-weight matmuls (hence
-        # `allow_dynamic_weights` in `_vm`). Each wants its matrix operand with
-        # the contracted dimension second-innermost, and the scores contract over
-        # features where the output contracts over timesteps -- hence the
-        # transpose on one and not the other. It costs nothing: the compiler folds
-        # it into how the window is read, and storing the K window the other way
-        # round to begin with compiles to exactly the same program.
-        #
-        # The `1/sqrt(dim_head)` scale is applied here rather than on `q` at the
-        # projection because it schedules better under `head_partitions`: the two
-        # graphs are the same nodes in a different order, and order feeds the
-        # compiler's op-to-core assignment (a wash unpartitioned, ~1% partitioned).
-        #
         # [h 1 dh!] @ [h dh! w] -> [h 1 w!]
         scores = (q * self.scale).unsqueeze(1) @ k_win.transpose(1, 2)
 
@@ -244,6 +230,7 @@ class _SlidingWindowAttentionStep(nn.Module):
             scores = scores + bias_win  # [h 1 w!]
 
         attn = torch.softmax(scores, dim=-1)
+
         # [h 1 w!] @ [h w dh!] -> [h 1 dh!] -> [h dh!] -> [inner!]
         out = (attn @ v_win).squeeze(1).reshape(self.heads * self.dim_head)
 
@@ -282,26 +269,14 @@ class SlidingWindowBlock(nn.Module):
         y6 <- y3 + y5
         ```
 
-        The FFN uses an swiglu activation with expansion size of `expand`.
-
-        Both sublayers are pre-norm and residual, and the norms and the residual
-        adds live out here rather than inside the `Scan`: they are pointwise, so
-        the streaming transform handles them wherever they sit, and keeping them
-        out leaves `SlidingWindowAttention` a plain attention layer.
+        The FFN uses an swiglu activation with expansion size of `expand`. Both
+        sublayers are pre-norm and residual,
 
         Args:
             expand: FFN hidden dimension as a multiple of `dim`; every other
-                    argument is `SlidingWindowAttention`'s, including
-                    `head_partitions`, which partitions the attention and
-                    leaves the FFN for the compiler to place
+                    argument is `SlidingWindowAttention`'s.
         """
         super().__init__()
-
-        # SwiGLU multiplies the gate by the value, so the hidden dimension the
-        # FFN comes back down from is `hidden`, not `2 * hidden`. Kept unfused
-        # -- `ffn-swiglu.py` sweeps `fuse` and shows that folding `ffn_1` and
-        # `ffn_2` into one wider projection can cost latency rather than save it.
-        hidden = int(dim * expand)
 
         self.attn_norm = nn.RMSNorm(dim, eps=1e-5)
         self.attn = SlidingWindowAttention(
@@ -313,6 +288,8 @@ class SlidingWindowBlock(nn.Module):
             mask=mask,
             head_partitions=head_partitions,
         )
+
+        hidden = int(dim * expand)
 
         self.ffn_norm = nn.RMSNorm(dim, eps=1e-5)
         self.ffn_1 = nn.Linear(dim, hidden, bias=bias)
@@ -331,7 +308,6 @@ class SlidingWindowBlock(nn.Module):
 
         h = self.ffn_norm(x)
         h = self.ffn_3(torch.nn.functional.silu(self.ffn_1(h)) * self.ffn_2(h))
-
         return x + h
 
 
