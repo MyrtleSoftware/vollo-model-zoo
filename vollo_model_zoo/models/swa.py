@@ -144,14 +144,14 @@ class SlidingWindowAttention(nn.Module):
             for name in split_axes:
                 for suffix in ("weight", "bias"):
                     keys = [f"{scans}{p}.step.{name}.{suffix}" for p in saved]
+                    parts = [state_dict.pop(k) for k in keys if k in state_dict]
 
-                    if all(key in state_dict for key in keys):
-                        state_dict[f"{step}{name}.{suffix}"] = torch.cat(
-                            [state_dict.pop(key) for key in keys]
-                        )
-
-            for key in [key for key in state_dict if key.startswith(scans)]:
-                state_dict.pop(key)
+                    # No `bias` at all is a `bias=False` checkpoint; some of the
+                    # partitions missing is a broken one, and merging the rest
+                    # leaves `load_state_dict` to report the shortfall as a size
+                    # mismatch rather than silently keeping untrained weights.
+                    if parts:
+                        state_dict[f"{step}{name}.{suffix}"] = torch.cat(parts)
 
         if self.head_partitions is not None:
             for name in split_axes:
