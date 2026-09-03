@@ -258,25 +258,27 @@ Three details in the file are worth reading for what they say about Vollo:
   query, so that it rides through the score matmul that is happening anyway --
   but `dim_head` is normally a multiple of the block size, so the one odd feature
   buys a whole extra block of work across the whole window, and the separate
-  state measures faster. `mask_warmup` is swept both ways so what is left of the
-  cost is visible in the table.
-- **Core partitioning is a dial, and which way it pays depends on the board.**
+  state measures faster. `mask` turns it off, for a deployment that is only
+  ever read after streaming in a warm-up sequence.
+- **Core partitioning pays only if the output projection stays out of it.**
   `head_partitions` splits the heads into groups and pins group `p` -- its
-  projections, its window and its attention -- to core `p`, leaving one partial
-  output projection per group to be summed across the cores. On the six-core
-  configs that costs ~4% of `latency_spaced` and takes 22-38% off
-  `latency_contiguous` at the wider sizes; on the three-core `IA-840f` it is
-  slightly *better* on both, so it is worth having there outright. It is off by
-  default and swept at the long-window size, where the split reads most clearly.
+  projections, its window and its attention -- to core `p`. The output
+  projection is the one thing that spans the groups, and leaving it *outside*
+  the partitioning is what makes the whole thing worthwhile: splitting it too
+  gives one partial projection per group plus a sum crossing every core, and
+  that sum costs more than the parallelism buys. Hoisting it out is worth 3-7%
+  of a partitioned block and turns partitioning from a small spaced-latency
+  cost into a 3-6% saving, with 18-25% off `latency_contiguous` as well, on
+  both core counts. What crosses cores now is one concatenation of the groups'
+  outputs, which the single projection then contracts.
 
-  What decides it is how many heads land on one core: a group of one head is
-  happy on one core, but at three heads per core the spaced latency goes up
-  15-25% rather than 4%, so partition as finely as the config allows. Every
-  size in the sweep runs six heads for that reason -- one group per core on the
-  six-core configs, two heads per core on the three-core one -- and `_vm` takes
-  the group count from the config. Weights are unaffected: a checkpoint loads
-  at any partitioning. The sum crossing cores is pairwise rather than chained,
-  because the partials arrive in parallel and a chain would serialise them.
+  What decides whether to partition at all is how many heads land on one core:
+  one head per core is the happy case, but at three heads per core the spaced
+  latency goes up 15-25% instead, so partition as finely as the config allows.
+  Every size in the sweep runs six heads for that reason -- one group per core
+  on the six-core configs, two heads per core on the three-core one -- and
+  `_vm` takes the group count from the config, sweeping every size both ways.
+  Weights are unaffected: a checkpoint loads at any partitioning.
 
 The [tests](./tests/test_swa.py) check the streamed window against a dense
 band-masked attention over the whole sequence, which is the readable statement

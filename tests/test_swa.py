@@ -48,13 +48,15 @@ def dense_reference(
     attn = torch.softmax(scores.masked_fill(~attends_to, float("-inf")), dim=-1)
     out = torch.einsum("hij,jhd->ihd", attn, v).reshape(time, H * dh)
 
-    return step.proj_o(out)
+    # The output projection lives on the layer, not the scan step, so that
+    # `head_partitions` does not split it.
+    return layer.proj_o(out)
 
 
 @beartype
 def build_layer(
     window_size: int,
-    mask_warmup: bool = True,
+    mask: bool = True,
     heads: int = HEADS,
     dim_head: int = DIM_HEAD,
     **kwargs,
@@ -66,7 +68,7 @@ def build_layer(
         heads=heads,
         dim_head=dim_head,
         window_size=window_size,
-        mask_warmup=mask_warmup,
+        mask=mask,
         **kwargs,
     ).eval()
 
@@ -108,13 +110,13 @@ def test_window_at_least_the_sequence_length_is_full_causal_attention():
 @beartype
 def test_unmasked_warmup_only_differs_while_the_window_fills():
     """
-    `mask_warmup=False` is what the docstring says it is: the empty slots are
+    `mask=False` is what the docstring says it is: the empty slots are
     attended to -- they hold zero keys, so they take a share of the softmax and
     contribute nothing -- for exactly as long as the window has empty slots, and
     from then on the layer is unaffected.
     """
     window_size = 4
-    layer = build_layer(window_size, mask_warmup=False)
+    layer = build_layer(window_size, mask=False)
     x = torch.randn(16, DIM)
 
     with torch.no_grad():

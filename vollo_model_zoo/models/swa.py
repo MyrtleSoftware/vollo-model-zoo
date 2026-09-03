@@ -8,6 +8,23 @@ from beartype import beartype
 from torch import nn
 
 
+# Partitioning pins each group of heads -- its projections, its window and its
+# attention -- to one core, and only the output projection spans them. Keeping
+# that projection *outside* the partitioning is what makes partitioning pay:
+# splitting it too leaves one partial projection per group and a sum crossing
+# every core, and that sum cost more than the parallelism bought (measured on
+# Vollo 28.1.2: hoisting it out is 3-7% of a partitioned block, and turns
+# partitioning from a 2-4% spaced-latency cost into a 3-6% saving). What crosses
+# cores now is one concatenation of the groups' outputs, which the projection
+# then contracts.
+#
+# What decides whether to partition at all is how many heads land on one core.
+# One head per core is the happy case; at three heads per core the spaced
+# latency goes up 15-25% instead. So partition as finely as the config allows,
+# which is why `main`'s sweep runs six heads -- one group per core on the
+# six-core configs, two heads per core on the three-core one -- and why `_vm`
+# takes the group count from the config. `head_partitions=1` puts every head on
+# core 0 and is the degenerate end of that, not a cheap "all cores" option.
 class SlidingWindowAttention(nn.Module):
     @beartype
     def __init__(
@@ -77,6 +94,12 @@ class SlidingWindowAttention(nn.Module):
                 for _ in range(head_partitions)
             )
 
+        # The output projection is deliberately outside the partitioning: each
+        # group emits its own heads' outputs, they are concatenated back into
+        # the whole inner vector, and one projection contracts it. See the note
+        # above the class.
+        self.proj_o = nn.Linear(heads * dim_head, dim, bias=False)
+
         self.register_load_state_dict_pre_hook(self._load_any_partitioning)
 
         heads_per_scan = heads if head_partitions is None else heads // head_partitions
@@ -110,19 +133,15 @@ class SlidingWindowAttention(nn.Module):
             state.append(self.bias_0)
 
         if self.head_partitions is None:
-            return self.scan(x, state)
+            return self.proj_o(self.scan(x, state))
 
-        partials = []
+        outs = []
 
         for p, scan in enumerate(self.scans):
             with vollo_torch.CorePartition([p]):
-                partials.append(scan(x, state))
+                outs.append(scan(x, state))
 
-        return _tree_sum(partials)
-
-    # Which projection weights split across the head groups, and along which
-    # axis: the three inputs by output feature, `proj_o` by input feature.
-    _SPLIT_AXES = (("proj_q", 0), ("proj_k", 0), ("proj_v", 0), ("proj_o", 1))
+        return self.proj_o(torch.cat(outs, dim=-1))
 
     def _load_any_partitioning(self, _module, state_dict, prefix, *_hook_args):
         """
@@ -146,31 +165,32 @@ class SlidingWindowAttention(nn.Module):
         if bool(saved) == (self.head_partitions is not None):
             return
 
+        # The projections that split across the head groups, by output feature.
+        # `proj_o` is not among them: it lives outside the partitioning.
+        split_axes = ("proj_q", "proj_k", "proj_v")
+
         if saved:
-            for name, axis in self._SPLIT_AXES:
-                for suffix, dim in (("weight", axis), ("bias", 0)):
+            for name in split_axes:
+                for suffix in ("weight", "bias"):
                     keys = [f"{scans}{p}.step.{name}.{suffix}" for p in saved]
 
                     if all(key in state_dict for key in keys):
                         state_dict[f"{step}{name}.{suffix}"] = torch.cat(
-                            [state_dict.pop(key) for key in keys], dim=dim
+                            [state_dict.pop(key) for key in keys]
                         )
 
             for key in [key for key in state_dict if key.startswith(scans)]:
                 state_dict.pop(key)
         else:
-            for name, axis in self._SPLIT_AXES:
-                weight = state_dict.pop(f"{step}{name}.weight", None)
+            for name in split_axes:
+                for suffix in ("weight", "bias"):
+                    tensor = state_dict.pop(f"{step}{name}.{suffix}", None)
 
-                if weight is not None:
-                    for p, chunk in enumerate(weight.chunk(self.head_partitions, axis)):
-                        state_dict[f"{scans}{p}.step.{name}.weight"] = chunk
+                    if tensor is None:
+                        continue
 
-                bias = state_dict.pop(f"{step}{name}.bias", None)
-
-                if bias is not None:
-                    for p, chunk in enumerate(bias.chunk(self.head_partitions)):
-                        state_dict[f"{scans}{p}.step.{name}.bias"] = chunk
+                    for p, chunk in enumerate(tensor.chunk(self.head_partitions)):
+                        state_dict[f"{scans}{p}.step.{name}.{suffix}"] = chunk
 
 
 class _SlidingWindowAttentionStep(nn.Module):
@@ -195,7 +215,6 @@ class _SlidingWindowAttentionStep(nn.Module):
         self.proj_q = nn.Linear(dim, inner_dim, bias=bias)
         self.proj_k = nn.Linear(dim, inner_dim, bias=bias)
         self.proj_v = nn.Linear(dim, inner_dim, bias=bias)
-        self.proj_o = nn.Linear(inner_dim, dim, bias=False)
 
         if mask:
             self.new_slot_bias = nn.Buffer(torch.zeros(1), persistent=False)
@@ -209,7 +228,9 @@ class _SlidingWindowAttentionStep(nn.Module):
                    additive score biases, of shape (window!)
 
         Returns:
-            (Tensor of shape (dim!), the updated state)
+            (This group's attention output, of shape (inner!), and the updated
+            state. The output projection is the caller's, so that partitioning
+            does not split it)
         """
         k_win, v_win, bias_win = (
             state[0],
@@ -252,42 +273,12 @@ class _SlidingWindowAttentionStep(nn.Module):
         # [h 1 w!] @ [h w dh!] -> [h 1 dh!] -> [h dh!] -> [inner!]
         out = (attn @ v_win).squeeze(1).reshape(self.heads * self.dim_head)
 
-        y = self.proj_o(out)
-
         new_state = [k_win, v_win]
 
         if self.mask:
             new_state.append(bias_win)
 
-        return y, new_state
-
-
-# Partitioning the heads pins each group's projections, window and attention to
-# its own core, and turns `proj_o` into one partial projection per group that
-# has to be summed. That sum is the only thing crossing cores, so it is summed
-# pairwise rather than in a chain: the partials become available in parallel,
-# and a chain would serialise them behind each other.
-#
-# It is a dial rather than a win, and how it pays depends on how much work lands
-# on each core. `main`'s sweep uses six heads so that one group lands per core on
-# the six-core configs and two per core on the three-core one; `_vm` picks the
-# group count from the config for that reason.
-#
-# The number of heads a group holds is what matters: a group of one head is
-# happy on one core, but at three heads per core the spaced latency goes up by
-# 15-25% instead of 4-5%, so partition as finely as the config allows rather
-# than into a few fat groups. `head_partitions=1` puts every head on core 0 and
-# is the degenerate end of that, not a cheap "all cores" option.
-def _tree_sum(partials: list[torch.Tensor]) -> torch.Tensor:
-    parts = list(partials)
-
-    while len(parts) > 1:
-        parts = [
-            parts[i] + parts[i + 1] if i + 1 < len(parts) else parts[i]
-            for i in range(0, len(parts), 2)
-        ]
-
-    return parts[0]
+        return out, new_state
 
 
 class SlidingWindowBlock(nn.Module):
@@ -435,6 +426,11 @@ def main(config: str = "V80") -> Generator:
     # each core of a six-core config and two on each core of a three-core one.
     for x in [
         dict(dim=32 * 6, dim_head=32, window_size=32, layers=1, mask=True),
+        # ~1M parameter baseline, the size models are compared at: with six
+        # 32-wide heads and expand == 2, a block holds 6 * dim^2 in the FFN and
+        # 768 * dim + O(dim) in the attention projections, and that reaches 1M
+        # at dim = 352.
+        dict(dim=32 * 11, dim_head=32, window_size=32, layers=1, mask=True),
         dict(dim=32 * 12, dim_head=32, window_size=32, layers=1, mask=True),
         dict(dim=32 * 12, dim_head=32, window_size=32, layers=6, mask=True),
     ]:
