@@ -173,6 +173,95 @@ class SlidingWindowAttention(nn.Module):
                         state_dict[f"{scans}{p}.step.{name}.bias"] = chunk
 
 
+class _SlidingWindowAttentionStep(nn.Module):
+    @beartype
+    def __init__(
+        self,
+        dim: int,
+        heads: int,
+        dim_head: int,
+        bias: bool,
+        mask: bool,
+    ):
+        super().__init__()
+
+        self.heads = heads
+        self.dim_head = dim_head
+        self.scale = dim_head**-0.5
+        self.mask = mask
+
+        inner_dim = heads * dim_head
+
+        self.proj_q = nn.Linear(dim, inner_dim, bias=bias)
+        self.proj_k = nn.Linear(dim, inner_dim, bias=bias)
+        self.proj_v = nn.Linear(dim, inner_dim, bias=bias)
+        self.proj_o = nn.Linear(inner_dim, dim, bias=False)
+
+        if mask:
+            self.new_slot_bias = nn.Buffer(torch.zeros(1), persistent=False)
+
+    def forward(self, x: torch.Tensor, state: list[torch.Tensor]):
+        """
+        Args:
+            x:     Tensor of shape (dim!), one timestep
+            state: [K window, V window], both of shape (heads, window,
+                   dim_head!), plus -- when masking warm-up -- the per-slot
+                   additive score biases, of shape (window!)
+
+        Returns:
+            (Tensor of shape (dim!), the updated state)
+        """
+        k_win, v_win, bias_win = (
+            state[0],
+            state[1],
+            state[2] if self.mask else None,
+        )
+
+        q = self.proj_q(x).view(self.heads, self.dim_head)  # [h dh!]
+        k = self.proj_k(x).view(self.heads, self.dim_head)  # [h dh!]
+        v = self.proj_v(x).view(self.heads, self.dim_head)  # [h dh!]
+
+        # Slide the windows: evict the oldest entry, append this timestep's.
+        k_win = torch.cat([k_win[:, 1:, :], k.unsqueeze(1)], dim=1)  # [h w dh!]
+        v_win = torch.cat([v_win[:, 1:, :], v.unsqueeze(1)], dim=1)  # [h w dh!]
+        if bias_win is not None:
+            bias_win = torch.cat([bias_win[1:], self.new_slot_bias])  # [w!]
+
+        # Both matmuls have two activations as operands, since the windows are
+        # state rather than weights, so both are dynamic-weight matmuls (hence
+        # `allow_dynamic_weights` in `_vm`). Each wants its matrix operand with
+        # the contracted dimension second-innermost, and the scores contract over
+        # features where the output contracts over timesteps -- hence the
+        # transpose on one and not the other. It costs nothing: the compiler folds
+        # it into how the window is read, and storing the K window the other way
+        # round to begin with compiles to exactly the same program.
+        #
+        # The `1/sqrt(dim_head)` scale is applied here rather than on `q` at the
+        # projection because it schedules better under `head_partitions`: the two
+        # graphs are the same nodes in a different order, and order feeds the
+        # compiler's op-to-core assignment (a wash unpartitioned, ~1% partitioned).
+        #
+        # [h 1 dh!] @ [h dh! w] -> [h 1 w!]
+        scores = (q * self.scale).unsqueeze(1) @ k_win.transpose(1, 2)
+
+        if self.mask:
+            # Bias the scores
+            scores = scores + bias_win  # [h 1 w!]
+
+        attn = torch.softmax(scores, dim=-1)
+        # [h 1 w!] @ [h w dh!] -> [h 1 dh!] -> [h dh!] -> [inner!]
+        out = (attn @ v_win).squeeze(1).reshape(self.heads * self.dim_head)
+
+        y = self.proj_o(out)
+
+        new_state = [k_win, v_win]
+
+        if self.mask:
+            new_state.append(bias_win)
+
+        return y, new_state
+
+
 # Partitioning the heads pins each group's projections, window and attention to
 # its own core, and turns `proj_o` into one partial projection per group that
 # has to be summed. That sum is the only thing crossing cores, so it is summed
@@ -281,95 +370,6 @@ class SlidingWindowBlock(nn.Module):
         return x + h
 
 
-class _SlidingWindowAttentionStep(nn.Module):
-    @beartype
-    def __init__(
-        self,
-        dim: int,
-        heads: int,
-        dim_head: int,
-        bias: bool,
-        mask: bool,
-    ):
-        super().__init__()
-
-        self.heads = heads
-        self.dim_head = dim_head
-        self.scale = dim_head**-0.5
-        self.mask = mask
-
-        inner_dim = heads * dim_head
-
-        self.proj_q = nn.Linear(dim, inner_dim, bias=bias)
-        self.proj_k = nn.Linear(dim, inner_dim, bias=bias)
-        self.proj_v = nn.Linear(dim, inner_dim, bias=bias)
-        self.proj_o = nn.Linear(inner_dim, dim, bias=False)
-
-        if mask:
-            self.new_slot_bias = nn.Buffer(torch.zeros(1), persistent=False)
-
-    def forward(self, x: torch.Tensor, state: list[torch.Tensor]):
-        """
-        Args:
-            x:     Tensor of shape (dim!), one timestep
-            state: [K window, V window], both of shape (heads, window,
-                   dim_head!), plus -- when masking warm-up -- the per-slot
-                   additive score biases, of shape (window!)
-
-        Returns:
-            (Tensor of shape (dim!), the updated state)
-        """
-        k_win, v_win, bias_win = (
-            state[0],
-            state[1],
-            state[2] if self.mask else None,
-        )
-
-        q = self.proj_q(x).view(self.heads, self.dim_head)  # [h dh!]
-        k = self.proj_k(x).view(self.heads, self.dim_head)  # [h dh!]
-        v = self.proj_v(x).view(self.heads, self.dim_head)  # [h dh!]
-
-        # Slide the windows: evict the oldest entry, append this timestep's.
-        k_win = torch.cat([k_win[:, 1:, :], k.unsqueeze(1)], dim=1)  # [h w dh!]
-        v_win = torch.cat([v_win[:, 1:, :], v.unsqueeze(1)], dim=1)  # [h w dh!]
-        if bias_win is not None:
-            bias_win = torch.cat([bias_win[1:], self.new_slot_bias])  # [w!]
-
-        # Both matmuls have two activations as operands, since the windows are
-        # state rather than weights, so both are dynamic-weight matmuls (hence
-        # `allow_dynamic_weights` in `_vm`). Each wants its matrix operand with
-        # the contracted dimension second-innermost, and the scores contract over
-        # features where the output contracts over timesteps -- hence the
-        # transpose on one and not the other. It costs nothing: the compiler folds
-        # it into how the window is read, and storing the K window the other way
-        # round to begin with compiles to exactly the same program.
-        #
-        # The `1/sqrt(dim_head)` scale is applied here rather than on `q` at the
-        # projection because it schedules better under `head_partitions`: the two
-        # graphs are the same nodes in a different order, and order feeds the
-        # compiler's op-to-core assignment (a wash unpartitioned, ~1% partitioned).
-        #
-        # [h 1 dh!] @ [h dh! w] -> [h 1 w!]
-        scores = (q * self.scale).unsqueeze(1) @ k_win.transpose(1, 2)
-
-        if self.mask:
-            # Bias the scores
-            scores = scores + bias_win  # [h 1 w!]
-
-        attn = torch.softmax(scores, dim=-1)
-        # [h 1 w!] @ [h w dh!] -> [h 1 dh!] -> [h dh!] -> [inner!]
-        out = (attn @ v_win).squeeze(1).reshape(self.heads * self.dim_head)
-
-        y = self.proj_o(out)
-
-        new_state = [k_win, v_win]
-
-        if self.mask:
-            new_state.append(bias_win)
-
-        return y, new_state
-
-
 @beartype
 def _vm(
     dim: int,
@@ -406,9 +406,7 @@ def _vm(
 
     meta = dict(
         dim=dim,
-        heads=heads,
         dim_head=dim_head,
-        ffn=int(dim * expand),
         window=window_size,
         layers=layers,
         masked=mask,
@@ -433,9 +431,12 @@ def main(config: str = "V80") -> Generator:
     # Every size runs six heads, so that `head_partitions` can put one group on
     # each core of a six-core config and two on each core of a three-core one.
     for x in [
-        dict(dim=32 * 6, heads=6, dim_head=32, window_size=32, layers=1, mask=True),
+        dict(dim=32 * 6, dim_head=32, window_size=32, layers=1, mask=True),
+        dict(dim=32 * 12, dim_head=32, window_size=32, layers=1, mask=True),
+        dict(dim=32 * 12, dim_head=32, window_size=32, layers=6, mask=True),
     ]:
-        yield _vm(**x, config=config)
+        for p in [True, False]:
+            yield _vm(**x, config=config, partition=p)
 
 
 if __name__ == "__main__":
