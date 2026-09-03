@@ -122,8 +122,6 @@ class SlidingWindowAttention(nn.Module):
 
         return self.proj_o(torch.cat(outs, dim=-1))
 
-    # The projections that split across the head groups, by output feature.
-    # `proj_o` is not among them: it lives outside the partitioning.
     _PARTITIONED_KEYS = tuple(
         f"{name}.{suffix}"
         for name in ("proj_q", "proj_k", "proj_v")
