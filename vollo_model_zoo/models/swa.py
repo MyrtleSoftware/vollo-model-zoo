@@ -50,11 +50,7 @@ class SlidingWindowAttention(nn.Module):
         self.mask = mask
         self.head_partitions = head_partitions
 
-        if head_partitions is None:
-            self.scan = vollo_torch.nn.Scan(
-                _SlidingWindowAttentionStep(dim, heads, dim_head, bias, mask)
-            )
-        else:
+        if head_partitions is not None:
             if not 1 <= head_partitions <= heads:
                 raise ValueError(
                     f"head_partitions ({head_partitions}) must be between 1 and "
@@ -67,10 +63,17 @@ class SlidingWindowAttention(nn.Module):
                     f"busiest core sets the latency"
                 )
 
+        heads_per_scan = heads if head_partitions is None else heads // head_partitions
+
+        if head_partitions is None:
+            self.scan = vollo_torch.nn.Scan(
+                _SlidingWindowAttentionStep(dim, heads_per_scan, dim_head, bias, mask)
+            )
+        else:
             self.scans = nn.ModuleList(
                 vollo_torch.nn.Scan(
                     _SlidingWindowAttentionStep(
-                        dim, heads // head_partitions, dim_head, bias, mask
+                        dim, heads_per_scan, dim_head, bias, mask
                     )
                 )
                 for _ in range(head_partitions)
@@ -79,8 +82,6 @@ class SlidingWindowAttention(nn.Module):
         self.proj_o = nn.Linear(heads * dim_head, dim, bias=bias)
 
         # Same zeros initial buffer for each head partition
-
-        heads_per_scan = heads if head_partitions is None else heads // head_partitions
 
         self.k_0 = nn.Buffer(
             torch.zeros(heads_per_scan, window_size, dim_head), persistent=False
