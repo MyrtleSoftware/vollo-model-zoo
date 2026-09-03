@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (Vollo SDK 28.1.2, model zoo 0.2.0)
+# Vollo Model Zoo Benchmarks (Vollo SDK 28.1.2, model zoo 0.3.0)
 
 Compute latency for an approximately 1-million parameter model.
 
@@ -10,6 +10,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | ----- | ------------ | ------------------------ | -------- |
 | wavenet | 2.51 | 2.63 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.12 | 1.47 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 3.62 | 3.97 | masked=True, partitions=6, dim=224, window=32, layers=2 |
 | ssm | 0.70 | 0.71 | dim=576, hidden=448 |
 | slp | 0.86 | 0.87 | input=1024, output=1024, activation=ReLU |
 | resmlp | 6.77 | 6.78 | dim=160, patches=9, layers=5, activation=ReLU |
@@ -30,6 +31,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | ----- | ------------ | ------------------------ | -------- |
 | wavenet | 2.76 | 2.89 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.23 | 1.62 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 3.98 | 4.36 | masked=True, partitions=6, dim=224, window=32, layers=2 |
 | ssm | 0.77 | 0.78 | dim=576, hidden=448 |
 | slp | 0.95 | 0.95 | input=1024, output=1024, activation=ReLU |
 | resmlp | 7.45 | 7.45 | dim=160, patches=9, layers=5, activation=ReLU |
@@ -50,6 +52,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | ----- | ------------ | ------------------------ | -------- |
 | wavenet | 2.93 | 3.02 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.24 | 1.62 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 4.25 | 4.61 | masked=True, partitions=6, dim=224, window=32, layers=2 |
 | ssm | 0.74 | 0.74 | dim=576, hidden=448 |
 | slp | 0.91 | 0.91 | input=1024, output=1024, activation=ReLU |
 | resmlp | 16.09 | 16.10 | dim=160, patches=9, layers=5, activation=ReLU |
@@ -70,6 +73,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | ----- | ------------ | ------------------------ | -------- |
 | wavenet | 2.55 | 2.56 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.03 | 1.58 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 4.14 | 4.89 | masked=True, partitions=3, dim=224, window=32, layers=2 |
 | ssm | 0.52 | 0.53 | dim=576, hidden=448 |
 | slp | 0.56 | 0.57 | input=1024, output=1024, activation=ReLU |
 | resmlp | 5.03 | 5.04 | dim=160, patches=9, layers=5, activation=ReLU |
@@ -90,6 +94,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | ----- | ------------ | ------------------------ | -------- |
 | wavenet | 2.93 | 3.02 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.24 | 1.62 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 4.25 | 4.61 | masked=True, partitions=6, dim=224, window=32, layers=2 |
 | ssm | 0.74 | 0.74 | dim=576, hidden=448 |
 | slp | 0.91 | 0.91 | input=1024, output=1024, activation=ReLU |
 | resmlp | 16.09 | 16.10 | dim=160, patches=9, layers=5, activation=ReLU |
@@ -560,6 +565,41 @@ Click to expand each plot:
 <summary>ssm_V80</summary>
 
 ![ssm_V80](../plots/ssm_V80.svg)
+
+</details>
+
+<details>
+<summary>swa_IA_420f</summary>
+
+![swa_IA_420f](../plots/swa_IA_420f.svg)
+
+</details>
+
+<details>
+<summary>swa_IA_840f</summary>
+
+![swa_IA_840f](../plots/swa_IA_840f.svg)
+
+</details>
+
+<details>
+<summary>swa_NT400D11</summary>
+
+![swa_NT400D11](../plots/swa_NT400D11.svg)
+
+</details>
+
+<details>
+<summary>swa_V80LL</summary>
+
+![swa_V80LL](../plots/swa_V80LL.svg)
+
+</details>
+
+<details>
+<summary>swa_V80</summary>
+
+![swa_V80](../plots/swa_V80.svg)
 
 </details>
 
