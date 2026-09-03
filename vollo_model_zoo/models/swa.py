@@ -223,7 +223,7 @@ class _SlidingWindowAttentionStep(nn.Module):
         scores = (q * self.scale).unsqueeze(1) @ k_win.transpose(1, 2)
 
         if bias_win is not None:
-            # Bias the scores
+            # The bias will mask the unfilled windows from the softmax
             scores = scores + bias_win  # [h 1 w!]
 
         attn = torch.softmax(scores, dim=-1)
