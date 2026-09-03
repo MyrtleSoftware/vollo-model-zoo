@@ -386,10 +386,13 @@ def _vm(
 
     input = torch.randn(2, dim)
 
-    # One head group per core, which is the finest split the config allows and
-    # so the one that measured best. Every size in the sweep has a head count
-    # that divides the core count of every config.
-    head_partitions = CONFIGS[config].num_cores if partition else None
+    cores = CONFIGS[config].num_cores
+
+    # Try to partition across all cores
+    if partition and heads % cores == 0:
+        head_partitions = cores
+    else:
+        head_partitions = None
 
     model = nn.Sequential().extend(
         SlidingWindowBlock(
