@@ -118,51 +118,46 @@ class SlidingWindowAttention(nn.Module):
 
         return self.proj_o(torch.cat(outs, dim=-1))
 
+    # The projections that split across the head groups, by output feature.
+    # `proj_o` is not among them: it lives outside the partitioning.
+    _PARTITIONED_KEYS = tuple(
+        f"{name}.{suffix}"
+        for name in ("proj_q", "proj_k", "proj_v")
+        for suffix in ("weight", "bias")
+    )
+
     def _load_any_partitioning(self, _module, state_dict, prefix, *_hook_args):
         """
         Let a checkpoint saved at one `head_partitions` load at any other.
         """
-        step = f"{prefix}scan.step."
-        scans = f"{prefix}scans."
+        for key in self._PARTITIONED_KEYS:
+            wide = f"{prefix}scan.step.{key}"
+            part = f"{prefix}scans.{{}}.step.{key}"
 
-        saved = sorted(
-            {
-                int(key[len(scans) :].split(".")[0])
-                for key in state_dict
-                if key.startswith(scans)
-            }
-        )
+            # Gather.
+            tensor = state_dict.pop(wide, None)
 
-        # The projections that split across the head groups, by output feature.
-        # `proj_o` is not among them: it lives outside the partitioning.
-        split_axes = ("proj_q", "proj_k", "proj_v")
+            if tensor is None:
+                parts = []
 
-        # Merge whatever the checkpoint holds into one wide tensor per
-        # projection, then split that the way this model holds it. Both halves
-        # run when the checkpoint and the model are partitioned differently.
-        if saved:
-            for name in split_axes:
-                for suffix in ("weight", "bias"):
-                    keys = [f"{scans}{p}.step.{name}.{suffix}" for p in saved]
-                    parts = [state_dict.pop(k) for k in keys if k in state_dict]
+                while part.format(len(parts)) in state_dict:
+                    parts.append(state_dict.pop(part.format(len(parts))))
 
-                    # No `bias` at all is a `bias=False` checkpoint; some of the
-                    # partitions missing is a broken one, and merging the rest
-                    # leaves `load_state_dict` to report the shortfall as a size
-                    # mismatch rather than silently keeping untrained weights.
-                    if parts:
-                        state_dict[f"{step}{name}.{suffix}"] = torch.cat(parts)
+                # A partial set is merged too, so `load_state_dict` reports the
+                # shortfall as a size mismatch rather than the layer silently
+                # keeping untrained weights. Nothing at all is `bias=False`.
+                if parts:
+                    tensor = torch.cat(parts)
 
-        if self.head_partitions is not None:
-            for name in split_axes:
-                for suffix in ("weight", "bias"):
-                    tensor = state_dict.pop(f"{step}{name}.{suffix}", None)
+            if tensor is None:
+                continue
 
-                    if tensor is None:
-                        continue
-
-                    for p, chunk in enumerate(tensor.chunk(self.head_partitions)):
-                        state_dict[f"{scans}{p}.step.{name}.{suffix}"] = chunk
+            # Split.
+            if self.head_partitions is None:
+                state_dict[wide] = tensor
+            else:
+                for p, chunk in enumerate(tensor.chunk(self.head_partitions)):
+                    state_dict[part.format(p)] = chunk
 
 
 class _SlidingWindowAttentionStep(nn.Module):
