@@ -1,4 +1,5 @@
-"""Stateless, two-entrypoint RNN-T model for the Vollo model zoo.
+"""
+Stateless, two-entrypoint RNN-T model for the Vollo model zoo.
 
 Unlike :mod:`rnnt`, this variant returns every recurrent state to the host.
 The encoder/joint and prediction/joint entry points still share the final
@@ -7,109 +8,12 @@ joint network and are compiled into one Vollo program by :func:`main`.
 
 from collections.abc import Generator
 from contextlib import nullcontext
-from importlib.metadata import version
 from pathlib import Path
 
 import torch
 import vollo_torch
 from beartype import beartype
-from packaging.version import Version
 from torch import Tensor, nn
-
-
-class _ManualLSTMCell(nn.Module):
-    @beartype
-    def __init__(self, input_size: int, hidden_size: int) -> None:
-        """One explicit-state LSTM cell built from Vollo-supported operators.
-
-        Args:
-               input_size:           Features in the cell's input
-               hidden_size:          Features in the hidden and cell state
-        """
-        super().__init__()
-
-        gate_input_size = input_size + hidden_size
-        self.input_gate = nn.Linear(gate_input_size, hidden_size)
-        self.forget_gate = nn.Linear(gate_input_size, hidden_size)
-        self.cell_gate = nn.Linear(gate_input_size, hidden_size)
-        self.output_gate = nn.Linear(gate_input_size, hidden_size)
-
-    def forward(
-        self,
-        x: Tensor,
-        h: Tensor,
-        c: Tensor,
-    ) -> tuple[Tensor, Tensor]:
-        """Run one explicit-state LSTM cell.
-
-        Args:
-            x: ``[batch, input_size]`` input values.
-            h: ``[batch, hidden_size]`` hidden state.
-            c: ``[batch, hidden_size]`` cell state.
-
-        Returns:
-            A pair ``(next_h, next_c)``; both tensors have shape
-            ``[batch, hidden_size]``.
-        """
-        gate_input = torch.cat((x, h), dim=-1)
-        i = torch.sigmoid(self.input_gate(gate_input))
-        f = torch.sigmoid(self.forget_gate(gate_input))
-        g = torch.tanh(self.cell_gate(gate_input))
-        o = torch.sigmoid(self.output_gate(gate_input))
-
-        c_next = f * c + i * g
-        h_next = o * torch.tanh(c_next)
-        return h_next, c_next
-
-
-class _ManualLSTMStack(nn.Module):
-    @beartype
-    def __init__(self, input_size: int, hidden_size: int, num_layers: int) -> None:
-        """A stack of explicit-state LSTM cells applied to one time step.
-
-        Args:
-               input_size:           Features in the input to the first layer
-               hidden_size:          Features in each layer's states
-               num_layers:           Number of stacked LSTM layers
-        """
-        super().__init__()
-
-        self.cells = nn.ModuleList(
-            [
-                _ManualLSTMCell(
-                    input_size if layer == 0 else hidden_size,
-                    hidden_size,
-                )
-                for layer in range(num_layers)
-            ]
-        )
-
-    def forward(
-        self,
-        x: Tensor,
-        h: Tensor,
-        c: Tensor,
-    ) -> tuple[Tensor, Tensor, Tensor]:
-        """Run one time step through every explicit-state LSTM layer.
-
-        Args:
-            x: ``[batch, input_size]`` input to the first layer.
-            h: ``[num_layers, batch, hidden_size]`` hidden states.
-            c: ``[num_layers, batch, hidden_size]`` cell states.
-
-        Returns:
-            A tuple ``(output, next_h, next_c)`` where ``output`` is
-            ``[batch, hidden_size]`` and both state tensors are
-            ``[num_layers, batch, hidden_size]``.
-        """
-        next_h = []
-        next_c = []
-        for layer, cell in enumerate(self.cells):
-            h_layer, c_layer = cell(x, h[layer], c[layer])
-            next_h.append(h_layer)
-            next_c.append(c_layer)
-            x = h_layer
-        return x, torch.stack(next_h), torch.stack(next_c)
 
 
 class StatelessPredictionJoint(nn.Module):
@@ -123,7 +27,8 @@ class StatelessPredictionJoint(nn.Module):
         joint_network: nn.Module,
         fp8_weights: bool = False,
     ) -> None:
-        """Prediction/joint entry point, with recurrent state held by the host.
+        """
+        Prediction/joint entry point, with recurrent state held by the host.
 
         Every hidden and cell tensor is an explicit input and output, so the
         host owns all recurrent state between calls. That removes the
@@ -154,7 +59,8 @@ class StatelessPredictionJoint(nn.Module):
         h: Tensor,
         c: Tensor,
     ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
-        """Run the prediction network and joint network for one token.
+        """
+        Run the prediction network and joint network for one token.
 
         Args:
             embed: ``[batch, pred_n_hid]`` host embedding look-up for the
@@ -190,7 +96,8 @@ class StatelessEncoderJoint(nn.Module):
         joint_network: nn.Module,
         fp8_weights: bool = False,
     ) -> None:
-        """Encoder/joint entry point, with recurrent state held by the host.
+        """
+        Encoder/joint entry point, with recurrent state held by the host.
 
         Args:
                in_feats:             Acoustic features per frame (two per call)
@@ -227,7 +134,8 @@ class StatelessEncoderJoint(nn.Module):
         Tensor,
         Tensor,
     ]:
-        """Encode a pair of feature frames and compute joint logits.
+        """
+        Encode a pair of feature frames and compute joint logits.
 
         Taking two frames per call keeps the accelerator interface fixed-rate:
         the pre-RNN advances twice, then the post-RNN advances once per pair.
@@ -261,6 +169,62 @@ class StatelessEncoderJoint(nn.Module):
         return encoding, logits, pre_h, pre_c, post_h, post_c
 
 
+class _ManualLSTMCell(nn.Module):
+    @beartype
+    def __init__(self, input_size: int, hidden_size: int) -> None:
+        super().__init__()
+
+        gate_input_size = input_size + hidden_size
+        self.input_gate = nn.Linear(gate_input_size, hidden_size)
+        self.forget_gate = nn.Linear(gate_input_size, hidden_size)
+        self.cell_gate = nn.Linear(gate_input_size, hidden_size)
+        self.output_gate = nn.Linear(gate_input_size, hidden_size)
+
+    def forward(
+        self,
+        x: Tensor,
+        h: Tensor,
+        c: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        gate_input = torch.cat((x, h), dim=-1)
+        i = torch.sigmoid(self.input_gate(gate_input))
+        f = torch.sigmoid(self.forget_gate(gate_input))
+        g = torch.tanh(self.cell_gate(gate_input))
+        o = torch.sigmoid(self.output_gate(gate_input))
+
+        c_next = f * c + i * g
+        h_next = o * torch.tanh(c_next)
+        return h_next, c_next
+
+
+class _ManualLSTMStack(nn.Module):
+    @beartype
+    def __init__(self, input_size: int, hidden_size: int, num_layers: int) -> None:
+        super().__init__()
+
+        self.cells = nn.ModuleList(
+            [
+                _ManualLSTMCell(input_size if layer == 0 else hidden_size, hidden_size)
+                for layer in range(num_layers)
+            ]
+        )
+
+    def forward(
+        self,
+        x: Tensor,
+        h: Tensor,
+        c: Tensor,
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        next_h = []
+        next_c = []
+        for layer, cell in enumerate(self.cells):
+            h_layer, c_layer = cell(x, h[layer], c[layer])
+            next_h.append(h_layer)
+            next_c.append(c_layer)
+            x = h_layer
+        return x, torch.stack(next_h), torch.stack(next_c)
+
+
 @beartype
 def multi_model_entries(
     *,
@@ -274,7 +238,9 @@ def multi_model_entries(
     joint_n_hid: int,
     fp8_weights: bool,
 ) -> list:
-    """Construct the two entry points with one shared joint network."""
+    """
+    Construct the two entry points with one shared joint network.
+    """
     from vollo_model_zoo.vm import MultiModelEntry
 
     joint_network = nn.Sequential(
@@ -354,7 +320,6 @@ def _vm(
     fp8_weights: bool,
     config: str,
 ) -> list:
-    """Compile the explicit-state prediction and encoder entry points."""
     from vollo_model_zoo.vm import vollo_multi_model_info
 
     return vollo_multi_model_info(
@@ -400,25 +365,19 @@ def main(config: str = "V80") -> Generator:
             joint_n_hid=256,
             fp8_weights=False,
         ),
+        # 49M model via fp8 weights
+        dict(
+            n_classes=1024,
+            pred_n_hid=512,
+            pred_rnn_layers=2,
+            in_feats=240,
+            enc_n_hid=1024,
+            enc_pre_rnn_layers=2,
+            enc_post_rnn_layers=3,
+            joint_n_hid=512,
+            fp8_weights=True,
+        ),
     ]
-
-    # FP8 weights are supported only by the V80-family configurations.
-    if config in ("V80", "V80LL") and Version(version("vollo-compiler")) >= Version(
-        "29.0.0"
-    ):
-        models.append(
-            dict(
-                n_classes=1024,
-                pred_n_hid=512,
-                pred_rnn_layers=2,
-                in_feats=240,
-                enc_n_hid=1024,
-                enc_pre_rnn_layers=2,
-                enc_post_rnn_layers=3,
-                joint_n_hid=512,
-                fp8_weights=True,
-            )
-        )
 
     for x in models:
         yield from _vm(**x, config=config)
