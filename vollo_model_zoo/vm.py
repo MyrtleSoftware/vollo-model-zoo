@@ -83,7 +83,9 @@ class Ok:
 @beartype
 @dataclass(frozen=True)
 class MultiModelEntry:
-    """One entry point in a multi-model Vollo program."""
+    """
+    One entry point in a multi-model Vollo program.
+    """
 
     name: str
     model: torch.nn.Module
@@ -109,10 +111,6 @@ def _config(conf: str) -> vc.Config:
 def config_supports(config: str, feature: str) -> bool:
     """
     Whether a config's fabric provides a compiler feature, e.g. `"fp8"`.
-
-    A model whose size sweep uses a feature should skip those entries on a
-    config without it, since the compiler rejects them with a bare
-    `RuntimeError` rather than one of the `Result` errors.
 
     Older vollo versions may not expose the feature list, in which case nothing
     is assumed to be supported.
@@ -168,7 +166,9 @@ def vollo_multi_model_info(
     config: str,
     quick_compile: bool = False,
 ) -> list[Result]:
-    """Compile several PyTorch entry points into one Vollo program."""
+    """
+    Compile several PyTorch entry points into one Vollo program.
+    """
 
     if not entries:
         raise ValueError("Expected at least one multi-model entry")
@@ -189,7 +189,7 @@ def vollo_multi_model_info(
     except (AllocationError, SaveError, ValueError) as error:
         return [error]
 
-    # Shared modules, such as RNN-T's joint network, are counted once.
+    # Shared modules, are counted once.
     parameters = {
         id(parameter): parameter
         for entry in entries
