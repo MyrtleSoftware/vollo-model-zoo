@@ -18,6 +18,7 @@ Models in the zoo include:
 |                   | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
 | **Recurrent**     | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
 |                   | [GRU](#gru)                                           | [`gru.py`](./vollo_model_zoo/models/gru.py)                                                                                                           |
+|                   | [RNN-T](#rnn-t)                                       | [`rnnt.py`](./vollo_model_zoo/models/rnnt.py), [`stateless_rnnt.py`](./vollo_model_zoo/models/stateless_rnnt.py)                                      |
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
 |                   | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
@@ -234,6 +235,60 @@ A standard LSTM cell consists of:
 
 Vollo has first-class support for `torch.nn.LSTM`, allowing for efficient
 streaming inference of multi-layer, biased, and batch-first LSTM models.
+
+### RNN-T
+
+Code/models: [`rnnt.py`](./vollo_model_zoo/models/rnnt.py) and
+[`stateless_rnnt.py`](./vollo_model_zoo/models/stateless_rnnt.py)
+
+RNN-Transducer (RNN-T) is a streaming automatic speech recognition (ASR)
+architecture that converts audio to text as it arrives. It consists of three
+components:
+
+1. **Encoder**: processes incoming acoustic features.
+2. **Predictor**: processes previously emitted tokens.
+3. **Joint network**: combines the encoder and predictor representations to
+   produce token scores.
+
+RNN-T decoding is dynamic: depending on the joint output, inference either
+advances to the next audio frame or feeds a newly emitted token back through
+the predictor. The host therefore drives the decoding loop rather than the
+whole RNN-T compiling to one fixed graph.
+
+Instead of compiling the three components separately, the example fuses the
+joint network with both of its upstream networks, producing two entry points and
+saving a host-device round trip per decoding step:
+
+- `prediction_joint`: token embedding + encoder representation → prediction
+  representation + scores
+- `encoder_joint`: two consecutive feature frames + prediction
+  representation → encoder representation + scores
+
+The encoder takes a pair of frames because it is multirate: `pre_rnn` advances
+once per frame and `post_rnn` once per pair, so passing the pair together keeps
+the compiled step fixed-rate, as `vollo_torch.nn.Scan` and the streaming
+transform require.
+
+Together the entry points demonstrate several Vollo features:
+
+- **Multi-model programs**: both entry points are compiled into a single Vollo
+  program and selected by the host at runtime.
+- **Weight aliasing**: both entry points share the same joint network module,
+  so its weights are stored only once.
+- **Multiple inputs and outputs**: each entry point passes feature frames,
+  representations and, in the stateless variant, recurrent state as separate
+  tensors rather than one packed tensor.
+- **FP8 weights**: the 49M configuration stores its weights in Vollo's 8-bit
+  format, so larger models fit on the accelerator.
+
+The two implementations differ in where recurrent state lives:
+[`rnnt.py`](./vollo_model_zoo/models/rnnt.py) keeps it on the accelerator with
+`vollo_torch.nn.LSTMCell` and `vollo_torch.nn.Scan`, while
+[`stateless_rnnt.py`](./vollo_model_zoo/models/stateless_rnnt.py) exposes it as
+explicit inputs and outputs for the host to manage.
+
+Both files provide a small configuration for quick tests, a 23M BF16
+configuration, and a 49M FP8 configuration.
 
 ### GRU
 
