@@ -8,13 +8,11 @@ the layout used by the ASR runtime.
 
 from collections.abc import Generator, Sequence
 from contextlib import nullcontext
-from importlib.metadata import version
 from pathlib import Path
 
 import torch
 import vollo_torch
 from beartype import beartype
-from packaging.version import Version
 from torch import Tensor, nn
 
 
@@ -357,6 +355,8 @@ def _vm(
 
 @beartype
 def main(config: str = "V80") -> Generator:
+    from vollo_model_zoo.vm import config_supports
+
     models = [
         # 1M baseline used by the model-zoo test suite.
         dict(
@@ -382,19 +382,23 @@ def main(config: str = "V80") -> Generator:
             joint_n_hid=256,
             fp8_weights=False,
         ),
-        # 49M model via fp8 weights
-        dict(
-            n_classes=1024,
-            pred_n_hid=512,
-            pred_rnn_layers=2,
-            in_feats=240,
-            enc_n_hid=1024,
-            enc_pre_rnn_layers=2,
-            enc_post_rnn_layers=3,
-            joint_n_hid=512,
-            fp8_weights=True,
-        ),
     ]
+
+    # 49M model via fp8 weights, which only some fabrics support.
+    if config_supports(config, "fp8"):
+        models.append(
+            dict(
+                n_classes=1024,
+                pred_n_hid=512,
+                pred_rnn_layers=2,
+                in_feats=240,
+                enc_n_hid=1024,
+                enc_pre_rnn_layers=2,
+                enc_post_rnn_layers=3,
+                joint_n_hid=512,
+                fp8_weights=True,
+            )
+        )
 
     for x in models:
         yield from _vm(**x, config=config)

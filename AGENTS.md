@@ -329,6 +329,11 @@ What that means here:
 - `CONFIGS`: `{"V80", "V80LL", "IA-420f", "IA-840f", "NT400D11"}` → `vc.Config`,
   built with `hasattr` probes so the repo still works against older SDKs missing
   a config. Add new configs the same defensive way.
+- `config_supports(config, feature) -> bool` probes `Config.features`, e.g.
+  `"fp8"`, which only the V80 family has. Gate a sweep entry needing a feature on
+  it (`rnnt.py`, `stateless-rnnt.py` do, for their fp8 size): the compiler
+  rejects such a model with a bare `RuntimeError` that `vollo_info` does _not_
+  catch, so the entry has to be left out rather than reported as an error value.
 - `vollo_info(model, x, *, time_axis, config, meta=None, allow_dynamic_weights=False, quick_compile=False) -> Result`
   calls `model(x)` first (nicer errors), then `prepare_shape` → `to_nnir` →
   optional `streaming_transform` → `to_program` → `pack()`. Returns `Ok` or a

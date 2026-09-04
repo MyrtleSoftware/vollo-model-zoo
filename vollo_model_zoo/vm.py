@@ -106,6 +106,21 @@ def _config(conf: str) -> vc.Config:
 
 
 @beartype
+def config_supports(config: str, feature: str) -> bool:
+    """
+    Whether a config's fabric provides a compiler feature, e.g. `"fp8"`.
+
+    A model whose size sweep uses a feature should skip those entries on a
+    config without it, since the compiler rejects them with a bare
+    `RuntimeError` rather than one of the `Result` errors.
+
+    Older vollo versions may not expose the feature list, in which case nothing
+    is assumed to be supported.
+    """
+    return feature in getattr(_config(config), "features", [])
+
+
+@beartype
 def vollo_info(
     model: torch.nn.Module,
     x: torch.Tensor,
