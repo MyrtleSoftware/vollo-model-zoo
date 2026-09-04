@@ -1,4 +1,5 @@
-"""Stateful, two-entrypoint RNN-T model for the Vollo model zoo.
+"""
+Stateful, two-entrypoint RNN-T model for the Vollo model zoo.
 
 The encoder/joint and prediction/joint entry points share the final joint
 network.  :func:`main` compiles both entry points into one program, matching
@@ -20,7 +21,8 @@ from torch import Tensor, nn
 class _LSTMStack(nn.Module):
     @beartype
     def __init__(self, input_size: int, hidden_size: int, num_layers: int) -> None:
-        """Apply optimized Vollo LSTM cells while keeping cell state internal.
+        """
+        Apply optimized Vollo LSTM cells while keeping cell state internal.
 
         Args:
                input_size:           Features in the input to the first layer
@@ -32,16 +34,15 @@ class _LSTMStack(nn.Module):
         self.cells = nn.ModuleList(
             [
                 vollo_torch.nn.LSTMCell(
-                    input_size if layer == 0 else hidden_size,
-                    hidden_size,
-                    batch_size=1,
+                    input_size if layer == 0 else hidden_size, hidden_size, batch_size=1
                 )
                 for layer in range(num_layers)
             ]
         )
 
     def forward(self, x: Tensor, hidden: Tensor) -> tuple[Tensor, Tensor]:
-        """Run one time step through every LSTM layer.
+        """
+        Run one time step through every LSTM layer.
 
         Args:
             x: ``[batch, input_size]`` input to the first layer.
@@ -70,7 +71,8 @@ class _PredictionJointStep(nn.Module):
         fp8_weights: bool,
         joint_network: nn.Module,
     ) -> None:
-        """One prediction/joint step, for use as a :class:`Scan` step.
+        """
+        One prediction/joint step, for use as a :class:`Scan` step.
 
         Args:
                pred_n_hid:           Width of the prediction network's LSTM
@@ -91,7 +93,8 @@ class _PredictionJointStep(nn.Module):
         inputs: Sequence[Tensor],
         hidden: Tensor,
     ) -> tuple[tuple[Tensor, Tensor], Tensor]:
-        """Run the prediction network and joint network for one token.
+        """
+        Run the prediction network and joint network for one token.
 
         Args:
             inputs: ``(embed, encoding)``. ``embed`` is
@@ -127,7 +130,8 @@ class PredictionJoint(nn.Module):
         joint_network: nn.Module,
         fp8_weights: bool = False,
     ) -> None:
-        """Prediction/joint entry point.
+        """
+        Prediction/joint entry point.
 
         The token embedding is a look-up, so the host performs it and passes the
         embedded vector in.
@@ -152,12 +156,12 @@ class PredictionJoint(nn.Module):
         self.scan = vollo_torch.nn.Scan(self.step)
 
         self.initial_hidden = nn.Buffer(
-            torch.zeros(pred_rnn_layers, 1, pred_n_hid),
-            persistent=False,
+            torch.zeros(pred_rnn_layers, 1, pred_n_hid), persistent=False
         )
 
     def forward(self, embed: Tensor, encoding: Tensor) -> tuple[Tensor, Tensor]:
-        """Run a sequence of prediction/joint steps.
+        """
+        Run a sequence of prediction/joint steps.
 
         Args:
             embed: ``[time, batch, pred_n_hid]`` embedded non-blank tokens.
@@ -167,13 +171,12 @@ class PredictionJoint(nn.Module):
             A pair ``(prediction, logits)`` of ``[time, batch, joint_n_hid]``
             and ``[time, batch, n_classes]``.
         """
-        outputs = self.scan(
+        return self.scan(
             (embed, encoding),
             self.initial_hidden,
             input_axis=(0, 0),
             output_axis=(0, 0),
         )
-        return outputs[0], outputs[1]
 
 
 class _EncoderJointStep(nn.Module):
@@ -189,7 +192,8 @@ class _EncoderJointStep(nn.Module):
         fp8_weights: bool,
         joint_network: nn.Module,
     ) -> None:
-        """One two-frame encoder/joint step, for use as a :class:`Scan` step.
+        """
+        One two-frame encoder/joint step, for use as a :class:`Scan` step.
 
         Args:
                in_feats:             Acoustic features per frame
@@ -216,7 +220,8 @@ class _EncoderJointStep(nn.Module):
         tuple[Tensor, Tensor],
         tuple[Tensor, Tensor],
     ]:
-        """Encode a pair of feature frames and compute joint logits.
+        """
+        Encode a pair of feature frames and compute joint logits.
 
         Taking two frames per step keeps the accelerator interface fixed-rate:
         the pre-RNN advances twice, then the post-RNN advances once per pair.
@@ -263,7 +268,8 @@ class EncoderJoint(nn.Module):
         joint_network: nn.Module,
         fp8_weights: bool = False,
     ) -> None:
-        """Encoder/joint entry point.
+        """
+        Encoder/joint entry point.
 
         Args:
                in_feats:             Acoustic features per frame (two per step)
@@ -289,12 +295,10 @@ class EncoderJoint(nn.Module):
         self.scan = vollo_torch.nn.Scan(self.step)
 
         self.initial_pre_hidden = nn.Buffer(
-            torch.zeros(enc_pre_rnn_layers, 1, enc_n_hid),
-            persistent=False,
+            torch.zeros(enc_pre_rnn_layers, 1, enc_n_hid), persistent=False
         )
         self.initial_post_hidden = nn.Buffer(
-            torch.zeros(enc_post_rnn_layers, 1, enc_n_hid),
-            persistent=False,
+            torch.zeros(enc_post_rnn_layers, 1, enc_n_hid), persistent=False
         )
 
     def forward(
@@ -303,7 +307,8 @@ class EncoderJoint(nn.Module):
         feats_1: Tensor,
         prediction: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        """Run a sequence of two-frame encoder/joint steps.
+        """
+        Run a sequence of two-frame encoder/joint steps.
 
         Args:
             feats_0: ``[time, batch, in_feats]`` first frame of each pair.
@@ -314,13 +319,12 @@ class EncoderJoint(nn.Module):
             A pair ``(encoding, logits)`` of ``[time, batch, joint_n_hid]`` and
             ``[time, batch, n_classes]``.
         """
-        outputs = self.scan(
+        return self.scan(
             (feats_0, feats_1, prediction),
             (self.initial_pre_hidden, self.initial_post_hidden),
             input_axis=(0, 0, 0),
             output_axis=(0, 0),
         )
-        return outputs[0], outputs[1]
 
 
 @beartype
@@ -336,7 +340,9 @@ def multi_model_entries(
     joint_n_hid: int,
     fp8_weights: bool,
 ) -> list:
-    """Construct the two entry points with one shared joint network."""
+    """
+    Construct the two entry points with one shared joint network.
+    """
     from vollo_model_zoo.vm import MultiModelEntry
 
     joint_network = nn.Sequential(
@@ -406,7 +412,9 @@ def _vm(
     fp8_weights: bool,
     config: str,
 ) -> list:
-    """Compile the internal-state prediction and encoder entry points."""
+    """
+    Compile the internal-state prediction and encoder entry points.
+    """
     from vollo_model_zoo.vm import vollo_multi_model_info
 
     return vollo_multi_model_info(
