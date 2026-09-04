@@ -382,25 +382,19 @@ def main(config: str = "V80") -> Generator:
             joint_n_hid=256,
             fp8_weights=False,
         ),
+        # 49M model via fp8 weights
+        dict(
+            n_classes=1024,
+            pred_n_hid=512,
+            pred_rnn_layers=2,
+            in_feats=240,
+            enc_n_hid=1024,
+            enc_pre_rnn_layers=2,
+            enc_post_rnn_layers=3,
+            joint_n_hid=512,
+            fp8_weights=True,
+        ),
     ]
-
-    # FP8 weights are supported only by the V80-family configurations.
-    if config in ("V80", "V80LL") and Version(version("vollo-compiler")) >= Version(
-        "29.0.0"
-    ):
-        models.append(
-            dict(
-                n_classes=1024,
-                pred_n_hid=512,
-                pred_rnn_layers=2,
-                in_feats=240,
-                enc_n_hid=1024,
-                enc_pre_rnn_layers=2,
-                enc_post_rnn_layers=3,
-                joint_n_hid=512,
-                fp8_weights=True,
-            )
-        )
 
     for x in models:
         yield from _vm(**x, config=config)
