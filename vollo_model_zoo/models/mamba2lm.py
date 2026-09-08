@@ -260,13 +260,42 @@ def _vm(
             distributed_norm=distributed_norm,
             n_layers=n_layers,
             vocab_size=vocab_size,
+            ssm_fp32=ssm_fp32,
+            ffn_fp8=ffn_fp8,
         ),
     )
 
 
 @beartype
-def main(config: str = "V80plus") -> Generator:
+def main(config: str = "V80") -> Generator:
     for x in [
+        # ~1M parameter baseline
+        dict(
+            d_model=256,
+            d_state=32,
+            d_conv=4,
+            d_head=32,
+            expand=2.0,
+            mlp_dim=640,
+            head_partitions=None,
+            n_layers=1,
+            vocab_size=512,
+            ssm_fp32=False,
+            ffn_fp8=False,
+        ),
+        dict(
+            d_model=256,
+            d_state=32,
+            d_conv=4,
+            d_head=32,
+            expand=2.0,
+            mlp_dim=640,
+            head_partitions=None,
+            n_layers=1,
+            vocab_size=512,
+            ssm_fp32=True,
+            ffn_fp8=False,
+        ),
         dict(
             d_model=384,
             d_state=32,
@@ -274,11 +303,11 @@ def main(config: str = "V80plus") -> Generator:
             d_head=32,
             expand=2.0,
             mlp_dim=1536,
-            head_partitions=24,
+            head_partitions=None,
             n_layers=1,
             vocab_size=1024,
             ssm_fp32=False,
-            ffn_fp8=True,
+            ffn_fp8=False,
         ),
         dict(
             d_model=384,
@@ -292,20 +321,6 @@ def main(config: str = "V80plus") -> Generator:
             vocab_size=1024,
             ssm_fp32=True,
             ffn_fp8=False,
-        ),
-        dict(
-            d_model=768,
-            d_state=64,
-            d_conv=4,
-            d_head=48,
-            expand=1.5,
-            mlp_dim=3072,
-            head_partitions=None,
-            distributed_norm=False,
-            n_layers=12,
-            vocab_size=32768,
-            ssm_fp32=False,
-            ffn_fp8=True,
         ),
     ]:
         yield _vm(**x, config=config)
