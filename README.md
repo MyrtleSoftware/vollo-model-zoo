@@ -22,7 +22,7 @@ Models in the zoo include:
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
 |                   | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
-|                   | [Mamba-2 LM](#mamba-2-lm)                             | [`mamba2lm.py`](./vollo_model_zoo/models/mamba2lm.py)                                                                                                 |
+|                   | [Nano LLM](#nano-llm)                                 | [`nano-llm.py`](./vollo_model_zoo/models/nano-llm.py)                                                                                                 |
 | **Attention**     | [Sliding window attention](#sliding-window-attention) | [`swa.py`](./vollo_model_zoo/models/swa.py)                                                                                                           |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM
@@ -394,20 +394,42 @@ than sharing one wide recurrence. This reduces cross-core communication. The
 final RMS norm and output projection are partitioned along with them, under
 `distributed_norm` (on by default).
 
-### Mamba 2 LM
+### Nano LLM
 
-Code/model: [`mamba2lm.py`](./vollo_model_zoo/models/mamba2lm.py)
+Code/model: [`nano-llm.py`](./vollo_model_zoo/models/nano-llm.py)
 
-Mamba2LM is a decoder-only language model built from the zoo's
+<p align="center">
+  **⚠️ This model is currently experimental ⚠️**
+</p>
+
+<p align="center">
+  **If you are interested in NanoLLM please contact Myrtle to find out about upcoming improvements**
+</p>
+
+
+NanoLLM is a decoder-only language model built from the zoo's
 [Mamba-2](#mamba-2) mixer. The architecture follows
 [nanochat](https://github.com/karpathy/nanochat), with the transformer's
-self-attention layers swapped for Mamba-2 layers: a token embedding, a stack of
-pre-norm blocks pairing a Mamba-2 mixer with a squared-ReLU MLP, then a final
-RMSNorm and an LM head, whose vocabulary is padded to a clean shape as per the
-original implementation. `get_logits` slices the padding back off and 
-applies `tanh` softcapping. Where the other Mamba files are a single mixer, 
-this one is the whole network, and it shows how to compose an existing zoo model file into a
-larger one.
+self-attention layers swapped for Mamba-2 layers.
+
+Attention was traded for a recurrence to buy inference: constant work and constant state per token,
+however long the context. That is only worth anything if the model still
+learns, so we trained one using the
+[nanochat](https://github.com/karpathy/nanochat) framework. The resulting **140M parameter** NanoLLM (12 layers,
+`d_model` 768, head dimension 48, `d_state` 64, a 32768-token vocabulary and a
+2048-token context) reaches a validation **bits-per-byte of 0.87356**, slightly
+ahead of a nanochat **transformer of 195M parameters** trained on the same data
+at **0.919805**. This was further finetuned for chat and reached a validation **bits-per-byte of 0.3826**. The table
+below details the validation and test metrics.
+
+
+| Model                    | Params | Val bpb    | CORE     | Finetuned Val bpb | Finetuned CORE |
+| ------------------------ | ------ | ---------- | -------- | ----------------- | -------------- |
+| **NanoLLM (this model)** | 140M   | 0.87356    | 0.1187   | **0.3826**        |  0.1054        |
+| nanochat transformer     | 195M   | 0.919805   | 0.0959   | 0.3849            |  0.0675        |
+
+Note that these are small models by LLM standards and the downstream scores should be read
+as such.
 
 Because the SSM state is recurrent rather than a growing KV cache, the streamed
 program consumes **one token per inference** with all of its state resident in
@@ -415,8 +437,35 @@ tensor RAM — the cost per token is constant in the sequence length, which is
 what makes autoregressive decode a good fit for Vollo. Token embedding stays on
 the host (`embed`); the compiled model takes embeddings and returns logits.
 
-To convert a trained nanochat-style Mamba-2 LM checkpoint to this model's state
-dict, see `convert_state_dict` in the model file.
+#### Mixed precision
+
+NanoLLM is the zoo's fullest example of mixing precisions within one model.
+Vollo computes in `bf16` by default
+
+- **`ffn_fp8` — `fp8` weights for the MLP and the LM head.** Each block's
+  MLP and the final vocabulary projection are wrapped in
+  `vollo_torch.Fp8Weights()`. These are the model's largest weight matrices, so
+  storing them at `fp8` roughly halves the weight store the model occupies. 
+  Requires a V80-family config — `vm.config_supports(config, "fp8")`. 
+- **`bf16` for the Mamba-2 mixer.** The input/gate projections, depthwise
+  convolution and the SSM's matrix-vector products run at Vollo's default
+  precision. 
+- **`ssm_fp32` — `fp32` for the recurrent state** When set, only
+  the two steps that carry information _between_ tokens are wrapped in
+  `vollo_torch.Fp32Activations()`: the decay `dA = exp(...)` and the state
+  update `S = dA * S + dB`. Everything else in the step, including the output
+  `y = dA * (S @ C) + instant`, stays `bf16`.
+
+To convert a trained nanochat-style checkpoint to this model's state dict, see
+`convert_state_dict` in [the tests](./tests/test_nano_llm.py). The tests also
+include a demo with 140M parameter trained model with simple greedy-decoding.
+Note that the trained checkpoint test reads an internal Myrtle mount
+and skip when it isn't there.
+
+Because it tracks unreleased multi-board work, this model is excluded from the
+benchmark sweep and the test matrix, so you won't find it in
+[`benchmarks/`](./benchmarks/) — run it yourself with
+`uv run zoo nano-llm --experimental`.
 
 ### Sliding window attention
 

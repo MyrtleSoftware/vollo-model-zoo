@@ -14,13 +14,22 @@ from vollo_compiler import AllocationError, SaveError
 
 # Names changed over time, fallback to depreciated for backwards-compat
 _CONFIG_CONSTRUCTORS = {
-    "V80plus": ("amd_v80_c6b32", "v80_c6b32"),
+    "4xV80": ("amd_v80_c6b32", "v80_c6b32"),
     "V80": ("amd_v80_c6b32", "v80_c6b32"),
     "V80LL": ("amd_v80ll_c6b32", "v80ll_c6b32"),
     "IA-420f": ("bittware_ia420f_c6b32", "ia_420f_c6b32"),
     "IA-840f": ("bittware_ia840f_c3b64", "ia_840f_c3b64"),
     "NT400D11": ("napatech_nt400d11_c6b32", "nt400d11_c6b32"),
 }
+
+
+# Models behind `zoo --experimental`
+EXPERIMENTAL_MODELS = {"moe", "nano-llm"}
+
+# Note that the experimental config `4xV80` is 24 cores,
+# above the cap of the serializable program architecture, so
+# `to_program` will error if `allow_unserializable=True` is not set
+EXPERIMENTAL_CONFIGS = {"4xV80": "nano-llm"}
 
 
 @beartype
@@ -35,8 +44,11 @@ def _get_configs() -> dict[str, vc.Config]:
             if hasattr(vc.Config, constructor):
                 configs[name] = getattr(vc.Config, constructor)()
                 break
-        if name == "V80plus" and configs[name]:
-            configs[name].num_cores *= 4
+
+    # Experimental: scale a V80's core count up
+    if "4xV80" in configs:
+        configs["4xV80"].num_cores *= 4
+
     return configs
 
 

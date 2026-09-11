@@ -460,11 +460,25 @@ reference implementation.
   allow-listed.
 - Docstrings state tensor shapes on `forward`. Do this; it is how readers
   navigate the streaming and data-dimension rules.
-- Experimental gating is **hardcoded in `zoo.py`**
-  (`if args.model.lower() == "moe"`). The notice prints unconditionally; only the
-  early `return 1` is conditional on `--experimental`. Marking another model
-  experimental means updating that check _and_ the README banner; there is no
-  per-model metadata for it yet.
+- Experimental gating is two declarations in `vm.py` — `EXPERIMENTAL_MODELS`, and
+  `EXPERIMENTAL_CONFIGS` mapping a config to the one model it may run with.
+  The refusal is `zoo.check_experimental`, so that part is CLI-only. Notes print
+  unconditionally, so an experimental result is labelled as one; only the refusal
+  is conditional.
+  - Marking a **model** experimental is adding it to the set _and_ the README
+    banner; there is still no per-model metadata, so nothing else sees it. Such
+    models are benchmarked and tested normally (`moe` is in `benchmarks/`).
+  - An experimental **config** is skipped by `test_models.py` and `benchmark.py`,
+    and so is **the model it names**: both filter `CONFIGS` through
+    `EXPERIMENTAL_CONFIGS`'s keys and `get_models()` through its values. So CI
+    neither measures that config nor benchmarks that model at all. Its
+    single-board numbers would be beside the point when the config they exist for
+    is the one left out. `nano-llm` is the current case, tracking multi-board
+    work on `4xV80`. Check both by hand:
+    `uv run zoo <model> --config <config> --experimental`.
+  - Consequence: a model reached only through `EXPERIMENTAL_CONFIGS` is exempt
+    from every `test_models.py` invariant (the ~1M baseline size, the monotonic
+    sweep, no allocation errors). Don't rely on those holding for it.
 
 ## Checklist: adding a model
 

@@ -5,7 +5,13 @@ import pytest
 from beartype import beartype
 from vollo_compiler import AllocationError, SaveError
 
-from vollo_model_zoo.vm import CONFIGS, Ok, get_models, get_results
+from vollo_model_zoo.vm import (
+    CONFIGS,
+    EXPERIMENTAL_CONFIGS,
+    Ok,
+    get_models,
+    get_results,
+)
 
 
 def is_sorted(xs, *, key):
@@ -18,15 +24,16 @@ def idfn(config):
     return config
 
 
-# V80plus is a 24-core config, above the cap of the serializable program
-# architecture, so `to_program` rejects every model that doesn't opt into
-# `allow_unserializable=True`. Until the model files can express that per-config,
-# the config isn't testable.
-_CONFIGS = [name for name in CONFIGS if name != "V80plus"]
+# Experimental configs are restricted to one model each, so they aren't testable
+# across every model — and the model an experimental config exists for is left
+# out too, since the config it is written for is the one CI can't run. Check
+# that pairing by hand: `zoo <model> --config <config> --experimental`.
+_CONFIGS = [name for name in CONFIGS if name not in EXPERIMENTAL_CONFIGS]
+_MODELS = [name for name in get_models() if name not in EXPERIMENTAL_CONFIGS.values()]
 
 
 @pytest.mark.parametrize("config", [None, *_CONFIGS], ids=idfn)
-@pytest.mark.parametrize("model_name", get_models())
+@pytest.mark.parametrize("model_name", _MODELS)
 @beartype
 def test_models(model_name: str, config: Optional[str]):
     #

@@ -37,4 +37,11 @@ profile = "black"
 addopts = "-v"
 
 [dependency-groups]
-dev = ["flash-linear-attention>=0.4.1", "pre-commit>=4.5.1", "pytest>=9.0.2"]
+dev = [
+  "flash-linear-attention>=0.4.1",
+  "pre-commit>=4.5.1",
+  "pytest>=9.0.2",
+  # Unpickles the nanochat tokenizer that `test_nano_llm.py`'s checkpoint tests
+  # decode with. Only reachable when the internal checkpoint mount is present.
+  "tiktoken>=0.12.0",
+]
