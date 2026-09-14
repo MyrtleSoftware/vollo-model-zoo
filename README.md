@@ -406,27 +406,22 @@ Code/model: [`nano-llm.py`](./vollo_model_zoo/models/nano-llm.py)
   **If you are interested in NanoLLM please contact Myrtle to find out about upcoming improvements**
 </p>
 
-
 NanoLLM is a decoder-only language model built from the zoo's
 [Mamba-2](#mamba-2) mixer. The architecture follows
 [nanochat](https://github.com/karpathy/nanochat), with the transformer's
-self-attention layers swapped for Mamba-2 layers.
+self-attention layers swapped for Mamba-2 layers. This change was motivated to
+improve inference: constant work and constant state per token. We trained the
+model using the [nanochat](https://github.com/karpathy/nanochat) framework.
+The resulting **140M parameter** NanoLLM reaches a validation **bits-per-byte
+of 0.87356**, slightly ahead of a nanochat **transformer of 195M parameters**
+trained on the same data at **0.919805**. This was further finetuned for chat
+and reached a validation **bits-per-byte of 0.3826**. The table below details
+the validation and test metrics.
 
-Attention was traded for a recurrence to buy inference: constant work and constant state per token,
-however long the context. That is only worth anything if the model still
-learns, so we trained one using the
-[nanochat](https://github.com/karpathy/nanochat) framework. The resulting **140M parameter** NanoLLM (12 layers,
-`d_model` 768, head dimension 48, `d_state` 64, a 32768-token vocabulary and a
-2048-token context) reaches a validation **bits-per-byte of 0.87356**, slightly
-ahead of a nanochat **transformer of 195M parameters** trained on the same data
-at **0.919805**. This was further finetuned for chat and reached a validation **bits-per-byte of 0.3826**. The table
-below details the validation and test metrics.
-
-
-| Model                    | Params | Val bpb    | CORE     | Finetuned Val bpb | Finetuned CORE |
-| ------------------------ | ------ | ---------- | -------- | ----------------- | -------------- |
-| **NanoLLM (this model)** | 140M   | 0.87356    | 0.1187   | **0.3826**        |  0.1054        |
-| nanochat transformer     | 195M   | 0.919805   | 0.0959   | 0.3849            |  0.0675        |
+| Model                    | Params | Val bpb  | CORE   | Finetuned Val bpb | Finetuned CORE |
+| ------------------------ | ------ | -------- | ------ | ----------------- | -------------- |
+| **NanoLLM (this model)** | 140M   | 0.87356  | 0.1187 | **0.3826**        | 0.1054         |
+| nanochat transformer     | 195M   | 0.919805 | 0.0959 | 0.3849            | 0.0675         |
 
 Note that these are small models by LLM standards and the downstream scores should be read
 as such.
@@ -435,7 +430,7 @@ Because the SSM state is recurrent rather than a growing KV cache, the streamed
 program consumes **one token per inference** with all of its state resident in
 tensor RAM — the cost per token is constant in the sequence length, which is
 what makes autoregressive decode a good fit for Vollo. Token embedding stays on
-the host (`embed`); the compiled model takes embeddings and returns logits.
+the host; the compiled model takes embeddings and returns logits.
 
 #### Mixed precision
 
@@ -445,11 +440,11 @@ Vollo computes in `bf16` by default
 - **`ffn_fp8` — `fp8` weights for the MLP and the LM head.** Each block's
   MLP and the final vocabulary projection are wrapped in
   `vollo_torch.Fp8Weights()`. These are the model's largest weight matrices, so
-  storing them at `fp8` roughly halves the weight store the model occupies. 
-  Requires a V80-family config — `vm.config_supports(config, "fp8")`. 
+  storing them at `fp8` roughly halves the weight store the model occupies.
+  Requires a V80-family config — `vm.config_supports(config, "fp8")`.
 - **`bf16` for the Mamba-2 mixer.** The input/gate projections, depthwise
   convolution and the SSM's matrix-vector products run at Vollo's default
-  precision. 
+  precision.
 - **`ssm_fp32` — `fp32` for the recurrent state** When set, only
   the two steps that carry information _between_ tokens are wrapped in
   `vollo_torch.Fp32Activations()`: the decay `dA = exp(...)` and the state
