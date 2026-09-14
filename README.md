@@ -434,33 +434,26 @@ the host; the compiled model takes embeddings and returns logits.
 
 #### Mixed precision
 
-NanoLLM is the zoo's fullest example of mixing precisions within one model.
-Vollo computes in `bf16` by default
+NanoLLM is a full example of mixing three different precisions within one
+model. Vollo computes in `bf16` by default but the NanoLLM model uses:
 
-- **`ffn_fp8` — `fp8` weights for the MLP and the LM head.** Each block's
-  MLP and the final vocabulary projection are wrapped in
-  `vollo_torch.Fp8Weights()`. These are the model's largest weight matrices, so
-  storing them at `fp8` roughly halves the weight store the model occupies.
-  Requires a V80-family config — `vm.config_supports(config, "fp8")`.
+- **`ffn_fp8` — `fp8` weights for the MLP and the LM head.** These are the
+  model's largest weight matrices, so storing them at `fp8` roughly halves the
+  weight store the model occupies.
 - **`bf16` for the Mamba-2 mixer.** The input/gate projections, depthwise
   convolution and the SSM's matrix-vector products run at Vollo's default
   precision.
-- **`ssm_fp32` — `fp32` for the recurrent state** When set, only
-  the two steps that carry information _between_ tokens are wrapped in
-  `vollo_torch.Fp32Activations()`: the decay `dA = exp(...)` and the state
-  update `S = dA * S + dB`. Everything else in the step, including the output
-  `y = dA * (S @ C) + instant`, stays `bf16`.
+- **`ssm_fp32` — `fp32` for the recurrent state** When set, the steps that
+  carry information _between_ tokens are wrapped in
+  `vollo_torch.Fp32Activations()` causing the recurrent hidden state (and the
+  operations that update it) to be stored in `fp32`. This reduces numerical
+  error accumulation over long sequences with the minimal overhead.
 
 To convert a trained nanochat-style checkpoint to this model's state dict, see
 `convert_state_dict` in [the tests](./tests/test_nano_llm.py). The tests also
 include a demo with 140M parameter trained model with simple greedy-decoding.
 Note that the trained checkpoint test reads an internal Myrtle mount
 and skip when it isn't there.
-
-Because it tracks unreleased multi-board work, this model is excluded from the
-benchmark sweep and the test matrix, so you won't find it in
-[`benchmarks/`](./benchmarks/) — run it yourself with
-`uv run zoo nano-llm --experimental`.
 
 ### Sliding window attention
 
