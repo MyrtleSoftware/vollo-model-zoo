@@ -29,6 +29,8 @@ EXPERIMENTAL_MODELS = {"moe", "nano-llm"}
 # Note that the experimental config `4xV80` is 24 cores,
 # above the cap of the serializable program architecture, so
 # `to_program` will error if `allow_unserializable=True` is not set
+# Experimental configs are only available for specific models as
+# indicated below.
 EXPERIMENTAL_CONFIG_MODEL_COMBOS = {"4xV80": "nano-llm"}
 
 # The config `zoo` runs when `--config` is not given.
