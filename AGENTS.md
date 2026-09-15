@@ -23,7 +23,8 @@ Requires [`uv`](https://docs.astral.sh/uv/) and Python 3.13 (`.python-version`).
 `uv run` bootstraps the venv from `uv.lock` — never `pip install` into it by hand.
 
 ```fish
-uv run zoo <model>                 # latency table for one model (default config: V80)
+uv run zoo <model>                 # latency table for one model (default config: V80,
+                                   # or the model's own EXPERIMENTAL_CONFIG_MODEL_COMBOS entry)
 uv run zoo <model> --config V80LL  # pick a hardware config
 uv run zoo <model> -j              # machine-readable JSON
 uv run zoo --help                  # list all models + configs
@@ -326,7 +327,7 @@ What that means here:
 
 ## `vm.py` API
 
-- `CONFIGS`: `{"V80plus", "V80", "V80LL", "IA-420f", "IA-840f", "NT400D11"}` → `vc.Config`,
+- `CONFIGS`: `{"4xV80", "V80", "V80LL", "IA-420f", "IA-840f", "NT400D11"}` → `vc.Config`,
   built with `hasattr` probes so the repo still works against older SDKs missing
   a config. Add new configs the same defensive way.
 - `config_supports(config, feature) -> bool` probes `Config.features`, e.g.
@@ -461,24 +462,31 @@ reference implementation.
 - Docstrings state tensor shapes on `forward`. Do this; it is how readers
   navigate the streaming and data-dimension rules.
 - Experimental gating is two declarations in `vm.py` — `EXPERIMENTAL_MODELS`, and
-  `EXPERIMENTAL_CONFIGS` mapping a config to the one model it may run with.
+  `EXPERIMENTAL_CONFIG_MODEL_COMBOS` mapping a config to the one model it may run with.
   The refusal is `zoo.check_experimental`, so that part is CLI-only. Notes print
   unconditionally, so an experimental result is labelled as one; only the refusal
   is conditional.
   - Marking a **model** experimental is adding it to the set _and_ the README
     banner; there is still no per-model metadata, so nothing else sees it. Such
     models are benchmarked and tested normally (`moe` is in `benchmarks/`).
-  - An experimental **config** is skipped by `test_models.py` and `benchmark.py`,
-    and so is **the model it names**: both filter `CONFIGS` through
-    `EXPERIMENTAL_CONFIGS`'s keys and `get_models()` through its values. So CI
-    neither measures that config nor benchmarks that model at all. Its
-    single-board numbers would be beside the point when the config they exist for
-    is the one left out. `nano-llm` is the current case, tracking multi-board
-    work on `4xV80`. Check both by hand:
-    `uv run zoo <model> --config <config> --experimental`.
-  - Consequence: a model reached only through `EXPERIMENTAL_CONFIGS` is exempt
-    from every `test_models.py` invariant (the ~1M baseline size, the monotonic
-    sweep, no allocation errors). Don't rely on those holding for it.
+  - An experimental **config** is skipped by `test_models.py` and
+    `benchmark.py`: both filter `CONFIGS` through
+    `EXPERIMENTAL_CONFIG_MODEL_COMBOS`'s keys, because it is not a board anyone
+    has. `4xV80` is the current case — four V80s' worth of cores, tracking
+    multi-board work — and it is the only thing CI leaves out.
+  - **The model it names is not exempt.** It is tested and benchmarked on every
+    real config like any other, so all of `test_models.py`'s invariants hold for
+    it (the ~1M baseline size, the monotonic sweep, no allocation errors on the
+    default / `V80` / `V80LL`). A size only the experimental config can run is
+    kept out by `main()` itself, gated on what the config provides
+    (`nano-llm`'s trained size needs `CONFIGS[config].num_cores`), so the sweep
+    shrinks to what the board can hold rather than reporting failures. Its
+    `main()` default config must therefore be a real one, since
+    `get_results(model, None)` calls `main()` bare.
+  - Check the pairing by hand with `uv run zoo <model> --experimental`:
+    `vm.default_config` reads `EXPERIMENTAL_CONFIG_MODEL_COMBOS` backwards, so
+    such a model runs on the config it exists for unless `--config` says
+    otherwise. That is the only way to see those sizes.
 
 ## Checklist: adding a model
 

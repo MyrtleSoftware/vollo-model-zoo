@@ -7,7 +7,7 @@ from vollo_compiler import AllocationError, SaveError
 
 from vollo_model_zoo.vm import (
     CONFIGS,
-    EXPERIMENTAL_CONFIGS,
+    EXPERIMENTAL_CONFIG_MODEL_COMBOS,
     Ok,
     get_models,
     get_results,
@@ -24,12 +24,10 @@ def idfn(config):
     return config
 
 
-# Experimental configs are restricted to one model each, so they aren't testable
-# across every model — and the model an experimental config exists for is left
-# out too, since the config it is written for is the one CI can't run. Check
-# that pairing by hand: `zoo <model> --config <config> --experimental`.
-_CONFIGS = [name for name in CONFIGS if name not in EXPERIMENTAL_CONFIGS]
-_MODELS = [name for name in get_models() if name not in EXPERIMENTAL_CONFIGS.values()]
+# Exclude experimental configs from test. Every model, including
+# experimental, is still tested on every real config
+_CONFIGS = [name for name in CONFIGS if name not in EXPERIMENTAL_CONFIG_MODEL_COMBOS]
+_MODELS = get_models()
 
 
 @pytest.mark.parametrize("config", [None, *_CONFIGS], ids=idfn)

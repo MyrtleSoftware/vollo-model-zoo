@@ -5,9 +5,11 @@ from beartype import beartype
 
 from vollo_model_zoo.vm import (
     CONFIGS,
-    EXPERIMENTAL_CONFIGS,
+    DEFAULT_CONFIG,
+    EXPERIMENTAL_CONFIG_MODEL_COMBOS,
     EXPERIMENTAL_MODELS,
     Ok,
+    default_config,
     get_models,
     get_results,
     to_dict,
@@ -54,8 +56,9 @@ def main() -> int:
         "--config",
         type=str,
         choices=list(CONFIGS.keys()),
-        default="V80",
-        help="Hardware configuration (FPGA) to simulate",
+        default=None,
+        help=f"Hardware configuration (FPGA) to simulate (default: {DEFAULT_CONFIG},"
+        " or the model's own config if it has an experimental one)",
     )
 
     parser.add_argument(
@@ -72,11 +75,12 @@ def main() -> int:
     )
 
     args = parser.parse_args()
+    config = args.config if args.config is not None else default_config(args.model)
 
-    if not check_experimental(args.model, args.config, args.experimental):
+    if not check_experimental(args.model, config, args.experimental):
         return 1
 
-    return run_model(args.model, args.config, args.json)
+    return run_model(args.model, config, args.json)
 
 
 @beartype
@@ -91,7 +95,7 @@ def check_experimental(model: str, config: str, experimental: bool) -> bool:
         print(f"Note: the '{model}' model is experimental (requires --experimental)")
         needs_flag = True
 
-    if (supported_model := EXPERIMENTAL_CONFIGS.get(config)) is not None:
+    if (supported_model := EXPERIMENTAL_CONFIG_MODEL_COMBOS.get(config)) is not None:
         print(
             f"Note: the '{config}' config is experimental (requires --experimental)"
             f" and is only available for the '{supported_model}' model"

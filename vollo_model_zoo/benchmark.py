@@ -10,7 +10,7 @@ from tqdm import tqdm
 from vollo_model_zoo.version import benchmark_version, describe_version
 from vollo_model_zoo.vm import (
     CONFIGS,
-    EXPERIMENTAL_CONFIGS,
+    EXPERIMENTAL_CONFIG_MODEL_COMBOS,
     get_models,
     get_results,
     to_dict,
@@ -43,13 +43,10 @@ def main() -> int:
 
 @beartype
 def run_benchmark(json_output: Path, version: str) -> int:
-    # Experimental configs only apply to specific models, so they're not swept,
-    # and nor are the models they exist for: the config that would make those
-    # numbers meaningful is the one left out.
-    models = [
-        name for name in get_models() if name not in EXPERIMENTAL_CONFIGS.values()
-    ]
-    configs = [name for name in CONFIGS if name not in EXPERIMENTAL_CONFIGS]
+    # Exclude experimental configs from benchmarking. Every model, including
+    # experimental, is still benchmarked
+    models = get_models()
+    configs = [name for name in CONFIGS if name not in EXPERIMENTAL_CONFIG_MODEL_COMBOS]
     results = defaultdict(dict)
 
     if json_output.exists():

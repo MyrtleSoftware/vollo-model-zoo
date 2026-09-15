@@ -29,7 +29,24 @@ EXPERIMENTAL_MODELS = {"moe", "nano-llm"}
 # Note that the experimental config `4xV80` is 24 cores,
 # above the cap of the serializable program architecture, so
 # `to_program` will error if `allow_unserializable=True` is not set
-EXPERIMENTAL_CONFIGS = {"4xV80": "nano-llm"}
+EXPERIMENTAL_CONFIG_MODEL_COMBOS = {"4xV80": "nano-llm"}
+
+# The config `zoo` runs when `--config` is not given.
+DEFAULT_CONFIG = "V80"
+
+
+@beartype
+def default_config(model: str) -> str:
+    """
+    The config to run `model` on when `--config` is not given.
+
+    A model that an experimental config exists for defaults to that config
+    """
+    for config, experimental_model in EXPERIMENTAL_CONFIG_MODEL_COMBOS.items():
+        if experimental_model == model:
+            return config
+
+    return DEFAULT_CONFIG
 
 
 @beartype
