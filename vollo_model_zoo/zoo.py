@@ -3,7 +3,17 @@ import json
 
 from beartype import beartype
 
-from vollo_model_zoo.vm import CONFIGS, Ok, get_models, get_results, to_dict
+from vollo_model_zoo.vm import (
+    CONFIGS,
+    DEFAULT_CONFIG,
+    EXPERIMENTAL_CONFIG_MODEL_COMBOS,
+    EXPERIMENTAL_MODELS,
+    Ok,
+    default_config,
+    get_models,
+    get_results,
+    to_dict,
+)
 
 
 @beartype
@@ -46,8 +56,9 @@ def main() -> int:
         "--config",
         type=str,
         choices=list(CONFIGS.keys()),
-        default="V80",
-        help="Hardware configuration (FPGA) to simulate",
+        default=None,
+        help=f"Hardware configuration (FPGA) to simulate (default: {DEFAULT_CONFIG},"
+        " or the model's own config if it has an experimental one)",
     )
 
     parser.add_argument(
@@ -60,20 +71,44 @@ def main() -> int:
     parser.add_argument(
         "--experimental",
         action="store_true",
-        help="Allow running experimental models",
+        help="Allow running experimental models and configs",
     )
 
     args = parser.parse_args()
+    config = args.config if args.config is not None else default_config(args.model)
 
-    if args.model.lower() == "moe":
-        print("This model is experimental and requires the --experimental flag")
-        print(f"If you are intested in {args.model} please contact Myrtle to find out")
+    if not check_experimental(args.model, config, args.experimental):
+        return 1
+
+    return run_model(args.model, config, args.json)
+
+
+@beartype
+def check_experimental(model: str, config: str, experimental: bool) -> bool:
+    """
+    Check if the requested model or config is experimental, and return whether the run is allowed
+    """
+    needs_flag = False
+    supported = True
+
+    if model in EXPERIMENTAL_MODELS:
+        print(f"Note: the '{model}' model is experimental (requires --experimental)")
+        needs_flag = True
+
+    if (supported_model := EXPERIMENTAL_CONFIG_MODEL_COMBOS.get(config)) is not None:
+        print(
+            f"Note: the '{config}' config is experimental (requires --experimental)"
+            f" and is only available for the '{supported_model}' model"
+        )
+        needs_flag = True
+        supported = model == supported_model
+
+    if needs_flag and not (experimental and supported):
+        print(f"If you are interested in {model} please contact Myrtle to find out")
         print("about upcoming improvements")
+        return False
 
-        if not args.experimental:
-            return 1
-
-    return run_model(args.model, args.config, args.json)
+    return True
 
 
 @beartype

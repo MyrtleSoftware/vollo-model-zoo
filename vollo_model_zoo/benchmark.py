@@ -8,7 +8,13 @@ from beartype import beartype
 from tqdm import tqdm
 
 from vollo_model_zoo.version import benchmark_version, describe_version
-from vollo_model_zoo.vm import CONFIGS, get_models, get_results, to_dict
+from vollo_model_zoo.vm import (
+    CONFIGS,
+    EXPERIMENTAL_CONFIG_MODEL_COMBOS,
+    get_models,
+    get_results,
+    to_dict,
+)
 
 
 @beartype
@@ -37,8 +43,10 @@ def main() -> int:
 
 @beartype
 def run_benchmark(json_output: Path, version: str) -> int:
+    # Exclude experimental configs from benchmarking. Every model, including
+    # experimental, is still benchmarked
     models = get_models()
-    configs = list(CONFIGS.keys())
+    configs = [name for name in CONFIGS if name not in EXPERIMENTAL_CONFIG_MODEL_COMBOS]
     results = defaultdict(dict)
 
     if json_output.exists():

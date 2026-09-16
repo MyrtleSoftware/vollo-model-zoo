@@ -14,12 +14,41 @@ from vollo_compiler import AllocationError, SaveError
 
 # Names changed over time, fallback to depreciated for backwards-compat
 _CONFIG_CONSTRUCTORS = {
+    "4xV80": ("amd_v80_c6b32", "v80_c6b32"),
     "V80": ("amd_v80_c6b32", "v80_c6b32"),
     "V80LL": ("amd_v80ll_c6b32", "v80ll_c6b32"),
     "IA-420f": ("bittware_ia420f_c6b32", "ia_420f_c6b32"),
     "IA-840f": ("bittware_ia840f_c3b64", "ia_840f_c3b64"),
     "NT400D11": ("napatech_nt400d11_c6b32", "nt400d11_c6b32"),
 }
+
+
+# Models behind `zoo --experimental`
+EXPERIMENTAL_MODELS = {"moe", "nano-llm"}
+
+# Note that the experimental config `4xV80` is 24 cores,
+# above the cap of the serializable program architecture, so
+# `to_program` will error if `allow_unserializable=True` is not set
+# Experimental configs are only available for specific models as
+# indicated below.
+EXPERIMENTAL_CONFIG_MODEL_COMBOS = {"4xV80": "nano-llm"}
+
+# The config `zoo` runs when `--config` is not given.
+DEFAULT_CONFIG = "V80"
+
+
+@beartype
+def default_config(model: str) -> str:
+    """
+    The config to run `model` on when `--config` is not given.
+
+    A model that an experimental config exists for defaults to that config
+    """
+    for config, experimental_model in EXPERIMENTAL_CONFIG_MODEL_COMBOS.items():
+        if experimental_model == model:
+            return config
+
+    return DEFAULT_CONFIG
 
 
 @beartype
@@ -34,6 +63,10 @@ def _get_configs() -> dict[str, vc.Config]:
             if hasattr(vc.Config, constructor):
                 configs[name] = getattr(vc.Config, constructor)()
                 break
+
+    # Experimental: scale a V80's core count up
+    if "4xV80" in configs:
+        configs["4xV80"].num_cores *= 4
 
     return configs
 
@@ -128,6 +161,7 @@ def vollo_info(
     meta: Optional[dict[str, Union[int, float, str]]] = None,
     allow_dynamic_weights: bool = False,
     quick_compile: bool = False,
+    allow_unserializable: bool = False,
 ) -> Result:
     """
     For a given model/input compile it to a vollo program and return
@@ -142,6 +176,7 @@ def vollo_info(
             config=_config(config),
             allow_dynamic_weights=allow_dynamic_weights,
             quick_compile=quick_compile,
+            allow_unserializable=allow_unserializable,
         )
     except (AllocationError, SaveError, ValueError) as e:
         return e
@@ -287,6 +322,7 @@ def _vollo_compile(
     config: vc.Config,
     allow_dynamic_weights: bool = False,
     quick_compile: bool = False,
+    allow_unserializable: bool = False,
     **kwargs,
 ) -> vc.Program:
     """
@@ -303,10 +339,13 @@ def _vollo_compile(
         nnir, _ = nnir.streaming_transform(time_axis)
 
     program = nnir.to_program(
-        config, quick_compile=quick_compile, allow_dynamic_weights=allow_dynamic_weights
+        config,
+        quick_compile=quick_compile,
+        allow_dynamic_weights=allow_dynamic_weights,
+        allow_unserializable=allow_unserializable,
     )
-
-    program.pack()  # Should raise error if it doesn't fit
+    if not allow_unserializable:
+        program.pack()  # Should raise error if it doesn't fit
 
     return program
 

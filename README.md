@@ -22,6 +22,7 @@ Models in the zoo include:
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
 |                   | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
+|                   | [Nano LLM](#nano-llm)                                 | [`nano-llm.py`](./vollo_model_zoo/models/nano-llm.py)                                                                                                 |
 | **Attention**     | [Sliding window attention](#sliding-window-attention) | [`swa.py`](./vollo_model_zoo/models/swa.py)                                                                                                           |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM
@@ -392,6 +393,67 @@ projections, depthwise convolution and scan wrapped in a
 than sharing one wide recurrence. This reduces cross-core communication. The
 final RMS norm and output projection are partitioned along with them, under
 `distributed_norm` (on by default).
+
+### Nano LLM
+
+Code/model: [`nano-llm.py`](./vollo_model_zoo/models/nano-llm.py)
+
+<p align="center">
+  **⚠️ This model is currently experimental ⚠️**
+</p>
+
+<p align="center">
+  **If you are interested in NanoLLM please contact Myrtle to find out about upcoming improvements**
+</p>
+
+NanoLLM is a decoder-only language model built from the zoo's
+[Mamba-2](#mamba-2) mixer. The architecture follows
+[nanochat](https://github.com/karpathy/nanochat), with the transformer's
+self-attention layers swapped for Mamba-2 layers. This change was motivated to
+improve inference: constant work and constant state per token. We trained the
+model using the [nanochat](https://github.com/karpathy/nanochat) framework.
+The resulting **140M parameter** NanoLLM reaches a validation **bits-per-byte
+of 0.87356**, slightly ahead of a nanochat **transformer of 195M parameters**
+trained on the same data at **0.919805**. This was further finetuned for chat
+and reached a validation **bits-per-byte of 0.3826**. The table below details
+the validation and test metrics.
+
+| Model                    | Params | Val bpb  | CORE   | Finetuned Val bpb | Finetuned CORE |
+| ------------------------ | ------ | -------- | ------ | ----------------- | -------------- |
+| **NanoLLM (this model)** | 140M   | 0.87356  | 0.1187 | **0.3826**        | 0.1054         |
+| nanochat transformer     | 195M   | 0.919805 | 0.0959 | 0.3849            | 0.0675         |
+
+Note that these are small models by LLM standards and the downstream scores should be read
+as such.
+
+Because the SSM state is recurrent rather than a growing KV cache, the streamed
+program consumes **one token per inference** with all of its state resident in
+tensor RAM — the cost per token is constant in the sequence length, which is
+what makes autoregressive decode a good fit for Vollo. Token embedding stays on
+the host; the compiled model takes embeddings and returns logits.
+
+#### Mixed precision
+
+NanoLLM is a full example of mixing three different precisions within one
+model. Vollo computes in `bf16` by default but the NanoLLM model uses:
+
+- **`ffn_fp8` — `fp8` weights for the MLP and the LM head.** These are the
+  model's largest weight matrices, so storing them at `fp8` roughly halves the
+  weight store the model occupies.
+- **`bf16` for the Mamba-2 mixer.** The input/gate projections, depthwise
+  convolution and the SSM's matrix-vector products run at Vollo's default
+  precision.
+- **`ssm_fp32` — `fp32` for the recurrent state** When set, the steps that
+  carry information _between_ tokens are wrapped in
+  `vollo_torch.Fp32Activations()` causing the recurrent hidden state (and the
+  operations that update it) to be stored in `fp32`. This reduces numerical
+  error accumulation over long sequences with the minimal overhead.
+
+To convert a trained nanochat-style checkpoint to this model's state dict, see
+`convert_state_dict` in [the tests](./tests/test_nano_llm.py). The tests also
+include a demo with 140M parameter trained model with simple greedy-decoding.
+Note that the trained checkpoint test reads an internal Myrtle mount
+and skip when it isn't there.
 
 ### Sliding window attention
 

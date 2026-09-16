@@ -5,7 +5,13 @@ import pytest
 from beartype import beartype
 from vollo_compiler import AllocationError, SaveError
 
-from vollo_model_zoo.vm import CONFIGS, Ok, get_models, get_results
+from vollo_model_zoo.vm import (
+    CONFIGS,
+    EXPERIMENTAL_CONFIG_MODEL_COMBOS,
+    Ok,
+    get_models,
+    get_results,
+)
 
 
 def is_sorted(xs, *, key):
@@ -18,8 +24,14 @@ def idfn(config):
     return config
 
 
-@pytest.mark.parametrize("config", [None, *CONFIGS.keys()], ids=idfn)
-@pytest.mark.parametrize("model_name", get_models())
+# Exclude experimental configs from test. Every model, including
+# experimental, is still tested on every real config
+_CONFIGS = [name for name in CONFIGS if name not in EXPERIMENTAL_CONFIG_MODEL_COMBOS]
+_MODELS = get_models()
+
+
+@pytest.mark.parametrize("config", [None, *_CONFIGS], ids=idfn)
+@pytest.mark.parametrize("model_name", _MODELS)
 @beartype
 def test_models(model_name: str, config: Optional[str]):
     #
