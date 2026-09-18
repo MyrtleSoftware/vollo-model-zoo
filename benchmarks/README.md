@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (Vollo SDK 29.0.0, model zoo 0.3.0)
+# Vollo Model Zoo Benchmarks (Vollo SDK 29.0.0, model zoo 0.4.0)
 
 Compute latency for an approximately 1-million parameter model.
 
@@ -11,9 +11,12 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.56 | 2.69 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.14 | 1.50 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 3.66 | 4.02 | masked=True, partitions=6, dim=224, window=32, layers=2 |
+| stateless-rnnt | 1.07 | 1.08 | prog=predictor, hidden=192, joint_hidden=288 |
 | ssm | 0.71 | 0.71 | dim=576, hidden=448 |
 | slp | 0.87 | 0.87 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.69 | 0.70 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 6.72 | 6.72 | dim=160, patches=9, layers=5, activation=ReLU |
+| nano-llm | 3.11 | 5.15 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
 | moe | 0.90 | 0.91 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 9.37 | 9.37 | width_mult=0.42 |
 | mlp-res-rms | 1.64 | 1.64 | dim=320, hidden=768, activation=relu |
@@ -32,9 +35,12 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.82 | 2.96 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.25 | 1.65 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 4.03 | 4.42 | masked=True, partitions=6, dim=224, window=32, layers=2 |
+| stateless-rnnt | 1.18 | 1.18 | prog=predictor, hidden=192, joint_hidden=288 |
 | ssm | 0.78 | 0.78 | dim=576, hidden=448 |
 | slp | 0.96 | 0.96 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.76 | 0.77 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 7.39 | 7.40 | dim=160, patches=9, layers=5, activation=ReLU |
+| nano-llm | 3.42 | 5.66 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
 | moe | 0.99 | 1.00 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.31 | 10.31 | width_mult=0.42 |
 | mlp-res-rms | 1.80 | 1.81 | dim=320, hidden=768, activation=relu |
@@ -53,9 +59,12 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.98 | 3.08 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.27 | 1.66 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 4.29 | 4.66 | masked=True, partitions=6, dim=224, window=32, layers=2 |
+| stateless-rnnt | 1.20 | 1.20 | prog=predictor, hidden=192, joint_hidden=288 |
 | ssm | 0.75 | 0.75 | dim=576, hidden=448 |
 | slp | 0.91 | 0.92 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.77 | 0.77 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 16.01 | 16.01 | dim=160, patches=9, layers=5, activation=ReLU |
+| nano-llm | 3.53 | 5.62 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
 | moe | 1.20 | 1.20 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.98 | 11.03 | width_mult=0.42 |
 | mlp-res-rms | 1.85 | 1.85 | dim=320, hidden=768, activation=relu |
@@ -74,9 +83,12 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.57 | 2.58 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.04 | 1.59 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 4.18 | 4.93 | masked=True, partitions=3, dim=224, window=32, layers=2 |
+| stateless-rnnt | 0.92 | 0.92 | prog=predictor, hidden=192, joint_hidden=288 |
 | ssm | 0.53 | 0.54 | dim=576, hidden=448 |
 | slp | 0.57 | 0.57 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.68 | 0.68 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 5.01 | 5.02 | dim=160, patches=9, layers=5, activation=ReLU |
+| nano-llm | 3.27 | 5.41 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=3, ffn_fp8=False |
 | moe | 0.71 | 0.71 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.13 | 10.24 | width_mult=0.42 |
 | mlp-res-rms | 1.56 | 1.56 | dim=320, hidden=768, activation=relu |
@@ -95,9 +107,12 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.98 | 3.08 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.27 | 1.66 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 4.29 | 4.66 | masked=True, partitions=6, dim=224, window=32, layers=2 |
+| stateless-rnnt | 1.20 | 1.20 | prog=predictor, hidden=192, joint_hidden=288 |
 | ssm | 0.75 | 0.75 | dim=576, hidden=448 |
 | slp | 0.91 | 0.92 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.77 | 0.77 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 16.01 | 16.01 | dim=160, patches=9, layers=5, activation=ReLU |
+| nano-llm | 3.53 | 5.62 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
 | moe | 1.20 | 1.20 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.98 | 11.03 | width_mult=0.42 |
 | mlp-res-rms | 1.85 | 1.85 | dim=320, hidden=768, activation=relu |
@@ -464,6 +479,41 @@ Click to expand each plot:
 </details>
 
 <details>
+<summary>nano_llm_IA_420f</summary>
+
+![nano_llm_IA_420f](../plots/nano_llm_IA_420f.svg)
+
+</details>
+
+<details>
+<summary>nano_llm_IA_840f</summary>
+
+![nano_llm_IA_840f](../plots/nano_llm_IA_840f.svg)
+
+</details>
+
+<details>
+<summary>nano_llm_NT400D11</summary>
+
+![nano_llm_NT400D11](../plots/nano_llm_NT400D11.svg)
+
+</details>
+
+<details>
+<summary>nano_llm_V80LL</summary>
+
+![nano_llm_V80LL](../plots/nano_llm_V80LL.svg)
+
+</details>
+
+<details>
+<summary>nano_llm_V80</summary>
+
+![nano_llm_V80](../plots/nano_llm_V80.svg)
+
+</details>
+
+<details>
 <summary>resmlp_IA_420f</summary>
 
 ![resmlp_IA_420f](../plots/resmlp_IA_420f.svg)
@@ -495,6 +545,41 @@ Click to expand each plot:
 <summary>resmlp_V80</summary>
 
 ![resmlp_V80](../plots/resmlp_V80.svg)
+
+</details>
+
+<details>
+<summary>rnnt_IA_420f</summary>
+
+![rnnt_IA_420f](../plots/rnnt_IA_420f.svg)
+
+</details>
+
+<details>
+<summary>rnnt_IA_840f</summary>
+
+![rnnt_IA_840f](../plots/rnnt_IA_840f.svg)
+
+</details>
+
+<details>
+<summary>rnnt_NT400D11</summary>
+
+![rnnt_NT400D11](../plots/rnnt_NT400D11.svg)
+
+</details>
+
+<details>
+<summary>rnnt_V80LL</summary>
+
+![rnnt_V80LL](../plots/rnnt_V80LL.svg)
+
+</details>
+
+<details>
+<summary>rnnt_V80</summary>
+
+![rnnt_V80](../plots/rnnt_V80.svg)
 
 </details>
 
@@ -565,6 +650,41 @@ Click to expand each plot:
 <summary>ssm_V80</summary>
 
 ![ssm_V80](../plots/ssm_V80.svg)
+
+</details>
+
+<details>
+<summary>stateless_rnnt_IA_420f</summary>
+
+![stateless_rnnt_IA_420f](../plots/stateless_rnnt_IA_420f.svg)
+
+</details>
+
+<details>
+<summary>stateless_rnnt_IA_840f</summary>
+
+![stateless_rnnt_IA_840f](../plots/stateless_rnnt_IA_840f.svg)
+
+</details>
+
+<details>
+<summary>stateless_rnnt_NT400D11</summary>
+
+![stateless_rnnt_NT400D11](../plots/stateless_rnnt_NT400D11.svg)
+
+</details>
+
+<details>
+<summary>stateless_rnnt_V80LL</summary>
+
+![stateless_rnnt_V80LL](../plots/stateless_rnnt_V80LL.svg)
+
+</details>
+
+<details>
+<summary>stateless_rnnt_V80</summary>
+
+![stateless_rnnt_V80](../plots/stateless_rnnt_V80.svg)
 
 </details>
 
