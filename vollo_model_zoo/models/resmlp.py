@@ -67,7 +67,7 @@ class _CrossChannel(nn.Module):
             case "relu":
                 act = nn.ReLU()
             case "gelu":
-                act = _GELU()
+                act = nn.GELU()
             case _:
                 raise ValueError(f"Unsupported activation: {activation}")
 
@@ -128,14 +128,6 @@ class _Aff(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x * self.alpha + self.beta
-
-
-class _GELU(nn.Module):
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Approximation, see: https://arxiv.org/pdf/1606.08415
-        """
-        return x * nn.functional.sigmoid(1.702 * x)
 
 
 @beartype
