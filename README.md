@@ -125,8 +125,7 @@ A typical ResMLP block consists of two residual sublayers:
   - Non-linearity.
   - Linear down-projection.
 
-The Vollo implementation also showcases the GELU activation function implemented
-via the common `tanh` approximation.
+The Vollo implementation also showcases the GELU activation function.
 
 ### Mixture of experts (MoE) block
 
