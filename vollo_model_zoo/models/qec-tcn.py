@@ -159,6 +159,14 @@ class _Conv2d(nn.Module):
                 conv.bias.mul_(gamma).add_(beta)
 
 
+def _thirds(num_cores: int | None) -> list[list[int]] | None:
+    """Cores for kernel rows 0, 1, 2 of a spread block: a third of the cores each."""
+    if num_cores is None:
+        return None
+    k = num_cores // 3
+    return [list(range(dt * k, (dt + 1) * k)) for dt in range(3)]
+
+
 class FiLMDecoder(nn.Module):
     @beartype
     def __init__(
@@ -209,19 +217,11 @@ class FiLMDecoder(nn.Module):
             raise ValueError(
                 f"num_cores needs one entry per conv block, got {num_cores}"
             )
-        cores = []
-        for n in num_cores:
-            if n is not None and n % 3:
-                raise ValueError(f"num_cores must be multiples of 3, got {num_cores}")
-            k = 0 if n is None else n // 3
-            cores.append(
-                None
-                if n is None
-                else [list(range(dt * k, (dt + 1) * k)) for dt in range(3)]
-            )
+        if any(n is not None and n % 3 for n in num_cores):
+            raise ValueError(f"num_cores must be multiples of 3, got {num_cores}")
         self.first = nn.Linear(9, channels[0])
         self.convs = nn.ModuleList(
-            _Conv2d(i, o, rounds, c) for (i, o), c in zip(blocks, cores)
+            _Conv2d(i, o, rounds, _thirds(n)) for (i, o), n in zip(blocks, num_cores)
         )
         self.head = nn.Conv1d(
             channels[-1], num_stabilisers + 1, rounds * num_stabilisers
@@ -488,20 +488,22 @@ def _spread_cores(
     a list spreading the fewest, largest conv blocks that make the weights fit."""
     from vollo_model_zoo.vm import CONFIGS
 
-    hw, n = CONFIGS[config], CONFIGS[config].num_cores
+    hw = CONFIGS[config]
+    n = hw.num_cores
     blocks = lambda i, o: -(-i // hw.block_size) * -(-o // hw.block_size)
     convs = [9 * blocks(i, o) for i, o in zip(channels[:-1], channels[1:])]
     head = rounds * num_stabilisers * blocks(channels[-1], num_stabilisers + 1)
     largest = sorted(range(len(convs)), key=lambda c: -convs[c])
     for k in range(len(convs) + 1):
         spread = set(largest[:k])
-        # An unspread block is copied to every core; a spread one, once per third.
-        copies = [n // 3 if c in spread else n for c in range(len(convs))]
-        if sum(map(int.__mul__, copies, convs)) + head <= n * hw.weight_store_depth:
+        # Weight blocks stored over all cores: an unspread block is copied to
+        # every core, a spread one to the n / 3 cores of each kernel row's third.
+        stored = sum(w * (n // 3 if c in spread else n) for c, w in enumerate(convs))
+        if stored + head <= n * hw.weight_store_depth:
             break
-    return (
-        None if not spread else [n if c in spread else None for c in range(len(convs))]
-    )
+    if not spread:
+        return None
+    return [n if c in spread else None for c in range(len(convs))]
 
 
 @beartype

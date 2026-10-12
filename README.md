@@ -213,10 +213,10 @@ column, so every 3x3 window is 9 consecutive positions: one non-streaming
 `Conv1d` of kernel 9 and stride 3 sums all 9 taps inside the matmul, and the
 compiler skips the multiplications by the zero border. Where the conv weights
 fit, the compiler copies them to every core and splits the positions. On boards
-whose weight stores cannot hold the copies, the largest blocks needed to make
+whose weight stores cannot hold the copies, the fewest, largest blocks that make
 them fit run each kernel row as its own `Conv1d` on its own third of the cores
-(a `CorePartition`), and the three are summed.
-Tests check both against `Conv2d` and `Linear` with shared weights.
+(a `CorePartition`), and the three are summed. Tests check both lowerings
+against `Conv2d` and `Linear` with shared weights, in PyTorch and on the VM.
 
 For comparison, `StreamingFiLMDecoder` is a Vollo-oriented redesign (not the
 paper's network, so it needs retraining): a causal, dilated `PaddedConv1d` over
