@@ -1,6 +1,7 @@
 from collections.abc import Generator
 from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
+from typing import Literal
 
 import torch
 import vollo_torch
@@ -166,6 +167,86 @@ def _load_two_layer_lstm(
             state_dict[target] = current.detach()
 
 
+# DEVIATION from the per-round decoder above (same network and weights, split
+# across two programs). The paper's head runs once per experiment, on the final
+# round's state and the real final defects; streaming the whole decoder runs it
+# every round instead. These two parts run it once: the rounds program streams
+# the LSTM and emits its state, and after the last round the host sends that
+# state and the final defects to the head program. Each round costs less, but
+# the decision after the last round costs the last round, moving the state out
+# and back in, and the head, which is more than the single program's last round.
+# The rounds program also emits its whole state every round (hidden_size values,
+# 256 at d=11) instead of one logit: output IO the VM does not model. Measured
+# on SDK 29.0.0, V80, d=3: 136 cycles a round instead of 200 (spaced), then
+# 136 + 112 cycles of compute plus the host round trip for the decision instead
+# of 200; d=11 contiguous, 0.963 us a round instead of 1.097.
+
+
+class QECLSTMRounds(nn.Module):
+    @beartype
+    def __init__(self, decoder: QECLSTM):
+        """
+        The recurrent part of `decoder`, streamed one round per inference: it
+        shares the decoder's LSTM layers (and placement, though `_vm` builds the
+        parts from an unplaced decoder), and emits the second layer's state for
+        `QECLSTMHead`. Its state dict uses the layers' own `lstm1`/`lstm2` keys:
+        save and load the decoder, not the parts.
+        """
+        super().__init__()
+        self.lstm1 = decoder.lstm1
+        self.lstm2 = decoder.lstm2
+        self.lstm1_cores = decoder.lstm1_cores
+        self.lstm2_cores = decoder.lstm2_cores
+
+    def forward(self, defects: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            defects: Tensor of shape [B, T, num_defects!]
+
+        Returns:
+            Tensor of shape [B, T, hidden_size!]: the LSTM state
+        """
+        with _on_cores(self.lstm1_cores):
+            state, _ = self.lstm1(defects)  # [B, T, hidden!]
+        with _on_cores(self.lstm2_cores):
+            state, _ = self.lstm2(state)  # [B, T, hidden!]
+        return state
+
+
+class QECLSTMHead(nn.Module):
+    @beartype
+    def __init__(self, decoder: QECLSTM):
+        """
+        The head of `decoder`, run once after the last round: it shares the
+        decoder's head Linears (and placement, though `_vm` builds the parts from
+        an unplaced decoder). Save and load the decoder, not the parts.
+        """
+        super().__init__()
+        self.hidden_size = decoder.state_to_hidden.in_features
+        self.state_to_hidden = decoder.state_to_hidden
+        self.final_defects_to_hidden = decoder.final_defects_to_hidden
+        self.logit = decoder.logit
+        self.head_cores = decoder.head_cores
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: Tensor of shape [B, F!], F = hidden_size + (d^2 - 1) / 2: the
+               last round's LSTM state from `QECLSTMRounds`, then the final
+               defects
+
+        Returns:
+            Tensor of shape [B, 1!]: logit that the logical qubit has flipped
+        """
+        state = x[..., : self.hidden_size]
+        final_defects = x[..., self.hidden_size :]
+        state = torch.relu(state)
+        with _on_cores(self.head_cores):
+            hidden = self.state_to_hidden(state)
+            hidden = hidden + self.final_defects_to_hidden(final_defects)
+            return self.logit(torch.relu(hidden))
+
+
 @beartype
 def _on_cores(cores: list[int] | None) -> AbstractContextManager:
     """
@@ -180,6 +261,7 @@ def _vm(
     hidden_size: int,
     soft: bool,
     config: str,
+    part: Literal["decoder", "rounds", "head"] = "decoder",
 ):
     from vollo_model_zoo.vm import CONFIGS, vollo_info
 
@@ -204,11 +286,17 @@ def _vm(
     #   first LSTM layer off the first of the head's cores, which takes the
     #   logit, leaves an isolated round as fast and makes back-to-back rounds
     #   1-5% faster.
+    # - The two parts of the head-once form (`part`) are left to the compiler:
+    #   with no head on core 0 to feed, the rounds program's LSTM is faster
+    #   spread (d=5: 151 cycles against 159 on V80), and the head alone gains
+    #   nothing from one core.
     hw = CONFIGS[config]
     blocks = -(-hidden_size // hw.block_size)
     extra = blocks - hw.num_cores
     lstm1_cores, lstm2_cores, head_cores = None, None, None
-    if blocks <= 4:
+    if part != "decoder":
+        pass
+    elif blocks <= 4:
         lstm2_cores, head_cores = [0, 1, 2], [0]
     elif extra == 2 and hw.num_cores >= 4:
         head_cores = list(range(extra, hw.num_cores))
@@ -222,34 +310,55 @@ def _vm(
         lstm2_cores=lstm2_cores,
         head_cores=head_cores,
     )
-    num_inputs = model.num_defects + (distance**2 - 1) // 2
-    input = torch.randn(1, 5, num_inputs)
+    num_final = (distance**2 - 1) // 2
+    match part:
+        case "decoder":
+            input = torch.randn(1, 5, model.num_defects + num_final)
+        case "rounds":
+            model = QECLSTMRounds(model)
+            input = torch.randn(1, 5, model.lstm1.input_size)
+        case "head":
+            model = QECLSTMHead(model)
+            input = torch.randn(1, hidden_size + num_final)
 
     return vollo_info(
         model,
         input,
         config=config,
-        time_axis=1,
+        time_axis=None if part == "head" else 1,
         meta=dict(
             distance=distance,
             hidden_size=hidden_size,
             soft=soft,
+            **({} if part == "decoder" else dict(part=part)),
         ),
     )
 
 
 @beartype
 def main(config: str = "V80") -> Generator:
+    d3 = dict(distance=3, hidden_size=64, soft=False)
+    d5 = dict(distance=5, hidden_size=128, soft=False)
+    d11 = dict(distance=11, hidden_size=256, soft=False)
+    # Ordered by parameter count, which is what is monotonic on every config.
+    # The `part` entries are the DEVIATION above: the per-round cost of the
+    # streamed LSTM, and the one-off cost of the head after the last round
     for x in [
+        dict(**d3, part="head"),
+        dict(**d5, part="head"),
+        dict(**d3, part="rounds"),
         # Paper sizes (Varbanov et al. 2023), hard defects, then soft inputs
-        dict(distance=3, hidden_size=64, soft=False),
+        d3,
         dict(distance=3, hidden_size=64, soft=True),
-        dict(distance=5, hidden_size=128, soft=False),
+        dict(**d11, part="head"),
+        dict(**d5, part="rounds"),
+        d5,
         dict(distance=5, hidden_size=128, soft=True),
         dict(distance=7, hidden_size=128, soft=False),
         dict(distance=9, hidden_size=128, soft=False),
+        dict(**d11, part="rounds"),
         # ~1M parameters baseline, d=11 (120 stabilisers, 60 final defects):
-        dict(distance=11, hidden_size=256, soft=False),
+        d11,
     ]:
         yield _vm(**x, config=config)
 

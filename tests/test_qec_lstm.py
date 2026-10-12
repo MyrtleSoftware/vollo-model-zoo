@@ -227,3 +227,54 @@ def test_missing_tensor_is_reported_by_its_checkpoint_name(placement: str):
     result = model.load_state_dict(state, strict=False)
     assert result.missing_keys == ["lstm.weight_ih_l1"]
     assert result.unexpected_keys == []
+
+
+@pytest.mark.parametrize("soft", [False, True])
+@pytest.mark.parametrize("distance,hidden_size", [(3, 16), (5, 32)])
+@beartype
+def test_parts_compose_to_decoder(distance: int, hidden_size: int, soft: bool):
+    """
+    The head-once deviation: `QECLSTMHead` on each round's `QECLSTMRounds`
+    state and final defects is the decoder's logit for that round.
+    """
+    model, reference = build(distance, hidden_size, soft, "compiler")
+    rounds, head = qec_lstm.QECLSTMRounds(model), qec_lstm.QECLSTMHead(model)
+    x = torch.randn(2, 12, model.num_defects + (distance**2 - 1) // 2)
+
+    with torch.no_grad():
+        state = rounds(x[..., : model.num_defects])
+        logits = head(torch.cat([state, x[..., model.num_defects :]], dim=-1))
+        torch.testing.assert_close(logits, reference(x), rtol=1e-5, atol=1e-5)
+
+
+@pytest.mark.parametrize("config", ["V80", "IA-840f"])
+@pytest.mark.parametrize("distance,hidden_size", [(3, 64), (5, 128)])
+@beartype
+def test_vm_parts_match_reference(distance: int, hidden_size: int, config: str):
+    """
+    The two programs in the VM: stream the rounds program over every round,
+    then run the head program once on the last round's state and the final
+    defects, against the reference's logit after the last round.
+    """
+    model, reference = build(distance, hidden_size, False, "compiler")
+    x = torch.randn(1, 16, model.num_defects + (distance**2 - 1) // 2)
+    defects = x[..., : model.num_defects]
+
+    rounds = _vollo_compile(
+        qec_lstm.QECLSTMRounds(model), defects, time_axis=1, config=CONFIGS[config]
+    )
+    states = rounds.to_vm(bit_accurate=False).run_timesteps(defects.numpy(), 1, 1)
+
+    head_input = np.concatenate([states[:, -1], x[:, -1, model.num_defects :]], -1)
+    head_input = head_input.astype(np.float32)
+    head = _vollo_compile(
+        qec_lstm.QECLSTMHead(model),
+        torch.from_numpy(head_input),
+        time_axis=None,
+        config=CONFIGS[config],
+    )
+    logit = head.to_vm(bit_accurate=False).run(head_input)
+
+    with torch.no_grad():
+        expected = reference(x)[:, -1].numpy()
+    np.testing.assert_allclose(logit, expected, atol=1e-5, rtol=1e-4)

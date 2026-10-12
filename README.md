@@ -262,6 +262,18 @@ With `soft=True` the inputs are the
 analog-readout defect probabilities and leakage flags of Ali et al., which
 doubles the input width for almost no extra latency.
 
+The paper's head runs once, after the last round; streamed whole, the decoder
+runs it every round. The `part` entries split the same network and weights into
+two programs: `rounds` streams the LSTM and emits its state, and `head` runs
+once on the last state and the final defects. A round is about a third cheaper
+spaced (V80 d=3: 0.45 µs instead of 0.67), and cheaper back-to-back too (d=11:
+0.96 µs instead of 1.10 on V80, 0.93 instead of 1.09 on IA-420f, 0.57 instead of
+0.88 on IA-840f), but each round now sends out its whole state (256 values at
+d=11) rather than one logit, IO the VM does not model. The decision after the
+last round then costs both programs plus moving the state through the host, more
+than the single program's last round. `zoo qec-lstm` lists the sweep by
+parameter count, so the `part` entries appear between the decoder entries.
+
 ### RNN-T
 
 Code/models: [`rnnt.py`](./vollo_model_zoo/models/rnnt.py) and
