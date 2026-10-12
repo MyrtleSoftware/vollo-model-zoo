@@ -9,6 +9,7 @@ Models in the zoo include:
 | Category          | Model                                                 | Implementation                                                                                                                                        |
 | :---------------- | :---------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Dense**         | [Basic MLPs](#basic-multilayer-perceptrons-mlp)       | [`slp.py`](./vollo_model_zoo/models/slp.py), [`mlp.py`](./vollo_model_zoo/models/mlp.py), [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py) |
+|                   | [Qubit readout MLP](#qubit-readout-mlp)               | [`readout-mlp.py`](./vollo_model_zoo/models/readout-mlp.py)                                                                                           |
 |                   | [SwiGLU FFN](#transformer-swiglu-feed-forward-block)  | [`ffn-swiglu.py`](./vollo_model_zoo/models/ffn-swiglu.py)                                                                                             |
 |                   | [ResMLP](#resmlp)                                     | [`resmlp.py`](./vollo_model_zoo/models/resmlp.py)                                                                                                     |
 |                   | [Mixture of Experts](#mixture-of-experts-moe-block)   | [`moe.py`](./vollo_model_zoo/models/moe.py)                                                                                                           |
@@ -83,6 +84,30 @@ activation-functions available on Vollo, including:
 
 Some of these are _first-class_ (i.e. have hardware support) whilst others are
 composed of simpler operations.
+
+### Qubit readout MLP
+
+Code/model: [`readout-mlp.py`](./vollo_model_zoo/models/readout-mlp.py)
+
+Several superconducting qubits share one readout line, and the digitised
+resonator trace of the ~1 µs integration window is classified on the qubit
+controller. The file pairs two networks on the same five-qubit dataset: the
+raw-trace FNN of [Lienhard et al.](https://arxiv.org/abs/2102.12481), which
+reads all qubits' trace at once and so models readout crosstalk, with SELU
+as published; and the distilled per-qubit student bank of
+[KLiNQ](https://arxiv.org/abs/2503.03544) (Guo et al.), 31-16-8-1 and
+201-16-8-1 on interval-averaged I/Q plus a matched-filter scalar, for
+independent mid-circuit measurement. The averaging, filter and
+normalisation fold exactly into one constant layer per student.
+
+The bank takes ~0.9 µs on V80, short of the 0.6 µs we would like: five
+qubits' traces are 5000 inputs, and loading them alone costs ~0.76 µs.
+KLiNQ's own FPGA design computes the averaging and filter as samples stream
+in, so a paired entry does the same: the front end runs upstream of Vollo
+(e.g. in RTL), and Vollo takes only the 495 features and runs the five
+16-8-1 networks, at ~0.46 µs. Vollo does not support `nn.SELU`, so the file
+rebuilds it exactly from `relu`, `exp` and `clamp` (tested against
+`nn.SELU`), which costs ~0.6 µs over ReLU at the paper's size.
 
 ### Transformer++'s SwiGLU feed-forward block
 
