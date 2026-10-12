@@ -191,24 +191,26 @@ def _vm(
     #   spread saves less matmul time than its cross-core transfers cost. The
     #   second LSTM layer, on three cores including the head's, beats the
     #   compiler's choice of four.
-    # - A bigger head runs on the cores holding one block fewer, which finish
-    #   their LSTM work first, when each core holds one or two blocks and at
-    #   most half of them hold two (hidden 224 to 288 on a block size of 32).
-    #   The compiler's own spread of the head is uneven, and can put the logit
-    #   on a core holding two blocks. Over that range the rule measured 2
-    #   cycles faster on V80 and 4-9 on IA-420f, and at 256 and 288 up to 17%
-    #   faster back to back. Left with two cores (320) it is slower, so past
-    #   that range the compiler's placement is kept. Keeping the first LSTM
-    #   layer off the first of those cores, which takes the logit, leaves an
-    #   isolated round as fast and makes back-to-back rounds 1-5% faster over
-    #   the same range.
+    # - When exactly two cores hold an extra block (8 blocks on six cores:
+    #   hidden 225 to 256 on a block size of 32), a bigger head runs on the
+    #   four cores holding one block, which finish their LSTM work first. The
+    #   compiler's own spread of the head is uneven, and can put the logit on a
+    #   core holding two blocks. The rule measured 0-2 cycles faster on V80 and
+    #   7-9 on IA-420f at every width measured from 232 to 256, and faster back
+    #   to back (up to 19%, at 256 on IA-420f). At 7 and 9 blocks the same
+    #   placement won only at whole-block widths (224, 288) and lost up to 12
+    #   cycles in between (200-216, 260-280), and with fewer cores left it is
+    #   slower still, so there the compiler's placement is kept. Keeping the
+    #   first LSTM layer off the first of the head's cores, which takes the
+    #   logit, leaves an isolated round as fast and makes back-to-back rounds
+    #   1-5% faster.
     hw = CONFIGS[config]
     blocks = -(-hidden_size // hw.block_size)
-    extra = blocks % hw.num_cores
+    extra = blocks - hw.num_cores
     lstm1_cores, lstm2_cores, head_cores = None, None, None
     if blocks <= 4:
         lstm2_cores, head_cores = [0, 1, 2], [0]
-    elif hw.num_cores < blocks < 2 * hw.num_cores and extra <= hw.num_cores // 2:
+    elif extra == 2 and hw.num_cores >= 4:
         head_cores = list(range(extra, hw.num_cores))
         lstm1_cores = [c for c in range(hw.num_cores) if c != extra]
 
