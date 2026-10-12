@@ -307,8 +307,9 @@ class ReadoutFNN(nn.Module):
             num_cores:  Cores to spread the first two Linears over (1: leave them whole)
             block_size: The config's block size, so pieces are whole blocks
             interleave: Interleave a large first Linear over the cores in rounds
-            one_block_pieces: Whether one-block pieces run at full rate (Versal),
-                which lets a smaller first Linear be interleaved too
+            one_block_pieces: Whether a Linear with one output block runs at
+                full rate on a core (Versal; Agilex runs it at half rate), which
+                lets a smaller first Linear be interleaved too
         """
         super().__init__()
         widths = [n_inputs, *hidden, n_outputs]
@@ -403,9 +404,11 @@ def _vm(
         # where it measured faster (SDK 29.0.0); on the block-64 IA-840f it
         # measured slower on the SELU entries, so that board keeps it one
         # piece per core.
-        # HERQULES's and Mude's 500-wide first layer is interleaved only on the
-        # Versal boards (V80, V80LL), which run a one-block piece at full rate;
-        # Agilex runs a one-block Linear at half rate (SDK 29.0.0).
+        # One-block pieces (which interleave HERQULES's and Mude's 500-wide
+        # first layer) are gated on the FPGA architecture, `Config.fabric`, not
+        # on a board: a core's MAC takes a Linear with one output block at full
+        # rate on Versal (V80, V80LL) but at half rate on Agilex (IA-420f,
+        # NT400D11, IA-840f), where it costs as much as two (SDK 29.0.0).
         hw = CONFIGS[config]
         model = ReadoutFNN(
             n_inputs,
