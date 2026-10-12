@@ -487,22 +487,24 @@ Code/model: [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)
 The real-time AlphaQubit 2 decoder (AQ2-RT) for the surface code,
 [Senior et al.](https://arxiv.org/abs/2512.07737), successor to
 [AlphaQubit](https://arxiv.org/abs/2310.05900). Each of the d²−1 stabilisers
-carries a 128-vector; a step takes six syndrome cycles and applies an RG-LRU
-recurrence, two parallel-residual transformer layers across the stabilisers
-(spatial RoPE, gated dense) and a second RG-LRU. The readout runs once per
-experiment, so it is its own entry. A superconducting round is about 1.1 µs, so
-a six-cycle step has 6.6 µs: this does not fit. Trapped-ion and neutral-atom
-machines, with rounds of 0.1–1 ms, are where it fits today. A step costs the
-same for any G that fits one block of inputs, so the G=16 pair (beyond the
-paper's G ≤ 6, needs retraining) trades per-cycle throughput for waiting up to
-16 cycles longer before the final step.
+carries a 128-vector; a step takes six syndrome cycles and applies Griffin's
+RG-LRU recurrent block, two pre-norm transformer layers across the stabilisers
+(spatial RoPE, gated dense) and a second RG-LRU block. The readout runs once per
+experiment, so it is its own entry.
 
-The file also holds `AlphaQubitLite`, our own faster design in the same family
-(per-stabiliser state added to every round, pooled readout each round), as the
-paired variant. It shows `Scan` with several states, `allow_dynamic_weights` for
+A superconducting cycle is about 1.1 µs, so a six-cycle step has 6.6 µs. One
+step at a time, Vollo takes longer than that (9.1 µs at d=3, 19.4 µs at d=5 on
+V80), so the decoder falls behind and its backlog grows with the experiment. The
+paper keeps up on a TPU, to d=11, by processing blocks of 24–96 cycles at once.
+Trapped-ion and neutral-atom machines, with millisecond rounds, leave ample time.
+A step costs the same for any G that fits one block of inputs, so the G=16 pair
+(beyond the paper's G ≤ 6, needs retraining) keeps up at d=3, at the cost of
+waiting up to 16 cycles longer before the final step.
+
+The file shows `Scan` with several states, `allow_dynamic_weights` for
 attention, RoPE folded into a second projection to avoid slicing the data
 dimension, and heads pinned one per core with `vollo_torch.CorePartition`, which
-nearly halves the AQ2-RT step.
+nearly halves the step.
 
 ## Other utilities
 

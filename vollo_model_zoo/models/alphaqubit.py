@@ -37,7 +37,7 @@ def _rope_tables(distance: int, dim_head: int) -> tuple[torch.Tensor, torch.Tens
     cos and sin of the spatial RoPE angles, [N, dim_head]. A head's first half
     of channels rotates with x, the second with y; each half is `[a | b]`, with
     each `(a_i, b_i)` rotated as a pair. The paper gives no frequencies: the
-    ladder from 20 down to 0.2 is ours.
+    geometric ladder from 20 down to about 0.36 (dim_head 32) is ours.
     """
     q = dim_head // 4
     freq = 20 * 10.0 ** (-2 * torch.arange(q) / q)
@@ -110,11 +110,11 @@ class _Attention(nn.Module):
 
 class _Layer(nn.Module):
     """
-    Transformer layer with a parallel residual,
-    `x + Attn(RMSNorm(x)) + Dense(RMSNorm(x))`: attention and the dense block are
-    independent, so the layer is shallower than a serial one. The dense block is
-    gated, `down(gelu(up(h)) * gate(h))`, in AlphaQubit 2 and a plain
-    `down(gelu(up(h)))` in the lite model.
+    Pre-norm transformer layer, as in the paper's Fig. S1a: attention, then a
+    gated dense block, each behind its own RMSNorm and residual,
+    `x = x + Attn(RMSNorm(x))`, then `x = x + down(gelu(up(h)) * gate(h))` with
+    `h = RMSNorm(x)`. The gated form is Griffin's MLP block; the paper does not
+    spell it out. For cross-attention the context goes through the first norm.
     """
 
     @beartype
@@ -124,29 +124,29 @@ class _Layer(nn.Module):
         heads: int,
         expand: int,
         head_partitions: int,
-        gated: bool,
         rope: Optional[tuple[torch.Tensor, torch.Tensor]] = None,
     ):
         super().__init__()
-        self.norm = _norm(dim)
+        self.norm_attn, self.norm_dense = _norm(dim), _norm(dim)
         self.attn = _Attention(dim, heads, 32, head_partitions, rope)
         self.up = nn.Linear(dim, expand * dim)
-        self.gate = nn.Linear(dim, expand * dim) if gated else None
+        self.gate = nn.Linear(dim, expand * dim)
         self.down = nn.Linear(expand * dim, dim)
 
     def forward(
         self, x: torch.Tensor, context: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """x: [N, C!], context (for cross-attention): [M, C!] -> [N, C!]"""
-        h = self.norm(x)
-        a = self.attn(h, None if context is None else self.norm(context))
-        u = torch.nn.functional.gelu(self.up(h))
-        return x + a + self.down(u if self.gate is None else u * self.gate(h))
+        h = self.norm_attn(x)
+        x = x + self.attn(h, None if context is None else self.norm_attn(context))
+        h = self.norm_dense(x)
+        return x + self.down(torch.nn.functional.gelu(self.up(h)) * self.gate(h))
 
 
 class _RGLRU(nn.Module):
     """
-    Griffin's recurrent block (https://arxiv.org/abs/2402.19427), per stabiliser:
+    Griffin's recurrent block (https://arxiv.org/abs/2402.19427) in its residual
+    block, per stabiliser, as drawn in the paper's Fig. S3 (no Conv1D, no MLP):
     `x + out(RG-LRU(inp(h)) * gelu(gate(h)))`, `h = RMSNorm(x)`. The RG-LRU is
     element-wise, `a = exp(-8 softplus(L) r)`, `state = a state + sqrt(1 - a^2) i u`,
     so unlike a GRU there is no matrix product inside the recurrence.
@@ -197,7 +197,7 @@ class _Step(nn.Module):
         self.rnn_in, self.rnn_out = _RGLRU(dim), _RGLRU(dim)
         self.layers = nn.Sequential(
             *[
-                _Layer(dim, heads, expand, head_partitions, gated=True, rope=rope)
+                _Layer(dim, heads, expand, head_partitions, rope=rope)
                 for _ in range(layers)
             ]
         )
@@ -217,14 +217,15 @@ class AlphaQubit(nn.Module):
     (https://arxiv.org/abs/2310.05900). Each of the N = d^2 - 1 stabilisers
     carries a `dim`-vector. A step consumes a group of `cycles` syndrome cycles
     (a measurement and a detection event each), embeds them with the stabiliser's
-    position, and applies a Griffin RG-LRU block, `layers` transformer layers
-    across the stabilisers (spatial RoPE, parallel residual, gated dense) and a
-    second RG-LRU block. Only the two RG-LRU states carry history; there are no
-    convolutions.
+    position, and applies a Griffin RG-LRU block, `layers` pre-norm transformer
+    layers across the stabilisers (spatial RoPE, gated dense) and a second RG-LRU
+    block. Only the two RG-LRU states carry history; there are no convolutions.
 
     The paper reads out once per experiment, not per step (see
     `AlphaQubitReadout`), so this streamed model emits the stabilisers'
-    representations.
+    representations. At the end of an experiment the paper also runs the final
+    cycle, recomputed from the data-qubit measurements, through this same stack
+    with its own embedding: one more step of the same cost before the readout.
     """
 
     @beartype
@@ -267,15 +268,12 @@ class AlphaQubitReadout(nn.Module):
         n = distance**2 - 1
         rope = _rope_tables(distance, 32)
         self.mix = nn.Sequential(
-            *[
-                _Layer(dim, heads, expand, head_partitions, gated=True, rope=rope)
-                for _ in range(2)
-            ]
+            *[_Layer(dim, heads, expand, head_partitions, rope=rope) for _ in range(2)]
         )
         self.mean = nn.Buffer(torch.full((1, n), 1 / n), persistent=False)
         self.observable = nn.Parameter(torch.randn(1, dim) * 0.02)
         self.cross = nn.ModuleList(
-            _Layer(dim, heads, expand, head_partitions, gated=True) for _ in range(2)
+            _Layer(dim, heads, expand, head_partitions) for _ in range(2)
         )
         self.dense = nn.ModuleList(
             nn.Sequential(
@@ -299,79 +297,9 @@ class AlphaQubitReadout(nn.Module):
         return self.logit(query).squeeze(0)
 
 
-class _LiteStep(nn.Module):
-    """One syndrome round: fold the round's inputs into the state, then transform."""
-
-    @beartype
-    def __init__(
-        self,
-        distance: int,
-        in_features: int,
-        dim: int,
-        layers: int,
-        heads: int,
-        expand: int,
-        head_partitions: int,
-    ):
-        super().__init__()
-        n = distance**2 - 1
-        self.embed = nn.Linear(in_features, dim)
-        self.position = nn.Parameter(torch.randn(n, dim) * 0.02)
-        self.layers = nn.Sequential(
-            *[
-                _Layer(dim, heads, expand, head_partitions, gated=False)
-                for _ in range(layers)
-            ]
-        )
-        self.norm = _norm(dim)
-        # `Tensor.mean` is unsupported, so pool the stabilisers with a constant sum
-        self.sum = nn.Buffer(torch.ones(1, n), persistent=False)
-        self.readout = nn.Linear(dim, 1)
-
-    def forward(self, inputs: torch.Tensor, state: torch.Tensor):
-        """inputs: [N, F!], state: [N, C!] -> logit [1], new state [N, C!]"""
-        x = state + self.embed(inputs) + self.position  # [N C!]
-        state = self.layers(x)  # [N C!]
-        pooled = self.sum @ self.norm(state)  # [1 N] @ [N C!] -> [1 C!]
-        return self.readout(pooled).squeeze(0), state
-
-
-class AlphaQubitLite(nn.Module):
-    """
-    A faster decoder in the same family, our own design and in neither paper: one
-    `dim`-vector of state per stabiliser, updated every syndrome round by adding
-    the round's embedded (measurement, detection event) and a learned position
-    embedding and mixing with transformer layers across the stabilisers (parallel
-    residual, plain GELU dense), with a pooled logical-flip readout every round.
-    """
-
-    @beartype
-    def __init__(
-        self,
-        distance: int,
-        in_features: int,
-        dim: int,
-        layers: int,
-        heads: int,
-        expand: int,
-        head_partitions: int,
-    ):
-        super().__init__()
-        self.scan = vollo_torch.nn.Scan(
-            _LiteStep(
-                distance, in_features, dim, layers, heads, expand, head_partitions
-            )
-        )
-        self.state_0 = nn.Buffer(torch.zeros(distance**2 - 1, dim), persistent=False)
-
-    def forward(self, syndromes: torch.Tensor) -> torch.Tensor:
-        """syndromes: [T, N, F!] -> logical-flip logits [T, 1]"""
-        return self.scan(syndromes, self.state_0, input_axis=0, output_axis=0)
-
-
 @beartype
 def _vm(
-    variant: Literal["aq2", "readout", "lite"],
+    variant: Literal["aq2", "readout"],
     distance: int,
     dim: int,
     layers: int,
@@ -394,10 +322,6 @@ def _vm(
         case "readout":
             model = AlphaQubitReadout(*args)
             x, time_axis = torch.randn(n, dim), None
-        case "lite":
-            # per stabiliser: measurement and detection event
-            model = AlphaQubitLite(distance, 2, dim, layers, heads, expand, partitions)
-            x, time_axis = torch.randn(2, n, 2), 0
     return vollo_info(
         model,
         x,
@@ -420,12 +344,8 @@ def _vm(
 @beartype
 def main(config: str = "V80") -> Generator:
     aq2 = dict(variant="aq2", expand=4)
-    lite = dict(variant="lite", dim=96, layers=1, heads=6, expand=2)
     # Ordered by parameter count, which is what is monotonic on every config
     for x in [
-        # The lite design (ours) is the faster pairing for each AQ2-RT size
-        dict(**lite, distance=3),
-        dict(**lite, distance=5),
         # AQ2-RT: C=128, 1 RG-LRU + 2 transformer + 1 RG-LRU, G=6 cycles per step
         dict(**aq2, distance=3, dim=128, layers=2, heads=4),
         dict(**aq2, distance=5, dim=128, layers=2, heads=4),
@@ -436,20 +356,16 @@ def main(config: str = "V80") -> Generator:
         # up to 16 cycles longer before the decision.
         dict(**aq2, distance=3, dim=128, layers=2, heads=4, cycles=16),
         dict(**aq2, distance=5, dim=128, layers=2, heads=4, cycles=16),
-        # ~1M parameter baselines, d=5 (N=24).
+        # ~1M parameter baseline, not a paper size; d=3 so that it fits every board.
         # AQ2-RT: C=160 with 5 heads of 32, gated dense of widening 3. Per layer:
-        # norm 160 + attention (q, k, v, the folded q and k, and the output
-        # projection: 6 * (160 * 160 + 160)) = 154,560 + dense (up, gate, down:
-        # 2 * (160 * 480 + 480) + 480 * 160 + 160) = 231,520 -> 386,240. Two layers
-        # 772,480; each RG-LRU block norm 160 + 5 * (160 * 160 + 160) + decay 160
-        # = 129,120, two 258,240; embed 12 * 160 + 160 = 2,080: 1,032,800. (The
-        # paper's untied projections would be 2 * 25,760 per layer fewer.)
-        dict(variant="aq2", distance=5, dim=160, layers=2, heads=5, expand=3),
-        # Lite: C=192 with 6 heads of 32: norm 192 + attention 4 * (192 * 192 + 192)
-        # = 148,224 + FFN (expand=5) 2 * 192 * 960 + 960 + 192 = 369,792 -> 518,208
-        # per layer. Two layers 1,036,416, plus embed 2 * 192 + 192, positions
-        # 24 * 192, final norm 192 and readout 193: 1,041,985.
-        dict(variant="lite", distance=5, dim=192, layers=2, heads=6, expand=5),
+        # two norms 2 * 160 + attention (q, k, v, the folded q and k, and the
+        # output projection: 6 * (160 * 160 + 160)) = 154,560 + dense (up, gate,
+        # down: 2 * (160 * 480 + 480) + 480 * 160 + 160) = 231,520 -> 386,400. Two
+        # layers 772,800; each RG-LRU block norm 160 + 5 * (160 * 160 + 160) +
+        # decay 160 = 129,120, two 258,240; embed 12 * 160 + 160 = 2,080:
+        # 1,033,120. (The folded q and k are tied to the plain ones in a trained
+        # model, so it has 2 * 25,760 fewer per layer.)
+        dict(variant="aq2", distance=3, dim=160, layers=2, heads=5, expand=3),
         # AQ2-RT reads out once per experiment, not per step: the streamed entries
         # above are the per-step cost, this is the one-off cost after the last step
         dict(variant="readout", distance=5, dim=128, layers=2, heads=4, expand=4),
