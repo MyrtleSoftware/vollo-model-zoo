@@ -18,6 +18,10 @@ def test_selu_matches_torch():
     extremes = torch.tensor([-1e4, -100.0, -88.0, 88.0, 100.0, 1e4])
     x = torch.cat([torch.linspace(-20, 20, 4001), torch.randn(1000) * 3, extremes])
     torch.testing.assert_close(_SELU()(x), torch.nn.SELU()(x), atol=1e-5, rtol=1e-5)
+    # The two terms the output Linear sums in its accumulator
+    torch.testing.assert_close(
+        sum(_SELU().parts(x)), torch.nn.SELU()(x), atol=1e-5, rtol=1e-5
+    )
 
 
 def _plain(widths, selu):

@@ -1,8 +1,10 @@
+import contextlib
 from collections import OrderedDict
 from collections.abc import Generator
 from pathlib import Path
 
 import torch
+import torch.nn.functional as F
 import vollo_torch
 from beartype import beartype
 from torch import nn
@@ -34,6 +36,15 @@ class _SELU(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         a, sa = self._ALPHA, self._SCALE * self._ALPHA
         return sa * (torch.relu(x) / a + torch.clamp(torch.exp(x), max=1.0) - 1.0)
+
+    def parts(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        The two terms whose sum is the SELU, `scale * relu(x)` and
+        `scale * alpha * (min(exp(x), 1) - 1)`, for a following Linear to sum
+        in its accumulator (`ReadoutFNN.forward`)
+        """
+        a, sa = self._ALPHA, self._SCALE * self._ALPHA
+        return torch.relu(x) * (sa / a), (torch.clamp(torch.exp(x), max=1.0) - 1.0) * sa
 
 
 @beartype
@@ -257,6 +268,10 @@ class ReadoutFNN(nn.Module):
           first's, so that a core holding an extra block of one holds no extra
           block of the other.
         - An output Linear of a single block is pinned to core 0.
+        With SELU, the output Linear is applied to the last SELU's two terms
+        and the results summed (`_SELU.parts`): the same function with the
+        last add moved into the Linear's accumulator, where Vollo sums it
+        instead of spending a pointwise instruction on it (SDK 29.0.0).
         The pinning uses `vollo_torch.CorePartition`, which is why this file
         imports `vollo_torch`; the network is otherwise plain PyTorch.
 
@@ -301,11 +316,19 @@ class ReadoutFNN(nn.Module):
         *body, act, output = self.net
         for layer in body:
             x = layer(x)
-        x = act(x)  # [B, hidden[-1]!]
-        if self.output_core is None:
-            return output(x)  # [B, n_outputs!]
-        with vollo_torch.CorePartition([self.output_core]):
-            return output(x)  # [B, n_outputs!]
+        if isinstance(act, _SELU):
+            # W (r + e) + b as W r + b + W e: the last SELU's add happens in
+            # the output Linear's accumulator, not as a pointwise op
+            x, e = act.parts(x)  # [B, hidden[-1]!] each
+        else:
+            x, e = act(x), None  # [B, hidden[-1]!]
+        with (
+            vollo_torch.CorePartition([self.output_core])
+            if self.output_core is not None
+            else contextlib.nullcontext()
+        ):
+            y = output(x)  # [B, n_outputs!]
+            return y if e is None else y + F.linear(e, output.weight)
 
 
 class ReadoutTeachers(nn.Module):
