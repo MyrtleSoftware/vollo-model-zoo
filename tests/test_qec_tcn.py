@@ -87,3 +87,14 @@ def test_streaming_folded_film_matches_input_film():
     torch.testing.assert_close(
         dynamic(torch.cat([syndrome, film], dim=1)), folded(syndrome)
     )
+
+
+def test_window_decoder_spreads_kernel_rows_only_when_weights_cannot_be_copied():
+    channels = [128, 256, 512]
+    # V80: 8 MiB of weight store per core holds a copy of every conv weight.
+    assert qec_tcn._spread_cores("V80", 10, 11, channels) is None
+    # IA-420f: 1 MiB per core does not.
+    assert qec_tcn._spread_cores("IA-420f", 4, 5, channels) == 6
+    # IA-840f: the copies fit beside the d=5 head, not beside the d=11 head.
+    assert qec_tcn._spread_cores("IA-840f", 4, 5, channels) is None
+    assert qec_tcn._spread_cores("IA-840f", 10, 11, channels) == 3

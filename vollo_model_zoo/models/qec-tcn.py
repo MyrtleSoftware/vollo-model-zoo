@@ -228,6 +228,30 @@ class StreamingFiLMDecoder(nn.Module):
 
 
 @beartype
+def _spread_cores(
+    config: str, num_stabilisers: int, rounds: int, channels: list[int]
+) -> int | None:
+    """
+    `num_cores` for `FiLMDecoder` on `config`, or None to leave placement to the
+    compiler.
+
+    By default the compiler copies the conv weights to every core and splits the
+    grid positions between them. Where a copy per core plus the head does not fit
+    the cores' weight stores, spreading the kernel rows over core thirds splits
+    the conv weights three ways instead.
+    """
+    from vollo_model_zoo.vm import CONFIGS
+
+    hw = CONFIGS[config]
+    blocks = lambda i, o: -(-i // hw.block_size) * -(-o // hw.block_size)
+    conv = sum(9 * blocks(i, o) for i, o in zip(channels[:-1], channels[1:]))
+    head = rounds * num_stabilisers * blocks(channels[-1], num_stabilisers + 1)
+    if hw.num_cores * conv + head <= hw.num_cores * hw.weight_store_depth:
+        return None
+    return hw.num_cores
+
+
+@beartype
 def _vm(
     num_stabilisers: int,
     channels: list[int],
@@ -237,14 +261,17 @@ def _vm(
     dilation: int = 3,
     film_input: bool = False,
 ):
-    from vollo_model_zoo.vm import CONFIGS, vollo_info
+    from vollo_model_zoo.vm import vollo_info
 
     meta = dict(distance=num_stabilisers + 1, channels=str(channels))
     if rounds is not None:
         # The paper's decoder: one decision per window of `rounds` rounds.
         input = torch.randn(1, rounds, num_stabilisers, 1)
         model = FiLMDecoder(
-            num_stabilisers, rounds, channels, CONFIGS[config].num_cores
+            num_stabilisers,
+            rounds,
+            channels,
+            _spread_cores(config, num_stabilisers, rounds, channels),
         )
         time_axis = None
         meta |= dict(model="window", rounds=rounds)
