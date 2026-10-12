@@ -207,13 +207,14 @@ It decides once, after the last round, so the table is the reaction latency
 after the final round (d=11, r=11 is tens of µs), not a per-round figure.
 
 Vollo has no `Conv2d`, so the file rewrites it exactly: the grid is a batch of
-zero-bordered rows, each kernel row is a non-streaming `Conv1d` over the rows
-shifted by one, and the flatten plus dense head is one `Conv1d` spanning every
-position. The compiler skips the multiplications by the zero border. It also
-copies the conv weights to every core and splits the positions; on boards whose
-weight stores cannot hold those copies, a `CorePartition` gives each kernel row
-its own third of the cores instead. Tests check both against `Conv2d` and
-`Linear` with shared weights.
+rows, each kernel row is a non-streaming `Conv1d` along the row, and the flatten
+plus dense head is one `Conv1d` spanning every position. The compiler skips the
+multiplications by zero padding columns but not by a whole zero row, so the top
+and bottom kernel rows only run over the rows they reach. Where the conv weights
+fit, the compiler copies them to every core and splits the positions; on boards
+whose weight stores cannot hold the copies, a `CorePartition` gives each kernel
+row its own third of the cores instead. Tests
+check both against `Conv2d` and `Linear` with shared weights.
 
 For comparison, `StreamingFiLMDecoder` is a Vollo-oriented redesign (not the
 paper's network, so it needs retraining): a causal, dilated `PaddedConv1d` over

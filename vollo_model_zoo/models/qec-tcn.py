@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from collections.abc import Generator
 from contextlib import nullcontext
 from pathlib import Path
@@ -10,7 +11,10 @@ from vollo_torch.nn import PaddedConv1d
 
 
 def _pad(x: torch.Tensor, dims: tuple[int, ...]) -> torch.Tensor:
-    """Zero border of one on each of `dims` (all non-data axes)."""
+    """
+    Zero border of one on each of `dims` (all non-data axes). Not `@beartype`d:
+    it runs under torch.fx tracing, where `x` is a Proxy.
+    """
     for dim in dims:
         z = x.narrow(dim, 0, 1) * 0
         x = torch.cat([z, x, z], dim=dim)
@@ -35,6 +39,7 @@ class _Conv2d(nn.Module):
     splits the weights three ways rather than copying them to every core.
     """
 
+    @beartype
     def __init__(
         self,
         in_channels: int,
@@ -43,7 +48,8 @@ class _Conv2d(nn.Module):
         cores: list[list[int]] | None = None,
     ):
         super().__init__()
-        assert rounds >= 2
+        if rounds < 2:
+            raise ValueError(f"rounds must be at least 2, got {rounds}")
         self.rounds, self.cores = rounds, cores
         self.rows = nn.ModuleList(
             nn.Conv1d(in_channels, out_channels, 3, bias=(dt == 1)) for dt in range(3)
@@ -91,21 +97,24 @@ class FiLMDecoder(nn.Module):
         rewritten exactly (see `_Conv2d`): the first layer's single input channel
         is unfolded into its 9 neighbours and given one `Linear`, and the flatten
         plus dense head is one `Conv1d` whose kernel spans all r * (d-1) positions.
-        `load_reference` loads the weights of the plain `Conv2d` / `Linear` form.
+        Weights load from the plain `Conv2d` / `Linear` form with
+        `load_reference` (this module's own parameter layout is the rewrite's).
 
         Args:
             num_stabilisers: Syndrome bits per round (d - 1)
-            rounds:          Rounds r in the window
+            rounds:          Rounds r in the window, at least 2
             channels:        Output channels of each block (the paper's 128, 256, 512)
-            num_cores:       Cores of the target config. A multiple of 3 spreads
-                             the three kernel rows of every conv block over a third
-                             of the cores each; otherwise placement is left to the
-                             compiler.
+            num_cores:       Spread the kernel rows of every conv block over thirds
+                             of this many cores (a multiple of 3). None leaves the
+                             placement to the compiler. See "Core placement" below
+                             for when `_vm` picks each.
         """
         super().__init__()
         self.rounds, self.stabs = rounds, num_stabilisers
         cores = None
-        if num_cores is not None and num_cores % 3 == 0:
+        if num_cores is not None:
+            if num_cores % 3:
+                raise ValueError(f"num_cores must be a multiple of 3, got {num_cores}")
             k = num_cores // 3
             cores = [list(range(dt * k, (dt + 1) * k)) for dt in range(3)]
         self.first = nn.Linear(9, channels[0])
@@ -119,10 +128,10 @@ class FiLMDecoder(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (1, rounds, num_stabilisers, 1): detection events
+            x: Tensor of shape (1, rounds, num_stabilisers, 1!): detection events
 
         Returns:
-            Tensor of shape (1, 1, num_stabilisers + 1): data-qubit flip logits
+            Tensor of shape (1, 1, num_stabilisers + 1!): data-qubit flip logits
         """
         T, S = self.rounds, self.stabs
         xp = _pad(x, (2, 1))  # [1, T+2, S+2, 1!]
@@ -164,8 +173,14 @@ class _CoreSplitConv(nn.Module):
     A `PaddedConv1d` + ReLU whose output channels are split into groups, group g
     on core g (a `CorePartition`), so an optional FiLM modulation after it runs on
     the core that produced each slice.
+
+    The parameters live in the groups (`parts.<g>.conv.*`), but the state dict
+    presents them joined as the unsplit `PaddedConv1d`'s `conv.weight` and
+    `conv.bias`, and loads those back split. So a checkpoint moves between boards
+    (whose group sizes differ) and to and from the unsplit model.
     """
 
+    @beartype
     def __init__(
         self, in_channels: int, sizes: list[int], kernel_size: int, dilation: int
     ):
@@ -174,6 +189,10 @@ class _CoreSplitConv(nn.Module):
         self.parts = nn.ModuleList(
             PaddedConv1d(in_channels, z, kernel_size, dilation=dilation) for z in sizes
         )
+        self.shapes = {
+            "conv.weight": torch.Size([sum(sizes), in_channels, kernel_size]),
+            "conv.bias": torch.Size([sum(sizes)]),
+        }
 
     def forward(self, x, gamma=None, beta=None):
         """[B, in!, T] (and gamma, beta [B, out!, T]) -> [B, out!, T]"""
@@ -185,16 +204,58 @@ class _CoreSplitConv(nn.Module):
                     y = gamma[:, a : a + z] * y + beta[:, a : a + z]
                 ys.append(torch.relu(y))
             a += z
-        return torch.cat(ys, dim=1)
+        return torch.cat(ys, dim=1)  # [B, out!, T]
+
+    def state_dict(self, *, destination=None, prefix="", keep_vars=False):
+        """The groups joined into the unsplit `conv.weight` and `conv.bias`."""
+        if destination is None:
+            destination = OrderedDict()
+        for name in self.shapes:
+            leaf = name.split(".")[1]
+            joined = torch.cat([getattr(p.conv, leaf) for p in self.parts])
+            destination[prefix + name] = joined if keep_vars else joined.detach()
+        return destination
+
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        """Split the unsplit `conv.weight` and `conv.bias` into the groups' keys."""
+        names = {prefix + name for name in self.shapes}
+        for key in [k for k in state_dict if k.startswith(prefix) and k not in names]:
+            unexpected_keys.append(key)
+            del state_dict[key]
+        for name, shape in self.shapes.items():
+            key, leaf = prefix + name, name.split(".")[1]
+            value = state_dict.pop(key, None)
+            if value is None:
+                missing_keys.append(key)
+            elif value.shape != shape:
+                error_msgs.append(
+                    f"size mismatch for {key}: copying a param with shape "
+                    f"{value.shape} from checkpoint, the shape in current model "
+                    f"is {shape}."
+                )
+            if value is None or value.shape != shape:
+                parts = [getattr(p.conv, leaf).detach() for p in self.parts]
+            else:
+                parts = value.split(self.sizes)
+            for g, part in enumerate(parts):
+                state_dict[f"{prefix}parts.{g}.{name}"] = part
 
     @torch.no_grad()
     def load_conv(self, conv: PaddedConv1d):
-        """Load the weights of the unsplit `PaddedConv1d`."""
-        a = 0
-        for part, z in zip(self.parts, self.sizes):
-            part.conv.weight.copy_(conv.conv.weight[a : a + z])
-            part.conv.bias.copy_(conv.conv.bias[a : a + z])
-            a += z
+        """Load the weights of the unsplit `PaddedConv1d`, which must match in shape."""
+        got = {name: t.shape for name, t in conv.state_dict().items()}
+        if got != self.shapes:
+            raise ValueError(f"expected a PaddedConv1d of {self.shapes}, got {got}")
+        self.load_state_dict(conv.state_dict())
 
 
 class StreamingFiLMDecoder(nn.Module):
@@ -234,14 +295,13 @@ class StreamingFiLMDecoder(nn.Module):
                              while a third block adds ~0.15 us of dependency depth.
             film_input:      Take gamma and beta as part of the input
             core_groups:     Split the last block's output channels into groups of
-                             these sizes, group g on core g (see `_CoreSplitConv`).
-                             With `film_input`, each core then applies the FiLM
-                             modulation to its own slice rather than one core doing
-                             it all. `load_conv` loads the unsplit weights.
-            first_core:      Pin the first block to this core. Off core 0, where
-                             the compiler starts placing every block, the small
-                             first block stops queueing behind the larger second
-                             one (any other core measured the same, folded).
+                             these sizes, group g on core g (`_CoreSplitConv`). The
+                             state dict keeps the unsplit layout, so checkpoints
+                             load whatever the groups.
+            first_core:      Run the first block on this core.
+
+        `core_groups` and `first_core` only place work on cores (see "Core
+        placement" below); the function is the same without them.
         """
         super().__init__()
         self.num_stabilisers = num_stabilisers
@@ -254,17 +314,20 @@ class StreamingFiLMDecoder(nn.Module):
             for i, o in zip(ins, channels)
         )
         if core_groups is not None:
-            assert sum(core_groups) == channels[-1]
+            if sum(core_groups) != channels[-1]:
+                raise ValueError(
+                    f"core_groups {core_groups} must sum to {channels[-1]}"
+                )
             self.convs[-1] = _CoreSplitConv(ins[-1], core_groups, kernel_size, dilation)
         self.head = nn.Linear(channels[-1], num_stabilisers + 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (Batch, num_stabilisers [+ 2 * sum(channels)], Time)
+            x: Tensor of shape (Batch, num_stabilisers [+ 2 * sum(channels)]!, Time)
 
         Returns:
-            Tensor of shape (Batch, Time, num_stabilisers + 1): data-qubit flip logits
+            Tensor of shape (Batch, Time, num_stabilisers + 1!): data-qubit flip logits
         """
         if self.film_input:
             film = x[:, self.num_stabilisers :]  # [B, 2*sum(channels)!, T]
@@ -299,38 +362,49 @@ class StreamingFiLMDecoder(nn.Module):
                 a += z
 
 
-@beartype
-def _core_groups(channels: int, num_cores: int, block_size: int) -> list[int]:
-    """`channels` split into near-equal whole-block groups, at most one per core."""
-    blocks = -(-channels // block_size)
-    sizes = [blocks // num_cores + (i < blocks % num_cores) for i in range(num_cores)]
-    groups = [z * block_size for z in sizes if z]
-    groups[-1] -= sum(groups) - channels
-    return groups
+# Core placement. `_vm` places work on Vollo's cores with three rules. Each one
+# moves work between cores and never changes the function (SDK 29.0.0, spaced
+# latency in cycles):
+#
+# 1. Window decoder: by default the compiler copies the conv weights to every
+#    core and splits the grid positions between them. Where a copy per core plus
+#    the head does not fit the cores' weight stores, `_spread_cores` spreads the
+#    kernel rows over core thirds instead, splitting the weights three ways
+#    (IA-420f, NT400D11 d5: 4285 vs 4676 unspread; IA-840f d11: 13559 vs 15774).
+#    Where the copies fit, unspread is faster (V80 d5: 3858 vs 4258; IA-840f d5:
+#    2184 vs 2250).
+# 2. Streaming decoder: run the small first block on core 1, off core 0, where
+#    the compiler starts placing every block (spaced -2..-7 cycles, contiguous
+#    up to -11%; any core but 0 measures the same on the folded entries).
+# 3. Streaming decoder with `film_input`: split the last block into near-equal
+#    whole-block channel groups, one per core (`_core_groups`), so each core
+#    applies the FiLM modulation to its own slice (spaced -9..-11% at the zoo's
+#    [256, 512]; narrower last blocks lose on IA-840f: +20 cycles at 256).
 
 
 @beartype
 def _spread_cores(
     config: str, num_stabilisers: int, rounds: int, channels: list[int]
 ) -> int | None:
-    """
-    `num_cores` for `FiLMDecoder` on `config`, or None to leave placement to the
-    compiler.
-
-    By default the compiler copies the conv weights to every core and splits the
-    grid positions between them. Where a copy per core plus the head does not fit
-    the cores' weight stores, spreading the kernel rows over core thirds splits
-    the conv weights three ways instead.
-    """
+    """Rule 1: `num_cores` for `FiLMDecoder` on `config`, or None not to spread."""
     from vollo_model_zoo.vm import CONFIGS
 
     hw = CONFIGS[config]
     blocks = lambda i, o: -(-i // hw.block_size) * -(-o // hw.block_size)
     conv = sum(9 * blocks(i, o) for i, o in zip(channels[:-1], channels[1:]))
     head = rounds * num_stabilisers * blocks(channels[-1], num_stabilisers + 1)
-    if hw.num_cores * conv + head <= hw.num_cores * hw.weight_store_depth:
-        return None
-    return hw.num_cores
+    fits = hw.num_cores * conv + head <= hw.num_cores * hw.weight_store_depth
+    return None if fits else hw.num_cores
+
+
+@beartype
+def _core_groups(channels: int, num_cores: int, block_size: int) -> list[int]:
+    """Rule 3: `channels` in near-equal whole-block groups, at most one per core."""
+    blocks = -(-channels // block_size)
+    sizes = [blocks // num_cores + (i < blocks % num_cores) for i in range(num_cores)]
+    groups = [z * block_size for z in sizes if z]
+    groups[-1] -= sum(groups) - channels
+    return groups
 
 
 @beartype
@@ -353,7 +427,8 @@ def _vm(
             num_stabilisers,
             rounds,
             channels,
-            _spread_cores(config, num_stabilisers, rounds, channels),
+            # Placement rule 1.
+            num_cores=_spread_cores(config, num_stabilisers, rounds, channels),
         )
         time_axis = None
         meta |= dict(model="window", rounds=rounds)
@@ -361,21 +436,20 @@ def _vm(
         # With film_input, gamma and beta ride along as extra input channels.
         num_inputs = num_stabilisers + 2 * sum(channels) * film_input
         input = torch.randn(1, num_inputs, 8)
-        # The first block runs on core 1; with film_input the last block is also
-        # split over every core, so each core modulates its own slice.
         hw = CONFIGS[config]
-        core_groups = None
-        if film_input:
-            core_groups = _core_groups(channels[-1], hw.num_cores, hw.block_size)
-        first_core = 1
         model = StreamingFiLMDecoder(
             num_stabilisers,
             channels,
             kernel_size,
             dilation,
             film_input,
-            core_groups,
-            first_core,
+            # Placement rules 3 and 2.
+            core_groups=(
+                _core_groups(channels[-1], hw.num_cores, hw.block_size)
+                if film_input
+                else None
+            ),
+            first_core=1,
         )
         time_axis = 2
         meta |= dict(

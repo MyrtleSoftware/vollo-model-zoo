@@ -1,5 +1,6 @@
 import importlib
 
+import pytest
 import torch
 from torch import nn
 
@@ -92,7 +93,7 @@ def test_streaming_folded_film_matches_input_film():
     )
 
 
-def test_window_decoder_spreads_kernel_rows_only_when_weights_cannot_be_copied():
+def test_window_decoder_spreads_kernel_rows_only_when_weight_copies_do_not_fit():
     channels = [128, 256, 512]
     # V80: 8 MiB of weight store per core holds a copy of every conv weight.
     assert qec_tcn._spread_cores("V80", 10, 11, channels) is None
@@ -101,6 +102,41 @@ def test_window_decoder_spreads_kernel_rows_only_when_weights_cannot_be_copied()
     # IA-840f: the copies fit beside the d=5 head, not beside the d=11 head.
     assert qec_tcn._spread_cores("IA-840f", 4, 5, channels) is None
     assert qec_tcn._spread_cores("IA-840f", 10, 11, channels) == 3
+
+
+def test_window_decoder_checks_arguments():
+    with pytest.raises(ValueError):
+        qec_tcn.FiLMDecoder(4, 1)
+    with pytest.raises(ValueError):
+        qec_tcn.FiLMDecoder(4, 5, num_cores=4)
+
+
+@pytest.mark.parametrize(
+    "config, num_cores", [("V80", None), ("V80", 6), ("IA-840f", None), ("IA-840f", 3)]
+)
+@pytest.mark.parametrize("stabilisers, rounds", [(4, 5), (4, 2)])
+def test_window_decoder_vm_matches_conv2d(config, num_cores, stabilisers, rounds):
+    """The compiled lowering, for each placement `_vm` can pick, on the VM."""
+    from vollo_model_zoo.vm import CONFIGS, _vollo_compile
+
+    torch.manual_seed(0)
+    channels = [8, 16, 32]
+    convs, head, reference = _reference(stabilisers, rounds, channels)
+    model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels, num_cores)
+    model.load_reference(convs, head)
+    events = (torch.rand(1, rounds, stabilisers, 1) < 0.3).float()
+    program = _vollo_compile(
+        model, events, time_axis=None, config=CONFIGS[config], quick_compile=True
+    )
+    out = program.to_vm(bit_accurate=True).run(events.numpy())
+    with torch.no_grad():
+        expected = reference(events.permute(0, 3, 1, 2))
+    torch.testing.assert_close(
+        torch.from_numpy(out).float().reshape(expected.shape),
+        expected,
+        rtol=0,
+        atol=0.02 * float(expected.abs().max()) + 1e-3,
+    )
 
 
 def test_streaming_core_split_matches_unsplit():
@@ -128,3 +164,28 @@ def test_streaming_core_split_matches_unsplit():
                 split.fold_film(gamma, beta)
                 out = split(syndrome)
             torch.testing.assert_close(out, plain(torch.cat([syndrome, film], dim=1)))
+
+
+def test_streaming_core_split_checkpoints_move_between_groupings():
+    """The split block saves and loads the unsplit `convs.1.conv.*` layout."""
+    torch.manual_seed(0)
+    stabilisers, channels = 6, [32, 64]
+    plain = qec_tcn.StreamingFiLMDecoder(stabilisers, channels, 3, 3, film_input=True)
+    six = qec_tcn.StreamingFiLMDecoder(
+        stabilisers, channels, 3, 3, film_input=True, core_groups=[16, 16, 8, 8, 8, 8]
+    )
+    three = qec_tcn.StreamingFiLMDecoder(
+        stabilisers, channels, 3, 3, film_input=True, core_groups=[32, 32]
+    )
+    six.load_state_dict(plain.state_dict())
+    assert list(six.state_dict()) == list(plain.state_dict())
+    three.load_state_dict(six.state_dict())
+    x = torch.randn(1, stabilisers + 2 * sum(channels), 7)
+    for model in (six, three):
+        torch.testing.assert_close(model(x), plain(x))
+
+    wider = qec_tcn.StreamingFiLMDecoder(stabilisers, [32, 96], 3, 3)
+    with pytest.raises(ValueError):
+        six.convs[1].load_conv(wider.convs[1])
+    with pytest.raises(RuntimeError):
+        six.load_state_dict(wider.state_dict())
