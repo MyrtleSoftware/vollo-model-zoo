@@ -89,25 +89,23 @@ composed of simpler operations.
 
 Code/model: [`readout-mlp.py`](./vollo_model_zoo/models/readout-mlp.py)
 
-Several superconducting qubits share one readout line, and the digitised
-resonator trace of the ~1 µs integration window is classified on the qubit
-controller. The file pairs two networks on the same five-qubit dataset: the
-raw-trace FNN of [Lienhard et al.](https://arxiv.org/abs/2102.12481), which
-reads all qubits' trace at once and so models readout crosstalk, with SELU
-as published; and the distilled per-qubit student bank of
-[KLiNQ](https://arxiv.org/abs/2503.03544) (Guo et al.), 31-16-8-1 and
-201-16-8-1 on interval-averaged I/Q plus a matched-filter scalar, for
-independent mid-circuit measurement. The averaging, filter and
-normalisation fold exactly into one constant layer per student.
+The large neural networks proposed for reading out superconducting qubits, on
+the five-qubit multiplexed dataset of
+[Lienhard et al.](https://arxiv.org/abs/2102.12481): their raw-trace joint
+network (1000-1000-500-250-32, SELU), the smaller joint baselines that
+[HERQULES](https://arxiv.org/abs/2212.03895) and
+[Mude et al.](https://arxiv.org/abs/2405.08982) (three levels, 243 joint
+states) synthesised for FPGAs, and the five per-qubit teachers of
+[KLiNQ](https://arxiv.org/abs/2503.03544). Each classifies the whole ~1 µs I/Q
+trace once (`time_axis=None`).
 
-The bank takes ~0.9 µs on V80, short of the 0.6 µs we would like: five
-qubits' traces are 5000 inputs, and loading them alone costs ~0.76 µs.
-KLiNQ's own FPGA design computes the averaging and filter as samples stream
-in, so a paired entry does the same: the front end runs upstream of Vollo
-(e.g. in RTL), and Vollo takes only the 495 features and runs the five
-16-8-1 networks, at ~0.46 µs. Vollo does not support `nn.SELU`, so the file
-rebuilds it exactly from `relu`, `exp` and `clamp` (tested against
-`nn.SELU`), which costs ~0.6 µs over ReLU at the paper's size.
+These are the networks hand-built FPGA logic struggles to hold. Synthesised with
+HLS, the HERQULES and Mude baselines need 2 to 5 times the LUTs of a Zynq
+xczu7ev, and the one FINN build of Lienhard's network quantises it to 2 bits and
+takes 3.8 µs. On V80 the baselines take 0.9 µs, Lienhard's network 1.6 µs, and
+all five KLiNQ teachers 5.1 µs. Vollo has no native SELU, so the file rebuilds
+it exactly from `relu`, `exp` and `clamp` (2.2 µs with it). Small distilled
+readout networks remain hand-built RTL territory (20 to 50 ns).
 
 ### Transformer++'s SwiGLU feed-forward block
 
