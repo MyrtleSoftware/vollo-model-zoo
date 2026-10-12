@@ -50,9 +50,11 @@ class QECLSTM(nn.Module):
 
         The core placements change where the work runs, not the function
         (see `_vm` for when they pay off). The layers are two 1-layer
-        `nn.LSTM`s, rather than one 2-layer one, so that each can be placed: a
-        2-layer `nn.LSTM`'s `weight_ih_l1` etc. are `lstm2.weight_ih_l0` etc.
-        here (`tests/test_qec_lstm.py` converts a state dict).
+        `nn.LSTM`s, rather than one 2-layer one, so that each can be placed,
+        but the state dict keeps a 2-layer `nn.LSTM`'s layout: `lstm2`'s
+        weights save and load as `lstm.weight_ih_l1` etc. So a checkpoint of a
+        decoder built on `nn.LSTM(num_layers=2)` named `lstm` loads directly,
+        and this model's checkpoints load into one.
         """
         super().__init__()
         stabilisers = distance**2 - 1
@@ -69,6 +71,8 @@ class QECLSTM(nn.Module):
         self.logit = nn.Linear(hidden_size, 1)
         self.lstm2_cores = lstm2_cores
         self.head_core = head_core
+        self.register_state_dict_post_hook(_save_as_two_layer_lstm)
+        self.register_load_state_dict_pre_hook(_load_two_layer_lstm)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -90,6 +94,37 @@ class QECLSTM(nn.Module):
             hidden = self.state_to_hidden(torch.relu(state))
             hidden = hidden + self.final_defects_to_hidden(final_defects)
             return self.logit(torch.relu(hidden))
+
+
+_LSTM_PARAMS = ("weight_ih", "weight_hh", "bias_ih", "bias_hh")
+
+
+def _save_as_two_layer_lstm(_module, state_dict, prefix, _local_metadata):
+    """
+    Save `lstm1` and `lstm2` as layers 0 and 1 of a 2-layer `nn.LSTM` named
+    `lstm`, keeping the order of the keys
+    """
+    renames = {
+        f"{prefix}lstm{layer + 1}.{name}_l0": f"{prefix}lstm.{name}_l{layer}"
+        for layer in range(2)
+        for name in _LSTM_PARAMS
+    }
+    items = list(state_dict.items())
+    state_dict.clear()
+    for key, value in items:
+        state_dict[renames.get(key, key)] = value
+
+
+def _load_two_layer_lstm(_module, state_dict, prefix, *_):
+    """
+    Load layers 0 and 1 of a 2-layer `nn.LSTM` named `lstm` into `lstm1` and
+    `lstm2`
+    """
+    for layer in range(2):
+        for name in _LSTM_PARAMS:
+            key = f"{prefix}lstm.{name}_l{layer}"
+            if key in state_dict:
+                state_dict[f"{prefix}lstm{layer + 1}.{name}_l0"] = state_dict.pop(key)
 
 
 def _on_cores(cores: list[int] | None):
