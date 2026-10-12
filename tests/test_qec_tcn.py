@@ -28,7 +28,7 @@ def test_window_decoder_matches_conv2d():
     torch.manual_seed(0)
     for stabilisers, rounds in [(4, 5), (6, 3), (10, 11)]:
         # The core placement (none, 3 or 6 cores) must not change the function.
-        for num_cores in [None, 3, 6]:
+        for num_cores in [None, 3, 6, [None, 3], [6, None]]:
             channels = [8, 16, 32]
             convs, head, reference = _reference(stabilisers, rounds, channels)
             model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels, num_cores)
@@ -64,7 +64,7 @@ def test_window_decoder_checkpoints_move_between_placements():
             torch.testing.assert_close(source.state_dict()[f"convs.{i}.{name}"], value)
 
     events = torch.randint(0, 2, (1, 1, rounds, stabilisers)).float()
-    for num_cores in [None, 3, 6]:
+    for num_cores in [None, 3, [None, 3], 6]:
         model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels, num_cores)
         model.load_state_dict(source.state_dict())
         assert list(model.state_dict()) == list(source.state_dict())
@@ -133,11 +133,12 @@ def test_window_decoder_spreads_kernel_rows_only_when_weight_copies_do_not_fit()
     channels = [128, 256, 512]
     # V80: 8 MiB of weight store per core holds a copy of every conv weight.
     assert qec_tcn._spread_cores("V80", 10, 11, channels) is None
-    # IA-420f: 1 MiB per core does not.
-    assert qec_tcn._spread_cores("IA-420f", 4, 5, channels) == 6
-    # IA-840f: the copies fit beside the d=5 head, not beside the d=11 head.
+    # IA-420f: 1 MiB per core does not, even with only the last block spread.
+    assert qec_tcn._spread_cores("IA-420f", 4, 5, channels) == [6, 6]
+    # IA-840f: the copies fit beside the d=5 head, not beside the d=11 head,
+    # where spreading the last (largest) block is enough.
     assert qec_tcn._spread_cores("IA-840f", 4, 5, channels) is None
-    assert qec_tcn._spread_cores("IA-840f", 10, 11, channels) == 3
+    assert qec_tcn._spread_cores("IA-840f", 10, 11, channels) == [None, 3]
 
 
 def test_window_decoder_checks_arguments():
@@ -145,10 +146,21 @@ def test_window_decoder_checks_arguments():
         qec_tcn.FiLMDecoder(4, 1)
     with pytest.raises(ValueError):
         qec_tcn.FiLMDecoder(4, 5, num_cores=4)
+    with pytest.raises(ValueError):
+        qec_tcn.FiLMDecoder(4, 5, num_cores=[None, 4])
+    with pytest.raises(ValueError):
+        qec_tcn.FiLMDecoder(4, 5, num_cores=[None])
 
 
 @pytest.mark.parametrize(
-    "config, num_cores", [("V80", None), ("V80", 6), ("IA-840f", None), ("IA-840f", 3)]
+    "config, num_cores",
+    [
+        ("V80", None),
+        ("V80", 6),
+        ("IA-840f", None),
+        ("IA-840f", 3),
+        ("IA-840f", [None, 3]),
+    ],
 )
 @pytest.mark.parametrize("stabilisers, rounds", [(4, 5), (4, 2)])
 def test_window_decoder_vm_matches_conv2d(config, num_cores, stabilisers, rounds):

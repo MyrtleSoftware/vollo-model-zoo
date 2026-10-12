@@ -166,7 +166,7 @@ class FiLMDecoder(nn.Module):
         num_stabilisers: int,
         rounds: int,
         channels: list[int] = [128, 256, 512],
-        num_cores: int | None = None,
+        num_cores: int | list[int | None] | None = None,
     ):
         """
         Calibration-conditioned QEC decoder over the whole syndrome window.
@@ -194,22 +194,34 @@ class FiLMDecoder(nn.Module):
             rounds:          Rounds r in the window, at least 2
             channels:        Output channels of each block (the paper's 128, 256, 512)
             num_cores:       Spread the kernel rows of every conv block over thirds
-                             of this many cores (a multiple of 3). None leaves the
-                             placement to the compiler, with each block one strided
-                             `Conv1d` (see `_Conv2d`). See "Core placement" below
-                             for when `_vm` picks each.
+                             of this many cores (a multiple of 3), or a list giving
+                             it per conv block. None leaves the placement to the
+                             compiler, with the block one strided `Conv1d` (see
+                             `_Conv2d`). See "Core placement" below for when `_vm`
+                             picks each.
         """
         super().__init__()
         self.rounds, self.stabs = rounds, num_stabilisers
-        cores = None
-        if num_cores is not None:
-            if num_cores % 3:
-                raise ValueError(f"num_cores must be a multiple of 3, got {num_cores}")
-            k = num_cores // 3
-            cores = [list(range(dt * k, (dt + 1) * k)) for dt in range(3)]
+        blocks = list(zip(channels[:-1], channels[1:]))
+        if not isinstance(num_cores, list):
+            num_cores = [num_cores] * len(blocks)
+        if len(num_cores) != len(blocks):
+            raise ValueError(
+                f"num_cores needs one entry per conv block, got {num_cores}"
+            )
+        cores = []
+        for n in num_cores:
+            if n is not None and n % 3:
+                raise ValueError(f"num_cores must be multiples of 3, got {num_cores}")
+            k = 0 if n is None else n // 3
+            cores.append(
+                None
+                if n is None
+                else [list(range(dt * k, (dt + 1) * k)) for dt in range(3)]
+            )
         self.first = nn.Linear(9, channels[0])
         self.convs = nn.ModuleList(
-            _Conv2d(i, o, rounds, cores) for i, o in zip(channels[:-1], channels[1:])
+            _Conv2d(i, o, rounds, c) for (i, o), c in zip(blocks, cores)
         )
         self.head = nn.Conv1d(
             channels[-1], num_stabilisers + 1, rounds * num_stabilisers
@@ -454,10 +466,11 @@ class StreamingFiLMDecoder(nn.Module):
 # 1. Window decoder: by default the compiler copies the conv weights to every
 #    core and splits the grid positions between them. Where a copy per core plus
 #    the head does not fit the cores' weight stores, `_spread_cores` spreads the
-#    kernel rows over core thirds instead, splitting the weights three ways
-#    (IA-420f, NT400D11 d5: 4285 vs 6916 unspread; IA-840f d11: 13559 vs 18725).
-#    Where the copies fit, unspread is faster (V80 d5: 3737 vs 4258; IA-840f d5:
-#    2089 vs 2250).
+#    kernel rows over core thirds instead, splitting the weights three ways, for
+#    the fewest, largest blocks that make it fit (IA-420f, NT400D11 d5: all, 4285
+#    vs 6916 unspread; IA-840f d11: the last block, 13215 vs 13559 all and 18725
+#    none). Where the copies fit, unspread is faster (V80 d5: 3737 vs 4258;
+#    IA-840f d5: 2089 vs 2250).
 # 2. Streaming decoder: run the small first block on core 1, off core 0, where
 #    the compiler starts placing every block (spaced -2..-7 cycles, contiguous
 #    up to -11%; any core but 0 measures the same on the folded entries).
@@ -470,16 +483,25 @@ class StreamingFiLMDecoder(nn.Module):
 @beartype
 def _spread_cores(
     config: str, num_stabilisers: int, rounds: int, channels: list[int]
-) -> int | None:
-    """Rule 1: `num_cores` for `FiLMDecoder` on `config`, or None not to spread."""
+) -> list[int | None] | None:
+    """Rule 1: `num_cores` for `FiLMDecoder` on `config`: None not to spread, or
+    a list spreading the fewest, largest conv blocks that make the weights fit."""
     from vollo_model_zoo.vm import CONFIGS
 
-    hw = CONFIGS[config]
+    hw, n = CONFIGS[config], CONFIGS[config].num_cores
     blocks = lambda i, o: -(-i // hw.block_size) * -(-o // hw.block_size)
-    conv = sum(9 * blocks(i, o) for i, o in zip(channels[:-1], channels[1:]))
+    convs = [9 * blocks(i, o) for i, o in zip(channels[:-1], channels[1:])]
     head = rounds * num_stabilisers * blocks(channels[-1], num_stabilisers + 1)
-    fits = hw.num_cores * conv + head <= hw.num_cores * hw.weight_store_depth
-    return None if fits else hw.num_cores
+    largest = sorted(range(len(convs)), key=lambda c: -convs[c])
+    for k in range(len(convs) + 1):
+        spread = set(largest[:k])
+        # An unspread block is copied to every core; a spread one, once per third.
+        copies = [n // 3 if c in spread else n for c in range(len(convs))]
+        if sum(map(int.__mul__, copies, convs)) + head <= n * hw.weight_store_depth:
+            break
+    return (
+        None if not spread else [n if c in spread else None for c in range(len(convs))]
+    )
 
 
 @beartype
