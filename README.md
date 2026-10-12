@@ -24,6 +24,7 @@ Models in the zoo include:
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
 |                   | [Nano LLM](#nano-llm)                                 | [`nano-llm.py`](./vollo_model_zoo/models/nano-llm.py)                                                                                                 |
 | **Attention**     | [Sliding window attention](#sliding-window-attention) | [`swa.py`](./vollo_model_zoo/models/swa.py)                                                                                                           |
+|                   | [AlphaQubit](#alphaqubit)                             | [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)                                                                                             |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM
 and calculate the compute-latency for any of these models. Alternatively, have
@@ -478,6 +479,30 @@ holds its K/V window in the accelerator's tensor RAM: the KV cache stays on the
 card between inferences, and the host sends a single timestep rather than a
 growing context. `window_size` fixes how much of it there is, so the state and
 the work per inference are constant in the sequence length.
+
+### AlphaQubit
+
+Code/model: [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)
+
+The real-time AlphaQubit 2 decoder (AQ2-RT) for the surface code,
+[Senior et al.](https://arxiv.org/abs/2512.07737), successor to
+[AlphaQubit](https://arxiv.org/abs/2310.05900). Each of the d²−1 stabilisers
+carries a 128-vector; a step takes six syndrome cycles and applies an RG-LRU
+recurrence, two parallel-residual transformer layers across the stabilisers
+(spatial RoPE, gated dense) and a second RG-LRU. The readout runs once per
+experiment, so it is its own entry. A superconducting round is about 1.1 µs, so
+a six-cycle step has 6.6 µs: this does not fit. Trapped-ion and neutral-atom
+machines, with rounds of 0.1–1 ms, are where it fits today. A step costs the
+same for any G that fits one block of inputs, so the G=16 pair (beyond the
+paper's G ≤ 6, needs retraining) trades per-cycle throughput for waiting up to
+16 cycles longer before the final step.
+
+The file also holds `AlphaQubitLite`, our own faster design in the same family
+(per-stabiliser state added to every round, pooled readout each round), as the
+paired variant. It shows `Scan` with several states, `allow_dynamic_weights` for
+attention, RoPE folded into a second projection to avoid slicing the data
+dimension, and heads pinned one per core with `vollo_torch.CorePartition`, which
+nearly halves the AQ2-RT step.
 
 ## Other utilities
 
