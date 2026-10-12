@@ -18,6 +18,7 @@ Models in the zoo include:
 |                   | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
 | **Recurrent**     | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
 |                   | [GRU](#gru)                                           | [`gru.py`](./vollo_model_zoo/models/gru.py)                                                                                                           |
+|                   | [Continuous QEC LSTM](#continuous-qec-lstm)           | [`continuous-qec-lstm.py`](./vollo_model_zoo/models/continuous-qec-lstm.py)                                                                           |
 |                   | [RNN-T](#rnn-t)                                       | [`rnnt.py`](./vollo_model_zoo/models/rnnt.py), [`stateless_rnnt.py`](./vollo_model_zoo/models/stateless_rnnt.py)                                      |
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
 |                   | [Mamba](#mamba)                                       | [`mamba1.py`](./vollo_model_zoo/models/mamba1.py)                                                                                                     |
@@ -310,6 +311,34 @@ models, allowing for high-performance recurrent computations. In addition, the
 GRU example demonstrates how to use select `fp32` operations to keep the hidden
 state in full precision, as is often required to prevent numerical errors
 accumulating over long sequences.
+
+### Continuous QEC LSTM
+
+Code/model: [`continuous-qec-lstm.py`](./vollo_model_zoo/models/continuous-qec-lstm.py)
+
+A 2-layer LSTM decoder for continuous quantum error correction of the 3-qubit
+bit-flip code, following
+[Convy et al. (2022)](https://arxiv.org/abs/2110.10378). The two stabiliser
+parities are weakly and continuously measured, giving two noisy analog traces
+sampled every 32 ns; the LSTM tracks which of the 8 basis states the qubits are
+in, and a controller applies a bit-flip correction whenever the argmax changes.
+[Koolstra et al. (2021)](https://arxiv.org/abs/2108.12023) use the same LSTM to
+track qubit dynamics from weak measurements.
+
+Each sample is `[I1, I2, s0]`: the two voltages plus the initial basis state
+as a scalar (the paper's 13,448 parameters at hidden size 32 imply 3 inputs).
+The paper wants the decoder next to the digitiser, so the design bound is the
+32 ns sample period. One LSTM step costs about 0.5 µs, so per-sample streaming
+cannot keep up. The model instead packs `samples_per_step` consecutive samples
+into one timestep (features = 2k + 1), and a step keeps up when
+`latency_contiguous <= k x 32 ns`: k=16 narrowly misses on V80, k=20 and 32 do.
+Packing changes the training input, so train for the chosen k. It emits logits,
+since the controller only needs the argmax and the softmax costs 0.22 µs (the
+table shows both at the paper size).
+
+The file shows Vollo's native streaming `torch.nn.LSTM` and how latency, being
+dominated by dependency depth, is nearly flat in hidden size (32 to 128) while
+the input width is free to grow.
 
 ### S3/S4/S5
 
