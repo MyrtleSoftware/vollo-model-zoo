@@ -113,10 +113,6 @@ def main(config: str = "V80") -> Generator:
         dict(distance=7, hidden_size=128, soft=False),
         dict(distance=9, hidden_size=128, soft=False),
         # ~1M parameters baseline, d=11 (120 stabilisers, 60 final defects):
-        #   LSTM 1: 4 * 256 * (120 + 256) + 2 * 4 * 256 = 387,072
-        #   LSTM 2: 4 * 256 * (256 + 256) + 2 * 4 * 256 = 526,336
-        #   head:   256 * 256 + 256 + 60 * 256 + 256 + 1 =  81,409
-        # = 994,817. Well past the ~1 us round time, as expected at this size.
         dict(distance=11, hidden_size=256, soft=False),
     ]:
         yield _vm(**x, config=config)

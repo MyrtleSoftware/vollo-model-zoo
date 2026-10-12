@@ -251,10 +251,7 @@ training-only auxiliary head.
 
 The decoder has to keep up with the QEC round, about 1.1 µs on
 [Google Willow](https://arxiv.org/abs/2408.13687) and 700 ns on the QuTech
-device in [Ali et al. 2024](https://arxiv.org/abs/2403.00706), so the sweep
-reports both the isolated and the back-to-back latency of a round. The
-deployment sizes (distance 3 to 9, hidden size up to 128) fit in under 1 µs on
-V80; the ~1M-parameter baseline does not.
+device in [Ali et al. 2024](https://arxiv.org/abs/2403.00706).
 
 The file shows a latency-minded head: a logit instead of a sigmoid, and two
 summed `Linear`s instead of a concatenation. With `soft=True` the inputs are the
