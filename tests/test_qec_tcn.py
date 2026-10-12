@@ -26,18 +26,29 @@ def _reference(stabilisers, rounds, channels):
 def test_window_decoder_matches_conv2d():
     torch.manual_seed(0)
     for stabilisers, rounds in [(4, 5), (6, 3), (10, 11)]:
-        channels = [8, 16, 32]
-        convs, head, reference = _reference(stabilisers, rounds, channels)
-        model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels)
-        model.load_reference(convs, head)
+        # The core placement (none, 3 or 6 cores) must not change the function.
+        for num_cores in [None, 3, 6]:
+            channels = [8, 16, 32]
+            convs, head, reference = _reference(stabilisers, rounds, channels)
+            model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels, num_cores)
+            model.load_reference(convs, head)
 
-        events = torch.randint(0, 2, (1, 1, rounds, stabilisers)).float()
-        torch.testing.assert_close(
-            model(events.permute(0, 2, 3, 1))[0],
-            reference(events),
-            rtol=1e-4,
-            atol=1e-4,
-        )
+            events = torch.randint(0, 2, (1, 1, rounds, stabilisers)).float()
+            torch.testing.assert_close(
+                model(events.permute(0, 2, 3, 1))[0],
+                reference(events),
+                rtol=1e-4,
+                atol=1e-4,
+            )
+
+
+def test_window_decoder_has_no_padding_parameters():
+    """The rewrite holds exactly the reference's weights, no zero padding."""
+    stabilisers, rounds, channels = 10, 11, [128, 256, 512]
+    convs, head, _ = _reference(stabilisers, rounds, channels)
+    model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels)
+    count = lambda modules: sum(p.numel() for m in modules for p in m.parameters())
+    assert count([model]) == count(convs + [head])
 
 
 def test_window_decoder_folded_film_matches_conv2d_film():

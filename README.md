@@ -206,10 +206,13 @@ a graph network that runs offline; `fold_film` bakes them into the conv weights.
 It decides once, after the last round, so the table is the reaction latency
 after the final round (d=11, r=11 is tens of µs), not a per-round figure.
 
-Vollo has no `Conv2d`, so the file rewrites it exactly: each kernel row is a
-non-streaming `Conv1d` over a row-shifted slice of the flattened, zero-padded
-grid, and the flatten plus dense head is one full-length `Conv1d`. Tests check
-both against `Conv2d` and `Linear` with shared weights.
+Vollo has no `Conv2d`, so the file rewrites it exactly: the grid is a batch of
+zero-bordered rows, each kernel row is a non-streaming `Conv1d` over the rows
+shifted by one, and the flatten plus dense head is one `Conv1d` spanning every
+position. The compiler skips the multiplications by the zero border, and a
+`CorePartition` gives each kernel row its own third of the cores, so the weights
+are split rather than copied to every core. Tests check both against `Conv2d`
+and `Linear` with shared weights.
 
 For comparison, `StreamingFiLMDecoder` is a Vollo-oriented redesign (not the
 paper's network, so it needs retraining): a causal, dilated `PaddedConv1d` over

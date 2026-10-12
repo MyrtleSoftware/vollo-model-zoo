@@ -1,54 +1,60 @@
 from collections.abc import Generator
+from contextlib import nullcontext
 from pathlib import Path
 
 import torch
 from beartype import beartype
 from torch import nn
+from vollo_torch import CorePartition
 from vollo_torch.nn import PaddedConv1d
 
 
-def _pad(x: torch.Tensor) -> torch.Tensor:
-    """Zero border of one on both spatial axes: [1, T, S, C!] -> [1, T+2, S+2, C!]."""
-    z = x[:, :, :1] * 0
-    x = torch.cat([z, x, z], dim=2)
-    z = x[:, :1] * 0
-    return torch.cat([z, x, z], dim=1)
+def _pad(x: torch.Tensor, dims: tuple[int, ...]) -> torch.Tensor:
+    """Zero border of one on each of `dims` (all non-data axes)."""
+    for dim in dims:
+        z = x.narrow(dim, 0, 1) * 0
+        x = torch.cat([z, x, z], dim=dim)
+    return x
 
 
 class _Conv2d(nn.Module):
     """
-    Exact `nn.Conv2d(in, out, 3, padding=1)` (+ ReLU) from ops Vollo supports.
+    Exact `nn.Conv2d(in, out, 3, padding=1)` + ReLU from ops Vollo supports.
 
-    Activations live as a flattened, zero-padded grid [1, in!, (T+2)*(S+2)], row
-    after row. A shift by one row is then a slice offset of S+2, so each of the 3
-    kernel rows is one non-streaming `Conv1d` (kernel 3, data dimension on channels)
-    over a row-shifted slice, and the three are summed. The two padding columns of
-    each row come out as garbage and are zeroed by a constant mask, which also
-    restores the zero border the next layer needs. `Conv1d` rows are `weight[:, :,
-    dt]` of the `Conv2d`; the bias sits on the first row only.
+    Activations are a batch of grid rows [T, C!, S]: rounds on the batch axis,
+    stabilisers along the sequence axis, channels the data dimension. With a zero
+    border of one on both non-data axes, kernel row dt is a non-streaming `Conv1d`
+    (kernel 3 along the stabilisers) over the rows shifted by dt, and the three are
+    summed: the bf16 sum runs in a different order to `Conv2d`'s. The compiler
+    knows the border is zero and skips its multiplications. `Conv1d` rows are
+    `weight[:, :, dt]` of the `Conv2d`; the bias sits on the first row only.
+
+    With `cores`, kernel row dt runs on `cores[dt]` (a `CorePartition`), which
+    splits the weights three ways rather than copying them to every core.
     """
 
-    def __init__(self, in_channels: int, out_channels: int, rounds: int, stabs: int):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        rounds: int,
+        cores: list[list[int]] | None = None,
+    ):
         super().__init__()
-        self.rounds, self.width = rounds, stabs + 2
+        self.rounds, self.cores = rounds, cores
         self.rows = nn.ModuleList(
             nn.Conv1d(in_channels, out_channels, 3, bias=(dt == 0)) for dt in range(3)
         )
-        n = rounds * self.width
-        column = torch.arange(self.width + 1, n + self.width - 1) % self.width
-        mask = (column >= 1) & (column <= stabs)
-        self.mask = nn.Buffer(mask.float()[None, None], persistent=False)
 
-    def forward(self, x: torch.Tensor, repad: bool) -> torch.Tensor:
-        n = self.rounds * self.width
-        y = self.rows[0](x[:, :, 0:n])  # [1, out!, n - 2]
-        y = y + self.rows[1](x[:, :, self.width : self.width + n])
-        y = y + self.rows[2](x[:, :, 2 * self.width : 2 * self.width + n])
-        y = torch.relu(y) * self.mask
-        if not repad:
-            return y
-        z = y[:, :, : self.width + 1] * 0
-        return torch.cat([z, y, z], dim=2)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """[T, in!, S] -> [T, out!, S]"""
+        x = _pad(x, (2, 0))  # [T+2, in!, S+2]
+        ys = []
+        for dt, row in enumerate(self.rows):
+            core = CorePartition(self.cores[dt]) if self.cores else nullcontext()
+            with core:
+                ys.append(row(x[dt : dt + self.rounds]))  # [T, out!, S]
+        return torch.relu(ys[0] + ys[1] + ys[2])
 
 
 class FiLMDecoder(nn.Module):
@@ -58,6 +64,7 @@ class FiLMDecoder(nn.Module):
         num_stabilisers: int,
         rounds: int,
         channels: list[int] = [128, 256, 512],
+        num_cores: int | None = None,
     ):
         """
         Calibration-conditioned QEC decoder over the whole syndrome window.
@@ -75,26 +82,30 @@ class FiLMDecoder(nn.Module):
         Vollo has no `Conv2d` and cannot reshape the data dimension, so both are
         rewritten exactly (see `_Conv2d`): the first layer's single input channel
         is unfolded into its 9 neighbours and given one `Linear`, and the flatten
-        plus dense head is one full-length `Conv1d`. `load_reference` loads the
-        weights of the plain `Conv2d` / `Linear` form.
+        plus dense head is one `Conv1d` whose kernel spans all r * (d-1) positions.
+        `load_reference` loads the weights of the plain `Conv2d` / `Linear` form.
 
         Args:
             num_stabilisers: Syndrome bits per round (d - 1)
             rounds:          Rounds r in the window
             channels:        Output channels of each block (the paper's 128, 256, 512)
+            num_cores:       Cores of the target config. A multiple of 3 spreads
+                             the three kernel rows of every conv block over a third
+                             of the cores each; otherwise placement is left to the
+                             compiler.
         """
         super().__init__()
         self.rounds, self.stabs = rounds, num_stabilisers
-        self.width = num_stabilisers + 2
+        cores = None
+        if num_cores is not None and num_cores % 3 == 0:
+            k = num_cores // 3
+            cores = [list(range(dt * k, (dt + 1) * k)) for dt in range(3)]
         self.first = nn.Linear(9, channels[0])
         self.convs = nn.ModuleList(
-            _Conv2d(i, o, rounds, num_stabilisers)
-            for i, o in zip(channels[:-1], channels[1:])
+            _Conv2d(i, o, rounds, cores) for i, o in zip(channels[:-1], channels[1:])
         )
-        # The head sees the padded grid, minus its first and last (padding) cell,
-        # so a fifth of its weights (d=11) stay zero and unused.
         self.head = nn.Conv1d(
-            channels[-1], num_stabilisers + 1, rounds * self.width - 2
+            channels[-1], num_stabilisers + 1, rounds * num_stabilisers
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -105,18 +116,15 @@ class FiLMDecoder(nn.Module):
         Returns:
             Tensor of shape (1, 1, num_stabilisers + 1): data-qubit flip logits
         """
-        xp = _pad(x)  # [1, T+2, S+2, 1!]
-        taps = [
-            xp[:, i : i + self.rounds, j : j + self.stabs]
-            for i in range(3)
-            for j in range(3)
-        ]
+        T, S = self.rounds, self.stabs
+        xp = _pad(x, (2, 1))  # [1, T+2, S+2, 1!]
+        taps = [xp[:, i : i + T, j : j + S] for i in range(3) for j in range(3)]
         x = torch.relu(self.first(torch.cat(taps, dim=3)))  # [1, T, S, C!]
-        x = _pad(x).reshape(1, (self.rounds + 2) * self.width, -1)  # [1, L, C!]
-        x = x.transpose(1, 2)  # [1, C!, L]
-        for i, conv in enumerate(self.convs):
-            x = conv(x, repad=i < len(self.convs) - 1)  # [1, C!, L or L-2*width-2]
-        return self.head(x).transpose(1, 2)  # [1, 1, d!]
+        x = x[0].transpose(1, 2)  # [T, C!, S]
+        for conv in self.convs:
+            x = conv(x)  # [T, C!, S]
+        x = x.transpose(1, 2).reshape(1, T * S, -1)  # [1, T*S, C!]
+        return self.head(x.transpose(1, 2)).transpose(1, 2)  # [1, 1, d!]
 
     @torch.no_grad()
     def load_reference(self, convs: list[nn.Conv2d], head: nn.Linear):
@@ -128,11 +136,7 @@ class FiLMDecoder(nn.Module):
             for dt, row in enumerate(conv.rows):
                 row.weight.copy_(ref.weight[:, :, dt])
             conv.rows[0].bias.copy_(ref.bias)
-        w = head.weight.view(head.out_features, -1, self.rounds, self.stabs)
-        self.head.weight.zero_()
-        for t in range(self.rounds):
-            at = t * self.width
-            self.head.weight[:, :, at : at + self.stabs] = w[:, :, t]
+        self.head.weight.copy_(head.weight.view(self.head.weight.shape))
         self.head.bias.copy_(head.bias)
 
     @torch.no_grad()
@@ -233,13 +237,15 @@ def _vm(
     dilation: int = 3,
     film_input: bool = False,
 ):
-    from vollo_model_zoo.vm import vollo_info
+    from vollo_model_zoo.vm import CONFIGS, vollo_info
 
     meta = dict(distance=num_stabilisers + 1, channels=str(channels))
     if rounds is not None:
         # The paper's decoder: one decision per window of `rounds` rounds.
         input = torch.randn(1, rounds, num_stabilisers, 1)
-        model = FiLMDecoder(num_stabilisers, rounds, channels)
+        model = FiLMDecoder(
+            num_stabilisers, rounds, channels, CONFIGS[config].num_cores
+        )
         time_axis = None
         meta |= dict(model="window", rounds=rounds)
     else:
@@ -275,7 +281,7 @@ def main(config: str = "V80") -> Generator:
     # syndrome round. Baseline: 10 * 384 * 5 + 384 * 512 * 5 = 1.00M conv weights,
     # plus a 512 * 11 head, ~1.01M. Its contiguous latency sits right at the round
     # time. The paper's whole-window decoder comes last, as its reaction latency
-    # after the final round is tens of us, and (d=11) its weights are 2.2M.
+    # after the final round is tens of us, and (d=11) its weights are 2.1M.
     for x in [
         dict(num_stabilisers=4, channels=[128, 256]),
         dict(num_stabilisers=6, channels=[256, 512]),
