@@ -241,3 +241,12 @@ def test_one_piece_per_core_loads(widths, selu):
     x = torch.randn(64, widths[0])
     with torch.no_grad():
         torch.testing.assert_close(model(x), reference(x), atol=1e-5, rtol=1e-5)
+
+
+def test_output_core():
+    """A single-block output Linear is pinned to core 0, a wider one left to the compiler"""
+    assert readout_mlp.ReadoutFNN(1000, (500, 250), 32, False, 6, 32).output_core == 0
+    assert (
+        readout_mlp.ReadoutFNN(1000, (500, 250), 243, False, 6, 32).output_core is None
+    )
+    assert readout_mlp.ReadoutFNN(1000, (500, 250), 32, False).output_core is None

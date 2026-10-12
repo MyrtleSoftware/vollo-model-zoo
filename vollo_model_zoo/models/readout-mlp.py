@@ -256,6 +256,7 @@ class ReadoutFNN(nn.Module):
         - The second Linear's whole output blocks are shared out against the
           first's, so that a core holding an extra block of one holds no extra
           block of the other.
+        - An output Linear of a single block is pinned to core 0.
         The pinning uses `vollo_torch.CorePartition`, which is why this file
         imports `vollo_torch`; the network is otherwise plain PyTorch.
 
@@ -285,6 +286,9 @@ class ReadoutFNN(nn.Module):
                 layers.append(nn.Linear(d_in, d_out))
             layers.append(act())
         self.net = nn.Sequential(*layers[:-1])
+        # An output Linear of one block measured faster on core 0 than where
+        # the compiler puts it (SDK 29.0.0)
+        self.output_core = 0 if num_cores > 1 and n_outputs <= block_size else None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -294,7 +298,14 @@ class ReadoutFNN(nn.Module):
         Returns:
             Tensor of shape [B, n_outputs!], logits (argmax on the controller)
         """
-        return self.net(x)  # [B, n_outputs!]
+        *body, act, output = self.net
+        for layer in body:
+            x = layer(x)
+        x = act(x)  # [B, hidden[-1]!]
+        if self.output_core is None:
+            return output(x)  # [B, n_outputs!]
+        with vollo_torch.CorePartition([self.output_core]):
+            return output(x)  # [B, n_outputs!]
 
 
 class ReadoutTeachers(nn.Module):
