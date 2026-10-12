@@ -162,13 +162,18 @@ def test_window_decoder_checks_arguments():
         ("IA-840f", [None, 3]),
     ],
 )
-@pytest.mark.parametrize("stabilisers, rounds", [(4, 5), (4, 2)])
-def test_window_decoder_vm_matches_conv2d(config, num_cores, stabilisers, rounds):
+@pytest.mark.parametrize(
+    "stabilisers, rounds, channels",
+    # One block per layer, and several (the strided Conv1d over multiple blocks).
+    [(4, 5, [8, 16, 32]), (4, 2, [8, 16, 32]), (4, 3, [64, 96, 160])],
+)
+def test_window_decoder_vm_matches_conv2d(
+    config, num_cores, stabilisers, rounds, channels
+):
     """The compiled lowering, for each placement `_vm` can pick, on the VM."""
     from vollo_model_zoo.vm import CONFIGS, _vollo_compile
 
     torch.manual_seed(0)
-    channels = [8, 16, 32]
     convs, head, reference = _reference(stabilisers, rounds, channels)
     model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels, num_cores)
     model.load_reference(convs, head)
