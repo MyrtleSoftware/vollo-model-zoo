@@ -16,7 +16,7 @@ class QECLSTM(nn.Module):
         hidden_size: int,
         soft: bool = False,
         lstm2_cores: list[int] | None = None,
-        head_core: int | None = None,
+        head_cores: list[int] | None = None,
     ):
         """
         Streaming LSTM decoder for a rotated surface code of distance `distance`.
@@ -45,8 +45,8 @@ class QECLSTM(nn.Module):
                lstm2_cores:          Run the second LSTM layer on these cores
                                      (`vollo_torch.CorePartition`) rather than
                                      letting the compiler place it
-               head_core:            Run the head on this one core rather than
-                                     letting the compiler spread it
+               head_cores:           Run the head on these cores rather than
+                                     letting the compiler place it
 
         The core placements change where the work runs, not the function
         (see `_vm` for when they pay off). The layers are two 1-layer
@@ -72,7 +72,7 @@ class QECLSTM(nn.Module):
         )
         self.logit = nn.Linear(hidden_size, 1)
         self.lstm2_cores = lstm2_cores
-        self.head_core = head_core
+        self.head_cores = head_cores
         self.register_state_dict_post_hook(_save_as_two_layer_lstm)
         self.register_load_state_dict_pre_hook(_load_two_layer_lstm)
 
@@ -95,7 +95,7 @@ class QECLSTM(nn.Module):
         # Outside the head's cores, so the compiler can apply it where `state`
         # is produced
         state = torch.relu(state)
-        with _on_cores(None if self.head_core is None else [self.head_core]):
+        with _on_cores(self.head_cores):
             hidden = self.state_to_hidden(state)
             hidden = hidden + self.final_defects_to_hidden(final_defects)
             return self.logit(torch.relu(hidden))
@@ -179,23 +179,37 @@ def _vm(
 ):
     from vollo_model_zoo.vm import CONFIGS, vollo_info
 
-    # A head of at most 4x4 weight blocks (hidden 128 on a block size of 32,
-    # 256 on 64) runs faster on one core than spread over the cores: the spread
-    # saves less matmul time than its cross-core transfers cost. The second
-    # LSTM layer, on three cores including the head's, beats the compiler's
-    # choice of four. Past 4x4 blocks the compiler's own placement is kept: no
-    # fixed placement measured better at every hidden size from 160 to 256.
-    # (Measured on SDK 29.0.0.)
-    lstm2_cores, head_core = None, None
-    if hidden_size <= 4 * CONFIGS[config].block_size:
-        lstm2_cores, head_core = [0, 1, 2], 0
+    # Placement, measured on SDK 29.0.0. The compiler gives each core of an
+    # LSTM layer whole hidden blocks (of `block_size` units), and the first
+    # `blocks % num_cores` cores one block more than the rest.
+    # - A head of at most 4x4 weight blocks (hidden 128 on a block size of 32,
+    #   256 on 64) runs faster on one core than spread over the cores: the
+    #   spread saves less matmul time than its cross-core transfers cost. The
+    #   second LSTM layer, on three cores including the head's, beats the
+    #   compiler's choice of four.
+    # - A bigger head runs on the cores holding one block fewer, which finish
+    #   their LSTM work first, when each core holds one or two blocks and at
+    #   most half of them hold two (hidden 224 to 288 on a block size of 32).
+    #   The compiler's own spread of the head is uneven, and can put the logit
+    #   on a core holding two blocks. Over that range the rule measured 2
+    #   cycles faster on V80 and 4-9 on IA-420f, and at 256 and 288 up to 17%
+    #   faster back to back. Left with two cores (320) it is slower, so past
+    #   that range the compiler's placement is kept.
+    hw = CONFIGS[config]
+    blocks = -(-hidden_size // hw.block_size)
+    extra = blocks % hw.num_cores
+    lstm2_cores, head_cores = None, None
+    if blocks <= 4:
+        lstm2_cores, head_cores = [0, 1, 2], [0]
+    elif hw.num_cores < blocks < 2 * hw.num_cores and extra <= hw.num_cores // 2:
+        head_cores = list(range(extra, hw.num_cores))
 
     model = QECLSTM(
         distance,
         hidden_size,
         soft=soft,
         lstm2_cores=lstm2_cores,
-        head_core=head_core,
+        head_cores=head_cores,
     )
     num_inputs = model.num_defects + (distance**2 - 1) // 2
     input = torch.randn(1, 5, num_inputs)

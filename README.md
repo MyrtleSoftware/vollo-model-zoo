@@ -256,7 +256,8 @@ device in [Ali et al. 2024](https://arxiv.org/abs/2403.00706).
 The file shows a latency-minded head: a logit instead of a sigmoid, and two
 summed `Linear`s instead of a concatenation. It also places work with
 `vollo_torch.CorePartition`: while the head is only a few weight blocks it runs
-on one core, saving cross-core transfers, with the second LSTM layer on three.
+on one core, saving cross-core transfers, with the second LSTM layer on three; a
+bigger head runs on the cores that the LSTM layers load least.
 With `soft=True` the inputs are the
 analog-readout defect probabilities and leakage flags of Ali et al., which
 doubles the input width for almost no extra latency.

@@ -68,10 +68,12 @@ def convert_state_dict(reference: Reference) -> dict[str, torch.Tensor]:
     return out
 
 
-# The core placements `_vm` picks: none, and the one for a small head
+# The core placements `_vm` picks: none, the one for a small head, and the one
+# for a big head (on 6 cores, with 8 LSTM hidden blocks)
 PLACEMENTS = {
     "compiler": {},
-    "small_head": dict(lstm2_cores=[0, 1, 2], head_core=0),
+    "small_head": dict(lstm2_cores=[0, 1, 2], head_cores=[0]),
+    "big_head": dict(head_cores=[2, 3, 4, 5]),
 }
 
 
@@ -104,16 +106,23 @@ def test_matches_reference(distance: int, hidden_size: int, soft: bool, placemen
 
 
 @pytest.mark.parametrize("config", ["V80", "IA-840f"])
-@pytest.mark.parametrize("distance,hidden_size", [(3, 64), (5, 128)])
+@pytest.mark.parametrize("distance,hidden_size", [(3, 64), (5, 128), (11, 256)])
 @beartype
 def test_vm_placement_matches_reference(distance: int, hidden_size: int, config: str):
     """
     The compiled program, run one round per inference in the VM, against the
-    reference, with everything left to the compiler and with each placement.
+    reference, with everything left to the compiler and with each placement
+    that fits the config's cores.
     """
+    num_cores = CONFIGS[config].num_cores
+    placements = [
+        name
+        for name, cores in PLACEMENTS.items()
+        if all(c < num_cores for v in cores.values() for c in v)
+    ]
     time = 16
     outputs = {}
-    for placement in PLACEMENTS:
+    for placement in placements:
         model, reference = build(distance, hidden_size, False, placement)
         x = torch.randn(1, time, model.num_defects + (distance**2 - 1) // 2)
         program = _vollo_compile(
@@ -129,7 +138,7 @@ def test_vm_placement_matches_reference(distance: int, hidden_size: int, config:
 
     # Moving work between cores changes only how the VM's fp32 model of the
     # accumulators splits the sums
-    for placement in list(PLACEMENTS)[1:]:
+    for placement in placements[1:]:
         np.testing.assert_allclose(
             outputs["compiler"], outputs[placement], atol=1e-6, rtol=1e-4
         )
