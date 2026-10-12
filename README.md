@@ -12,6 +12,7 @@ Models in the zoo include:
 |                   | [SwiGLU FFN](#transformer-swiglu-feed-forward-block)  | [`ffn-swiglu.py`](./vollo_model_zoo/models/ffn-swiglu.py)                                                                                             |
 |                   | [ResMLP](#resmlp)                                     | [`resmlp.py`](./vollo_model_zoo/models/resmlp.py)                                                                                                     |
 |                   | [Mixture of Experts](#mixture-of-experts-moe-block)   | [`moe.py`](./vollo_model_zoo/models/moe.py)                                                                                                           |
+|                   | [Neural BP](#neural-belief-propagation-decoder)       | [`neural-bp.py`](./vollo_model_zoo/models/neural-bp.py)                                                                                               |
 | **Convolutional** | [Basic CNN](#basic-convolutional-neural-networks-cnn) | [`cnn.py`](./vollo_model_zoo/models/cnn.py)                                                                                                           |
 |                   | [TCN](#tcn)                                           | [`tcn.py`](./vollo_model_zoo/models/tcn.py)                                                                                                           |
 |                   | [WaveNet](#wavenet)                                   | [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)                                                                                                   |
@@ -159,6 +160,26 @@ Mixture-of-Experts increase model capacity (parameter count) without increasing
 the computational cost per token, by activating only a subset of the experts
 for each input. This allows for more efficient scaling of model capacity
 compared to dense architectures.
+
+### Neural belief-propagation decoder
+
+Code/model: [`neural-bp.py`](./vollo_model_zoo/models/neural-bp.py)
+
+A fast first-stage decoder run inside a quantum computer's real-time control
+loop. Belief propagation (BP) on the Tanner graph of the toric code turns a
+round of plaquette syndromes into a posterior log-likelihood ratio for every
+qubit. Following [Liu & Poulin (2019)](https://arxiv.org/abs/1811.07835), the
+iterations are unrolled with trainable per-edge weights and per-qubit biases
+(their Eqs. 4-6, initialised to 1 = plain BP). GNN decoders such as
+[Maan et al. (2024)](https://arxiv.org/abs/2408.07038) share the structure.
+
+A syndrome round lasts about 1 µs; each BP iteration costs about 0.35 to 0.65 µs
+for toric codes up to L=12 (min-sum 0.35 to 0.5, sum-product 0.55 to 0.65), on
+top of a fixed ~0.4 µs for the input and output stages. Messages are laid out
+`[slot, plaquette]` and the Tanner graph is four constant permutation matrices,
+so leave-one-out reductions are depth-2 trees and no `allow_dynamic_weights` is
+needed. The file pairs the paper's sum-product check (`tanh`/`atanh`) with a
+faster min-sum check, which is not the paper's rule.
 
 ### Basic convolutional neural networks (CNN)
 
