@@ -17,6 +17,7 @@ Models in the zoo include:
 |                   | [WaveNet](#wavenet)                                   | [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)                                                                                                   |
 |                   | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
 | **Recurrent**     | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
+|                   | [QEC LSTM decoder](#qec-lstm-decoder)                 | [`qec-lstm.py`](./vollo_model_zoo/models/qec-lstm.py)                                                                                                 |
 |                   | [GRU](#gru)                                           | [`gru.py`](./vollo_model_zoo/models/gru.py)                                                                                                           |
 |                   | [RNN-T](#rnn-t)                                       | [`rnnt.py`](./vollo_model_zoo/models/rnnt.py), [`stateless_rnnt.py`](./vollo_model_zoo/models/stateless_rnnt.py)                                      |
 |                   | [S3/S4/S5 (SSM)](#s3s4s5-state-space-models)          | [`ssm.py`](./vollo_model_zoo/models/ssm.py)                                                                                                           |
@@ -235,6 +236,30 @@ A standard LSTM cell consists of:
 
 Vollo has first-class support for `torch.nn.LSTM`, allowing for efficient
 streaming inference of multi-layer, biased, and batch-first LSTM models.
+
+### QEC LSTM decoder
+
+Code/model: [`qec-lstm.py`](./vollo_model_zoo/models/qec-lstm.py)
+
+A streaming surface-code decoder for the real-time loop of a quantum computer.
+Each inference takes one round of syndrome defects and updates a 2-layer LSTM;
+the head outputs the logit that the logical qubit has flipped, and the final
+round also carries the defects recomputed from the data-qubit readout. It
+follows [Varbanov et al. 2023](https://arxiv.org/abs/2307.03280), after
+[Baireuther et al. 2018](https://arxiv.org/abs/1705.07855), minus the paper's
+training-only auxiliary head.
+
+The decoder has to keep up with the QEC round, about 1.1 µs on
+[Google Willow](https://arxiv.org/abs/2408.13687) and 700 ns on the QuTech
+device in [Ali et al. 2024](https://arxiv.org/abs/2403.00706), so the sweep
+reports both the isolated and the back-to-back latency of a round. The
+deployment sizes (distance 3 to 9, hidden size up to 128) fit in under 1 µs on
+V80; the ~1M-parameter baseline does not.
+
+The file shows a latency-minded head: a logit instead of a sigmoid, and two
+summed `Linear`s instead of a concatenation. With `soft=True` the inputs are the
+analog-readout defect probabilities and leakage flags of Ali et al., which
+doubles the input width for almost no extra latency.
 
 ### RNN-T
 
