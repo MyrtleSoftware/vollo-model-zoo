@@ -151,6 +151,44 @@ class FiLMDecoder(nn.Module):
                 row.weight.mul_(g[:, None, None])
 
 
+class _CoreSplitConv(nn.Module):
+    """
+    A `PaddedConv1d` + ReLU whose output channels are split into groups, group g
+    on core g (a `CorePartition`), so an optional FiLM modulation after it runs on
+    the core that produced each slice.
+    """
+
+    def __init__(
+        self, in_channels: int, sizes: list[int], kernel_size: int, dilation: int
+    ):
+        super().__init__()
+        self.sizes = sizes
+        self.parts = nn.ModuleList(
+            PaddedConv1d(in_channels, z, kernel_size, dilation=dilation) for z in sizes
+        )
+
+    def forward(self, x, gamma=None, beta=None):
+        """[B, in!, T] (and gamma, beta [B, out!, T]) -> [B, out!, T]"""
+        ys, a = [], 0
+        for g, (part, z) in enumerate(zip(self.parts, self.sizes)):
+            with CorePartition([g]):
+                y = part(x)  # [B, z!, T]
+                if gamma is not None:
+                    y = gamma[:, a : a + z] * y + beta[:, a : a + z]
+                ys.append(torch.relu(y))
+            a += z
+        return torch.cat(ys, dim=1)
+
+    @torch.no_grad()
+    def load_conv(self, conv: PaddedConv1d):
+        """Load the weights of the unsplit `PaddedConv1d`."""
+        a = 0
+        for part, z in zip(self.parts, self.sizes):
+            part.conv.weight.copy_(conv.conv.weight[a : a + z])
+            part.conv.bias.copy_(conv.conv.bias[a : a + z])
+            a += z
+
+
 class StreamingFiLMDecoder(nn.Module):
     @beartype
     def __init__(
@@ -160,6 +198,7 @@ class StreamingFiLMDecoder(nn.Module):
         kernel_size: int,
         dilation: int,
         film_input: bool = False,
+        core_groups: list[int] | None = None,
     ):
         """
         Causal, round-streaming redesign of `FiLMDecoder` (needs retraining).
@@ -185,6 +224,11 @@ class StreamingFiLMDecoder(nn.Module):
                              experiment (r <= 11 in the paper). Dilation is free on Vollo,
                              while a third block adds ~0.15 us of dependency depth.
             film_input:      Take gamma and beta as part of the input
+            core_groups:     Split the last block's output channels into groups of
+                             these sizes, group g on core g (see `_CoreSplitConv`).
+                             With `film_input`, each core then applies the FiLM
+                             modulation to its own slice rather than one core doing
+                             it all. `load_conv` loads the unsplit weights.
         """
         super().__init__()
         self.num_stabilisers = num_stabilisers
@@ -195,6 +239,9 @@ class StreamingFiLMDecoder(nn.Module):
             PaddedConv1d(i, o, kernel_size, dilation=dilation)
             for i, o in zip(ins, channels)
         )
+        if core_groups is not None:
+            assert sum(core_groups) == channels[-1]
+            self.convs[-1] = _CoreSplitConv(ins[-1], core_groups, kernel_size, dilation)
         self.head = nn.Linear(channels[-1], num_stabilisers + 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -210,12 +257,17 @@ class StreamingFiLMDecoder(nn.Module):
             x = x[:, : self.num_stabilisers]  # [B, S!, T]
         offset = 0
         for conv, c in zip(self.convs, self.channels):
-            x = conv(x)  # [B, c!, T]
+            gamma = beta = None
             if self.film_input:
-                gamma = film[:, offset : offset + c]
+                gamma = film[:, offset : offset + c]  # [B, c!, T]
                 beta = film[:, offset + c : offset + 2 * c]
-                x = gamma * x + beta
                 offset += 2 * c
+            if isinstance(conv, _CoreSplitConv):
+                x = conv(x, gamma, beta)  # [B, c!, T]
+                continue
+            x = conv(x)  # [B, c!, T]
+            if gamma is not None:
+                x = gamma * x + beta
             x = torch.relu(x)
         return self.head(x.transpose(1, 2))  # [B, T, d!]
 
@@ -223,8 +275,22 @@ class StreamingFiLMDecoder(nn.Module):
     def fold_film(self, gamma: list[torch.Tensor], beta: list[torch.Tensor]):
         """Bake per-block gamma, beta (each of shape (channels[i],)) into the convs."""
         for conv, g, b in zip(self.convs, gamma, beta):
-            conv.conv.weight.mul_(g[:, None, None])
-            conv.conv.bias.mul_(g).add_(b)
+            a = 0
+            for part in conv.parts if isinstance(conv, _CoreSplitConv) else [conv]:
+                z = part.conv.out_channels
+                part.conv.weight.mul_(g[a : a + z, None, None])
+                part.conv.bias.mul_(g[a : a + z]).add_(b[a : a + z])
+                a += z
+
+
+@beartype
+def _core_groups(channels: int, num_cores: int, block_size: int) -> list[int]:
+    """`channels` split into near-equal whole-block groups, at most one per core."""
+    blocks = -(-channels // block_size)
+    sizes = [blocks // num_cores + (i < blocks % num_cores) for i in range(num_cores)]
+    groups = [z * block_size for z in sizes if z]
+    groups[-1] -= sum(groups) - channels
+    return groups
 
 
 @beartype
@@ -261,7 +327,7 @@ def _vm(
     dilation: int = 3,
     film_input: bool = False,
 ):
-    from vollo_model_zoo.vm import vollo_info
+    from vollo_model_zoo.vm import CONFIGS, vollo_info
 
     meta = dict(distance=num_stabilisers + 1, channels=str(channels))
     if rounds is not None:
@@ -279,8 +345,12 @@ def _vm(
         # With film_input, gamma and beta ride along as extra input channels.
         num_inputs = num_stabilisers + 2 * sum(channels) * film_input
         input = torch.randn(1, num_inputs, 8)
+        core_groups = None
+        if film_input:
+            hw = CONFIGS[config]
+            core_groups = _core_groups(channels[-1], hw.num_cores, hw.block_size)
         model = StreamingFiLMDecoder(
-            num_stabilisers, channels, kernel_size, dilation, film_input
+            num_stabilisers, channels, kernel_size, dilation, film_input, core_groups
         )
         time_axis = 2
         meta |= dict(

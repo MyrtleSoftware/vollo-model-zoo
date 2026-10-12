@@ -98,3 +98,30 @@ def test_window_decoder_spreads_kernel_rows_only_when_weights_cannot_be_copied()
     # IA-840f: the copies fit beside the d=5 head, not beside the d=11 head.
     assert qec_tcn._spread_cores("IA-840f", 4, 5, channels) is None
     assert qec_tcn._spread_cores("IA-840f", 10, 11, channels) == 3
+
+
+def test_streaming_core_split_matches_unsplit():
+    """Splitting the last block over cores, with FiLM input or folded, is exact."""
+    torch.manual_seed(0)
+    stabilisers, channels, rounds = 6, [32, 64], 12
+    gamma = [torch.rand(c) + 0.5 for c in channels]
+    beta = [torch.randn(c) for c in channels]
+    syndrome = torch.randn(1, stabilisers, rounds)
+    film = torch.cat([v for g, b in zip(gamma, beta) for v in (g, b)])
+    film = film[None, :, None].expand(1, -1, rounds)
+
+    plain = qec_tcn.StreamingFiLMDecoder(stabilisers, channels, 3, 3, film_input=True)
+    for groups in [[32, 32], [16, 16, 16, 8, 8], [64]]:
+        for film_input in [True, False]:
+            split = qec_tcn.StreamingFiLMDecoder(
+                stabilisers, channels, 3, 3, film_input, core_groups=groups
+            )
+            split.convs[0].load_state_dict(plain.convs[0].state_dict())
+            split.convs[1].load_conv(plain.convs[1])
+            split.head.load_state_dict(plain.head.state_dict())
+            if film_input:
+                out = split(torch.cat([syndrome, film], dim=1))
+            else:
+                split.fold_film(gamma, beta)
+                out = split(syndrome)
+            torch.testing.assert_close(out, plain(torch.cat([syndrome, film], dim=1)))
