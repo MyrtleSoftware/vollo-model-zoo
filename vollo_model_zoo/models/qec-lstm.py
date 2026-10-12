@@ -1,7 +1,9 @@
 from collections.abc import Generator
+from contextlib import nullcontext
 from pathlib import Path
 
 import torch
+import vollo_torch
 from beartype import beartype
 from torch import nn
 
@@ -13,6 +15,7 @@ class QECLSTM(nn.Module):
         distance: int,
         hidden_size: int,
         soft: bool = False,
+        head_core: int | None = None,
     ):
         """
         Streaming LSTM decoder for a rotated surface code of distance `distance`.
@@ -38,6 +41,13 @@ class QECLSTM(nn.Module):
                                      for d=3 and 96-128 for d=5 and d=7)
                soft:                 Defect probabilities and leakage flags
                                      instead of hard defects
+               head_core:            Run the head on this one core
+                                     (`vollo_torch.CorePartition`) rather than
+                                     letting the compiler spread it. Same
+                                     function; it only changes where the head
+                                     runs, and pays off while the head's
+                                     `state_to_hidden` is a few weight blocks
+                                     (see `_vm`)
         """
         super().__init__()
         stabilisers = distance**2 - 1
@@ -56,6 +66,7 @@ class QECLSTM(nn.Module):
             stabilisers // 2, hidden_size, bias=False
         )
         self.logit = nn.Linear(hidden_size, 1)
+        self.head_core = head_core
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -71,9 +82,14 @@ class QECLSTM(nn.Module):
         defects = x[..., : self.num_defects]
         final_defects = x[..., self.num_defects :]
         state, _ = self.lstm(defects)  # [B, T, hidden!]
-        hidden = self.state_to_hidden(torch.relu(state))
-        hidden = hidden + self.final_defects_to_hidden(final_defects)
-        return self.logit(torch.relu(hidden))
+        with (
+            nullcontext()
+            if self.head_core is None
+            else vollo_torch.CorePartition([self.head_core])
+        ):
+            hidden = self.state_to_hidden(torch.relu(state))
+            hidden = hidden + self.final_defects_to_hidden(final_defects)
+            return self.logit(torch.relu(hidden))
 
 
 @beartype
@@ -83,9 +99,16 @@ def _vm(
     soft: bool,
     config: str,
 ):
-    from vollo_model_zoo.vm import vollo_info
+    from vollo_model_zoo.vm import CONFIGS, vollo_info
 
-    model = QECLSTM(distance, hidden_size, soft=soft)
+    # A head of at most 4x4 weight blocks runs faster on one core than spread
+    # over the cores: the spread saves less matmul time than its cross-core
+    # transfers cost. At 8x8 blocks (hidden 256 on a block size of 32) the spread
+    # wins. Core 0 holds part of the LSTM, so the head's input is already local
+    block_size = CONFIGS[config].block_size
+    head_core = 0 if hidden_size <= 4 * block_size else None
+
+    model = QECLSTM(distance, hidden_size, soft=soft, head_core=head_core)
     num_inputs = model.num_defects + (distance**2 - 1) // 2
     input = torch.randn(1, 5, num_inputs)
 
