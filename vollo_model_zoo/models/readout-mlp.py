@@ -12,17 +12,20 @@ class _SELU(nn.Module):
     Vollo supports it natively.
 
     `scale * (relu(x) + alpha * (exp(min(x, 0)) - 1))`, rearranged to the form
-    that measured fastest on V80: min(scale * alpha * exp(x), scale * alpha) is
-    the negative branch plus its offset, so only one clamp and one exp sit in
-    the dependency chain.
+    that measured fastest: `scale * alpha * (relu(x) / alpha + min(exp(x), 1) - 1)`.
+    For x > 0 the clamped exponential is 1 and cancels the -1; for x <= 0 the
+    ReLU is 0. Vollo fuses the clamp into the exp, the 1/alpha into the ReLU,
+    and the outer `scale * alpha` and -1 into the next Linear, which leaves
+    three pointwise instructions (ReLU, exp, add). A scale on the exp's output
+    would cost a fourth.
     """
 
     _ALPHA = 1.6732632423543772848170429916717
     _SCALE = 1.0507009873554804934193349852946
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        sa = self._SCALE * self._ALPHA
-        return self._SCALE * torch.relu(x) + torch.clamp(sa * torch.exp(x), max=sa) - sa
+        a, sa = self._ALPHA, self._SCALE * self._ALPHA
+        return sa * (torch.relu(x) / a + torch.clamp(torch.exp(x), max=1.0) - 1.0)
 
 
 class ReadoutFNN(nn.Module):
