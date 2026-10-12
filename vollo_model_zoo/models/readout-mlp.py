@@ -74,7 +74,11 @@ def _round_robin_rows(rows: int, block_size: int, num_cores: int) -> list[int]:
 
 @beartype
 def _placement(
-    widths: list[int], block_size: int, num_cores: int, interleave: bool
+    widths: list[int],
+    block_size: int,
+    num_cores: int,
+    interleave: bool,
+    one_block_pieces: bool = False,
 ) -> list[tuple[list[int], list[int]]]:
     """
     `(rows, cores)` of the pieces of the first Linear and, when it is a hidden
@@ -90,7 +94,12 @@ def _placement(
 
     The first Linear is interleaved (`_round_robin_rows`, extras on the low
     cores) when `interleave` and it is large enough; otherwise it is one piece
-    per core with its extra blocks on the high cores.
+    per core with its extra blocks on the high cores. With `one_block_pieces`
+    as well (the Versal boards, where a one-block piece runs at full rate), a
+    first Linear too small for that interleave but of two or more blocks per
+    core is split into two rounds instead: an equal share on every core, then
+    its extra blocks as one-block pieces on the high cores, so the second
+    layer starts on the first round while they compute.
     """
     if num_cores == 1:
         return []
@@ -103,9 +112,13 @@ def _placement(
         extras_low = True
     else:
         blocks = -(-widths[1] // block_size)
-        rem = blocks % num_cores
-        share = [blocks // num_cores + (c >= num_cores - rem) for c in range(num_cores)]
-        rows, cores = _rows_per_core(widths[1], block_size, share)
+        base, rem = blocks // num_cores, blocks % num_cores
+        extra = [int(c >= num_cores - rem) for c in range(num_cores)]
+        share = [base + e for e in extra]
+        rounds = [[base] * num_cores, extra]
+        if not (interleave and one_block_pieces and base >= 2 and rem):
+            rounds = [share]
+        rows, cores = _rows_per_core(widths[1], block_size, *rounds)
         extras_low = False
     pieces = [(rows, cores)]
     if len(widths) > 3:
@@ -124,16 +137,20 @@ def _placement(
 
 @beartype
 def _rows_per_core(
-    rows: int, block_size: int, blocks: list[int]
+    rows: int, block_size: int, *rounds: list[int]
 ) -> tuple[list[int], list[int]]:
-    """One piece per core holding `blocks[c]` whole blocks, in core order"""
+    """
+    Rounds of one piece per core, core `c` holding `round[c]` whole blocks
+    (none when 0), in round then core order
+    """
     out, cores, start = [], [], 0
-    for c, n in enumerate(blocks):
-        if n:
-            end = min(rows, start + n * block_size)
-            out.append(end - start)
-            cores.append(c)
-            start = end
+    for blocks in rounds:
+        for c, n in enumerate(blocks):
+            if n:
+                end = min(rows, start + n * block_size)
+                out.append(end - start)
+                cores.append(c)
+                start = end
     return out, cores
 
 
@@ -243,6 +260,7 @@ class ReadoutFNN(nn.Module):
         num_cores: int = 1,
         block_size: int = 32,
         interleave: bool = True,
+        one_block_pieces: bool = False,
     ):
         """
         A fully-connected network on the raw digitised I/Q trace of a readout
@@ -258,7 +276,8 @@ class ReadoutFNN(nn.Module):
         into pieces pinned to the cores (`_placement`, `_PinnedLinear`), each
         output computed exactly as before:
         - With `interleave`, a large first Linear is split into two or more
-          rounds of one piece per core (`_round_robin_rows`). Left whole, the
+          rounds of one piece per core (`_round_robin_rows`; on Versal, a
+          smaller one too, see `_placement`). Left whole, the
           compiler gives each core one contiguous run of the hidden units, and
           the second layer, which reads them in order, waits for each core's
           run to finish. Interleaved, the first round of pieces lands on every
@@ -288,10 +307,12 @@ class ReadoutFNN(nn.Module):
             num_cores:  Cores to spread the first two Linears over (1: leave them whole)
             block_size: The config's block size, so pieces are whole blocks
             interleave: Interleave a large first Linear over the cores in rounds
+            one_block_pieces: Whether one-block pieces run at full rate (Versal),
+                which lets a smaller first Linear be interleaved too
         """
         super().__init__()
         widths = [n_inputs, *hidden, n_outputs]
-        pieces = _placement(widths, block_size, num_cores, interleave)
+        pieces = _placement(widths, block_size, num_cores, interleave, one_block_pieces)
         act = _SELU if selu else nn.ReLU
         layers: list[nn.Module] = []
         for i, (d_in, d_out) in enumerate(zip(widths, widths[1:])):
@@ -381,12 +402,20 @@ def _vm(
         # Interleave the first layer only on the block-32 (six-core) boards,
         # where it measured faster (SDK 29.0.0); on the block-64 IA-840f it
         # measured slower on the SELU entries, so that board keeps it one
-        # piece per core. HERQULES's and Mude's 500-wide layer is too small to
-        # interleave anyway.
+        # piece per core.
+        # HERQULES's and Mude's 500-wide first layer is interleaved only on the
+        # Versal boards (V80, V80LL), which run a one-block piece at full rate;
+        # Agilex runs a one-block Linear at half rate (SDK 29.0.0).
         hw = CONFIGS[config]
-        interleave = hw.block_size == 32
         model = ReadoutFNN(
-            n_inputs, hidden, n_outputs, selu, hw.num_cores, hw.block_size, interleave
+            n_inputs,
+            hidden,
+            n_outputs,
+            selu,
+            hw.num_cores,
+            hw.block_size,
+            interleave=hw.block_size == 32,
+            one_block_pieces=getattr(hw, "fabric", None) == "Versal",
         )
     input = torch.randn(1, n_inputs)
 

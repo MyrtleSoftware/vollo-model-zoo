@@ -178,6 +178,7 @@ def test_round_robin_rows(rows, num_cores, block_size):
     assert per_core[0] == total // num_cores
 
 
+@pytest.mark.parametrize("one_block_pieces", [True, False])
 @pytest.mark.parametrize("interleave", [True, False])
 @pytest.mark.parametrize("num_cores, block_size", _CORES)
 @pytest.mark.parametrize(
@@ -190,8 +191,10 @@ def test_round_robin_rows(rows, num_cores, block_size):
         (100, 64, 32),
     ],
 )
-def test_placement(widths, num_cores, block_size, interleave):
-    pieces = readout_mlp._placement(list(widths), block_size, num_cores, interleave)
+def test_placement(widths, num_cores, block_size, interleave, one_block_pieces):
+    pieces = readout_mlp._placement(
+        list(widths), block_size, num_cores, interleave, one_block_pieces
+    )
     if num_cores == 1:
         assert pieces == []
         return
@@ -228,6 +231,10 @@ def test_placement_at_six_cores():
     herq = readout_mlp._placement([1000, 500, 250, 32], 32, 6, True)
     assert herq[0] == ([64, 64, 96, 96, 96, 84], [0, 1, 2, 3, 4, 5])
     assert herq[1] == ([64, 64, 32, 32, 32, 26], [0, 1, 2, 3, 4, 5])
+    # Versal: a round of two blocks per core, then the extra blocks on cores 2-5
+    herq = readout_mlp._placement([1000, 500, 250, 32], 32, 6, True, True)
+    assert herq[0] == ([64] * 6 + [32, 32, 32, 20], [0, 1, 2, 3, 4, 5, 2, 3, 4, 5])
+    assert herq[1] == ([64, 64, 32, 32, 32, 26], [0, 1, 2, 3, 4, 5])
 
 
 @pytest.mark.parametrize("widths, selu", _WIDTHS)
@@ -254,3 +261,18 @@ def test_output_core():
         readout_mlp.ReadoutFNN(1000, (500, 250), 243, False, 6, 32).output_core is None
     )
     assert readout_mlp.ReadoutFNN(1000, (500, 250), 32, False).output_core is None
+
+
+@pytest.mark.parametrize("widths, selu", _WIDTHS)
+def test_versal_layout_loads(widths, selu):
+    """The V80 layout, one-block pieces allowed"""
+    torch.manual_seed(0)
+    reference = _plain(widths, selu)
+    model = readout_mlp.ReadoutFNN(
+        widths[0], widths[1:-1], widths[-1], selu, 6, 32, one_block_pieces=True
+    )
+    model.load_state_dict(reference.state_dict())
+    assert list(model.state_dict()) == list(reference.state_dict())
+    x = torch.randn(64, widths[0])
+    with torch.no_grad():
+        torch.testing.assert_close(model(x), reference(x), atol=1e-5, rtol=1e-5)
