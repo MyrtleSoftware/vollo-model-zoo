@@ -92,8 +92,11 @@ class QECLSTM(nn.Module):
         state, _ = self.lstm1(defects)  # [B, T, hidden!]
         with _on_cores(self.lstm2_cores):
             state, _ = self.lstm2(state)  # [B, T, hidden!]
+        # Outside the head's cores, so the compiler can apply it where `state`
+        # is produced
+        state = torch.relu(state)
         with _on_cores(None if self.head_core is None else [self.head_core]):
-            hidden = self.state_to_hidden(torch.relu(state))
+            hidden = self.state_to_hidden(state)
             hidden = hidden + self.final_defects_to_hidden(final_defects)
             return self.logit(torch.relu(hidden))
 
