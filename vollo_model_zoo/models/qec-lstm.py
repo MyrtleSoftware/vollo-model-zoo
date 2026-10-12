@@ -15,6 +15,7 @@ class QECLSTM(nn.Module):
         distance: int,
         hidden_size: int,
         soft: bool = False,
+        lstm1_cores: list[int] | None = None,
         lstm2_cores: list[int] | None = None,
         head_cores: list[int] | None = None,
     ):
@@ -42,9 +43,10 @@ class QECLSTM(nn.Module):
                                      for d=3 and 96-128 for d=5 and d=7)
                soft:                 Defect probabilities and leakage flags
                                      instead of hard defects
-               lstm2_cores:          Run the second LSTM layer on these cores
+               lstm1_cores:          Run the first LSTM layer on these cores
                                      (`vollo_torch.CorePartition`) rather than
                                      letting the compiler place it
+               lstm2_cores:          The same for the second LSTM layer
                head_cores:           Run the head on these cores rather than
                                      letting the compiler place it
 
@@ -71,6 +73,7 @@ class QECLSTM(nn.Module):
             stabilisers // 2, hidden_size, bias=False
         )
         self.logit = nn.Linear(hidden_size, 1)
+        self.lstm1_cores = lstm1_cores
         self.lstm2_cores = lstm2_cores
         self.head_cores = head_cores
         self.register_state_dict_post_hook(_save_as_two_layer_lstm)
@@ -89,7 +92,8 @@ class QECLSTM(nn.Module):
         """
         defects = x[..., : self.num_defects]
         final_defects = x[..., self.num_defects :]
-        state, _ = self.lstm1(defects)  # [B, T, hidden!]
+        with _on_cores(self.lstm1_cores):
+            state, _ = self.lstm1(defects)  # [B, T, hidden!]
         with _on_cores(self.lstm2_cores):
             state, _ = self.lstm2(state)  # [B, T, hidden!]
         # Outside the head's cores, so the compiler can apply it where `state`
@@ -194,20 +198,25 @@ def _vm(
     #   on a core holding two blocks. Over that range the rule measured 2
     #   cycles faster on V80 and 4-9 on IA-420f, and at 256 and 288 up to 17%
     #   faster back to back. Left with two cores (320) it is slower, so past
-    #   that range the compiler's placement is kept.
+    #   that range the compiler's placement is kept. Keeping the first LSTM
+    #   layer off the first of those cores, which takes the logit, leaves an
+    #   isolated round as fast and makes back-to-back rounds 1-5% faster over
+    #   the same range.
     hw = CONFIGS[config]
     blocks = -(-hidden_size // hw.block_size)
     extra = blocks % hw.num_cores
-    lstm2_cores, head_cores = None, None
+    lstm1_cores, lstm2_cores, head_cores = None, None, None
     if blocks <= 4:
         lstm2_cores, head_cores = [0, 1, 2], [0]
     elif hw.num_cores < blocks < 2 * hw.num_cores and extra <= hw.num_cores // 2:
         head_cores = list(range(extra, hw.num_cores))
+        lstm1_cores = [c for c in range(hw.num_cores) if c != extra]
 
     model = QECLSTM(
         distance,
         hidden_size,
         soft=soft,
+        lstm1_cores=lstm1_cores,
         lstm2_cores=lstm2_cores,
         head_cores=head_cores,
     )

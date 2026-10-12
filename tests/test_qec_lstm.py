@@ -73,7 +73,7 @@ def convert_state_dict(reference: Reference) -> dict[str, torch.Tensor]:
 PLACEMENTS = {
     "compiler": {},
     "small_head": dict(lstm2_cores=[0, 1, 2], head_cores=[0]),
-    "big_head": dict(head_cores=[2, 3, 4, 5]),
+    "big_head": dict(lstm1_cores=[0, 1, 3, 4, 5], head_cores=[2, 3, 4, 5]),
 }
 
 
