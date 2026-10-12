@@ -48,7 +48,7 @@ class QECLSTM(nn.Module):
                head_core:            Run the head on this one core rather than
                                      letting the compiler spread it
 
-        The two core placements change where the work runs, not the function
+        The core placements change where the work runs, not the function
         (see `_vm` for when they pay off). The layers are two 1-layer
         `nn.LSTM`s, rather than one 2-layer one, so that each can be placed: a
         2-layer `nn.LSTM`'s `weight_ih_l1` etc. are `lstm2.weight_ih_l0` etc.
@@ -84,20 +84,19 @@ class QECLSTM(nn.Module):
         defects = x[..., : self.num_defects]
         final_defects = x[..., self.num_defects :]
         state, _ = self.lstm1(defects)  # [B, T, hidden!]
-        with (
-            nullcontext()
-            if self.lstm2_cores is None
-            else vollo_torch.CorePartition(self.lstm2_cores)
-        ):
+        with _on_cores(self.lstm2_cores):
             state, _ = self.lstm2(state)  # [B, T, hidden!]
-        with (
-            nullcontext()
-            if self.head_core is None
-            else vollo_torch.CorePartition([self.head_core])
-        ):
+        with _on_cores(None if self.head_core is None else [self.head_core]):
             hidden = self.state_to_hidden(torch.relu(state))
             hidden = hidden + self.final_defects_to_hidden(final_defects)
             return self.logit(torch.relu(hidden))
+
+
+def _on_cores(cores: list[int] | None):
+    """
+    Run what is inside on `cores`, or wherever the compiler puts it for None
+    """
+    return nullcontext() if cores is None else vollo_torch.CorePartition(cores)
 
 
 @beartype
@@ -109,11 +108,12 @@ def _vm(
 ):
     from vollo_model_zoo.vm import CONFIGS, vollo_info
 
-    # A head of at most 4x4 weight blocks runs faster on one core than spread
-    # over the cores: the spread saves less matmul time than its cross-core
-    # transfers cost. At 8x8 blocks (hidden 256 on a block size of 32) the spread
-    # wins, so the compiler places everything. The second LSTM layer, on three
-    # cores including the head's, beats the compiler's choice of four
+    # A head of at most 4x4 weight blocks (hidden 128 on a block size of 32,
+    # 256 on 64) runs faster on one core than spread over the cores: the spread
+    # saves less matmul time than its cross-core transfers cost. The second
+    # LSTM layer, on three cores including the head's, beats the compiler's
+    # choice of four. Past 4x4 blocks the compiler's own placement is kept: no
+    # fixed placement measured better at every hidden size from 160 to 256
     lstm2_cores, head_core = None, None
     if hidden_size <= 4 * CONFIGS[config].block_size:
         lstm2_cores, head_core = [0, 1, 2], 0

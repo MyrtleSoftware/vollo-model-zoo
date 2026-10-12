@@ -254,9 +254,10 @@ The decoder has to keep up with the QEC round, about 1.1 µs on
 device in [Ali et al. 2024](https://arxiv.org/abs/2403.00706).
 
 The file shows a latency-minded head: a logit instead of a sigmoid, and two
-summed `Linear`s instead of a concatenation. While the head is only a few weight
-blocks, `vollo_torch.CorePartition` keeps it on one core, saving cross-core
-transfers, and the second LSTM layer on three. With `soft=True` the inputs are the
+summed `Linear`s instead of a concatenation. It also places work with
+`vollo_torch.CorePartition`: while the head is only a few weight blocks it runs
+on one core, saving cross-core transfers, with the second LSTM layer on three.
+With `soft=True` the inputs are the
 analog-readout defect probabilities and leakage flags of Ali et al., which
 doubles the input width for almost no extra latency.
 

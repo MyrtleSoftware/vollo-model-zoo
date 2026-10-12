@@ -70,18 +70,19 @@ def convert_state_dict(reference: Reference) -> dict[str, torch.Tensor]:
     return out
 
 
+# The core placements `_vm` picks: none, and the one for a small head
+PLACEMENTS = {
+    "compiler": {},
+    "small_head": dict(lstm2_cores=[0, 1, 2], head_core=0),
+}
+
+
 @beartype
 def build(
-    distance: int, hidden_size: int, soft: bool, pinned: bool
+    distance: int, hidden_size: int, soft: bool, placement: str
 ) -> tuple[nn.Module, Reference]:
     torch.manual_seed(0)
-    model = qec_lstm.QECLSTM(
-        distance,
-        hidden_size,
-        soft=soft,
-        lstm2_cores=[0, 1, 2] if pinned else None,
-        head_core=0 if pinned else None,
-    )
+    model = qec_lstm.QECLSTM(distance, hidden_size, soft=soft, **PLACEMENTS[placement])
     num_final = (distance**2 - 1) // 2
     reference = Reference(model.num_defects, num_final, hidden_size)
     # Non-trivial weights everywhere, biases included
@@ -93,11 +94,11 @@ def build(
 
 
 @pytest.mark.parametrize("soft", [False, True])
-@pytest.mark.parametrize("pinned", [False, True])
+@pytest.mark.parametrize("placement", list(PLACEMENTS))
 @pytest.mark.parametrize("distance,hidden_size", [(3, 16), (5, 32)])
 @beartype
-def test_matches_reference(distance: int, hidden_size: int, soft: bool, pinned: bool):
-    model, reference = build(distance, hidden_size, soft, pinned)
+def test_matches_reference(distance: int, hidden_size: int, soft: bool, placement: str):
+    model, reference = build(distance, hidden_size, soft, placement)
     x = torch.randn(2, 12, model.num_defects + (distance**2 - 1) // 2)
 
     with torch.no_grad():
@@ -110,25 +111,27 @@ def test_matches_reference(distance: int, hidden_size: int, soft: bool, pinned: 
 def test_vm_placement_matches_reference(distance: int, hidden_size: int, config: str):
     """
     The compiled program, run one round per inference in the VM, against the
-    reference, with everything left to the compiler and with the second layer
-    and the head pinned.
+    reference, with everything left to the compiler and with each placement.
     """
     time = 16
     outputs = {}
-    for pinned in [False, True]:
-        model, reference = build(distance, hidden_size, False, pinned)
+    for placement in PLACEMENTS:
+        model, reference = build(distance, hidden_size, False, placement)
         x = torch.randn(1, time, model.num_defects + (distance**2 - 1) // 2)
         program = _vollo_compile(
             model, x, time_axis=1, config=CONFIGS[config], allow_dynamic_weights=False
         )
         vm = program.to_vm(bit_accurate=False)
-        outputs[pinned] = vm.run_timesteps(x.numpy(), 1, 1)
+        outputs[placement] = vm.run_timesteps(x.numpy(), 1, 1)
 
         with torch.no_grad():
             expected = reference(x).numpy()
-        # bf16 activations through two LSTM layers and the head
-        np.testing.assert_allclose(outputs[pinned], expected, atol=0.05, rtol=0.05)
+        # The VM without `bit_accurate` models the arithmetic in fp32
+        np.testing.assert_allclose(outputs[placement], expected, atol=1e-5, rtol=1e-4)
 
-    # Moving the head between cores changes only how the VM's fp32 model of
-    # the accumulators splits the sums
-    np.testing.assert_allclose(outputs[False], outputs[True], atol=1e-6, rtol=1e-4)
+    # Moving work between cores changes only how the VM's fp32 model of the
+    # accumulators splits the sums
+    for placement in list(PLACEMENTS)[1:]:
+        np.testing.assert_allclose(
+            outputs["compiler"], outputs[placement], atol=1e-6, rtol=1e-4
+        )
