@@ -107,7 +107,9 @@ all five KLiNQ teachers 5.1 µs. Vollo has no native SELU, so the file rebuilds
 it from `relu`, `exp` and `clamp`, exact up to fp32 rounding (2.0 µs with it).
 On the six-core boards a first layer of 24 or more blocks of 32 (more than 736
 units) is split into pieces interleaved over the cores, so the second layer can
-start before the first finishes: the same function, 3.5 to 7% faster. Small
+start before the first finishes, and on every board the first two layers' output
+blocks are shared out over the cores together, so that no core holds an extra
+block of both: the same function, 0.7 to 8% faster. Small
 distilled readout networks remain hand-built RTL territory (20 to 50 ns).
 
 ### Transformer++'s SwiGLU feed-forward block

@@ -61,12 +61,77 @@ def _round_robin_rows(rows: int, block_size: int, num_cores: int) -> list[int]:
     return [e - s for s, e in zip([0, *ends], ends)]
 
 
-class _InterleavedLinear(nn.Module):
+@beartype
+def _placement(
+    widths: list[int], block_size: int, num_cores: int, interleave: bool
+) -> list[tuple[list[int], list[int]]]:
+    """
+    `(rows, cores)` of the pieces of the first Linear and, when it is a hidden
+    layer too, of the second: each piece's output rows and the core it is
+    pinned to, in output order. Empty on one core (every Linear left whole).
+
+    Each core gets whole output blocks, as the compiler places a Linear, but
+    the two layers' shares are chosen together: a core given an extra block of
+    the first Linear gets no extra block of the second, which goes to the
+    other end of the cores. Left to itself the compiler can give the cores
+    that hold the first layer's extra blocks the second's extras too, and the
+    second layer then waits on them (SDK 29.0.0).
+
+    The first Linear is interleaved (`_round_robin_rows`, extras on the low
+    cores) when `interleave` and it is large enough; otherwise it is one piece
+    per core with its extra blocks on the high cores.
+    """
+    if num_cores == 1:
+        return []
+    rows = _round_robin_rows(widths[1], block_size, num_cores) if interleave else []
+    if len(rows) > 1:
+        cores = [i % num_cores for i in range(len(rows))]
+        share = [0] * num_cores
+        for r, c in zip(rows, cores):
+            share[c] += -(-r // block_size)
+        extras_low = True
+    else:
+        blocks = -(-widths[1] // block_size)
+        rem = blocks % num_cores
+        share = [blocks // num_cores + (c >= num_cores - rem) for c in range(num_cores)]
+        rows, cores = _rows_per_core(widths[1], block_size, share)
+        extras_low = False
+    pieces = [(rows, cores)]
+    if len(widths) > 3:
+        blocks = -(-widths[2] // block_size)
+        # Extra blocks to the cores holding the fewest of the first layer's,
+        # from the end away from the first layer's extras
+        order = sorted(
+            range(num_cores), key=lambda c: (share[c], -c if extras_low else c)
+        )
+        second = [blocks // num_cores] * num_cores
+        for c in order[: blocks % num_cores]:
+            second[c] += 1
+        pieces.append(_rows_per_core(widths[2], block_size, second))
+    return pieces
+
+
+@beartype
+def _rows_per_core(
+    rows: int, block_size: int, blocks: list[int]
+) -> tuple[list[int], list[int]]:
+    """One piece per core holding `blocks[c]` whole blocks, in core order"""
+    out, cores, start = [], [], 0
+    for c, n in enumerate(blocks):
+        if n:
+            end = min(rows, start + n * block_size)
+            out.append(end - start)
+            cores.append(c)
+            start = end
+    return out, cores
+
+
+class _PinnedLinear(nn.Module):
     @beartype
-    def __init__(self, in_features: int, rows: list[int], num_cores: int):
+    def __init__(self, in_features: int, rows: list[int], cores: list[int]):
         """
         `nn.Linear(in_features, sum(rows))` split by output rows into pieces of
-        `rows` rows, piece `i` pinned to core `i % num_cores`; the outputs are
+        `rows` rows, piece `i` pinned to core `cores[i]`; the outputs are
         concatenated in order, so it computes exactly the plain Linear.
 
         The parameters live in the pieces (`pieces.<i>.weight`, as
@@ -79,7 +144,7 @@ class _InterleavedLinear(nn.Module):
         super().__init__()
         self.in_features = in_features
         self.out_features = sum(rows)
-        self.num_cores = num_cores
+        self.cores = cores
         self.pieces = nn.ModuleList(nn.Linear(in_features, r) for r in rows)
 
     @property
@@ -99,8 +164,8 @@ class _InterleavedLinear(nn.Module):
             Tensor of shape [B, out_features!]
         """
         outputs = []
-        for i, piece in enumerate(self.pieces):
-            with vollo_torch.CorePartition([i % self.num_cores]):
+        for piece, core in zip(self.pieces, self.cores):
+            with vollo_torch.CorePartition([core]):
                 outputs.append(piece(x))  # [B, rows_i!]
         return torch.cat(outputs, dim=-1)  # [B, out_features!]
 
@@ -166,6 +231,7 @@ class ReadoutFNN(nn.Module):
         selu: bool,
         num_cores: int = 1,
         block_size: int = 32,
+        interleave: bool = True,
     ):
         """
         A fully-connected network on the raw digitised I/Q trace of a readout
@@ -177,16 +243,21 @@ class ReadoutFNN(nn.Module):
         multiplexed trace and emit one logit per joint state of all the qubits,
         which captures readout crosstalk that per-qubit filters miss.
 
-        With `num_cores` > 1 the first Linear is split by output rows into
-        pieces pinned to the cores round-robin, two or more pieces per core
-        (`_round_robin_rows`, `_InterleavedLinear`). Left whole, the compiler
-        gives each core one contiguous run of the hidden units, and the second
-        layer, which reads them in order, waits for each core's run to finish.
-        Interleaved, the first round of pieces lands on every core early and the
-        second layer starts on it while the cores compute the next round. Each
-        output is computed exactly as before. The pinning uses
-        `vollo_torch.CorePartition`, which is why this file imports
-        `vollo_torch`; the network is otherwise plain PyTorch.
+        With `num_cores` > 1 the first two Linears are split by output rows
+        into pieces pinned to the cores (`_placement`, `_PinnedLinear`), each
+        output computed exactly as before:
+        - With `interleave`, a large first Linear is split into two or more
+          rounds of one piece per core (`_round_robin_rows`). Left whole, the
+          compiler gives each core one contiguous run of the hidden units, and
+          the second layer, which reads them in order, waits for each core's
+          run to finish. Interleaved, the first round of pieces lands on every
+          core early and the second layer starts on it while the cores
+          compute the next round.
+        - The second Linear's whole output blocks are shared out against the
+          first's, so that a core holding an extra block of one holds no extra
+          block of the other.
+        The pinning uses `vollo_torch.CorePartition`, which is why this file
+        imports `vollo_torch`; the network is otherwise plain PyTorch.
 
         `net` is the plain network's `nn.Sequential` (`net[0]` the first
         Linear, `net[2]` the second, ...) and the state dict is its layout
@@ -198,21 +269,22 @@ class ReadoutFNN(nn.Module):
             hidden:     Hidden-layer widths
             n_outputs:  Joint states (2**qubits, or 3**qubits with leakage), or 1
             selu:       SELU as in Lienhard et al., or ReLU, which Vollo runs natively
-            num_cores:  Cores to interleave the first layer over (1: leave it whole)
+            num_cores:  Cores to spread the first two Linears over (1: leave them whole)
             block_size: The config's block size, so pieces are whole blocks
+            interleave: Interleave a large first Linear over the cores in rounds
         """
         super().__init__()
-        rows = _round_robin_rows(hidden[0], block_size, num_cores)
-        first = (
-            nn.Linear(n_inputs, hidden[0])
-            if len(rows) == 1
-            else _InterleavedLinear(n_inputs, rows, num_cores)
-        )
-        layers: list[nn.Module] = [first, _SELU() if selu else nn.ReLU()]
-        for d_in, d_out in zip(hidden, hidden[1:]):
-            layers += [nn.Linear(d_in, d_out), _SELU() if selu else nn.ReLU()]
-        layers.append(nn.Linear(hidden[-1], n_outputs))
-        self.net = nn.Sequential(*layers)
+        widths = [n_inputs, *hidden, n_outputs]
+        pieces = _placement(widths, block_size, num_cores, interleave)
+        act = _SELU if selu else nn.ReLU
+        layers: list[nn.Module] = []
+        for i, (d_in, d_out) in enumerate(zip(widths, widths[1:])):
+            if i < len(pieces) and len(pieces[i][0]) > 1:
+                layers.append(_PinnedLinear(d_in, *pieces[i]))
+            else:
+                layers.append(nn.Linear(d_in, d_out))
+            layers.append(act())
+        self.net = nn.Sequential(*layers[:-1])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -274,12 +346,14 @@ def _vm(
     else:
         # Interleave the first layer only on the block-32 (six-core) boards,
         # where it measured faster (SDK 29.0.0); on the block-64 IA-840f it
-        # measured slower on the SELU entries, so that board keeps it whole.
-        # HERQULES's and Mude's 500-wide layer stays whole by the rule anyway.
+        # measured slower on the SELU entries, so that board keeps it one
+        # piece per core. HERQULES's and Mude's 500-wide layer is too small to
+        # interleave anyway.
         hw = CONFIGS[config]
         interleave = hw.block_size == 32
-        cores = hw.num_cores if interleave else 1
-        model = ReadoutFNN(n_inputs, hidden, n_outputs, selu, cores, hw.block_size)
+        model = ReadoutFNN(
+            n_inputs, hidden, n_outputs, selu, hw.num_cores, hw.block_size, interleave
+        )
     input = torch.randn(1, n_inputs)
 
     return vollo_info(
