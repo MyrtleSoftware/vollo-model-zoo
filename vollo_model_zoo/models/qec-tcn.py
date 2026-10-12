@@ -22,12 +22,14 @@ class _Conv2d(nn.Module):
     Exact `nn.Conv2d(in, out, 3, padding=1)` + ReLU from ops Vollo supports.
 
     Activations are a batch of grid rows [T, C!, S]: rounds on the batch axis,
-    stabilisers along the sequence axis, channels the data dimension. With a zero
-    border of one on both non-data axes, kernel row dt is a non-streaming `Conv1d`
-    (kernel 3 along the stabilisers) over the rows shifted by dt, and the three are
-    summed: the bf16 sum runs in a different order to `Conv2d`'s. The compiler
-    knows the border is zero and skips its multiplications. `Conv1d` rows are
-    `weight[:, :, dt]` of the `Conv2d`; the bias sits on the first row only.
+    stabilisers along the sequence axis, channels the data dimension. Kernel row dt
+    is a non-streaming `Conv1d` (kernel 3 along the stabilisers, over a zero column
+    either side) and the three are summed: the bf16 sum runs in a different order
+    to `Conv2d`'s. The compiler skips the multiplications by the zero columns, but
+    not by a whole zero row, so the top and bottom kernel rows only run over the
+    T - 1 output rows they reach, padded with a zero row before the sum. `Conv1d`
+    rows are `weight[:, :, dt]` of the `Conv2d`; the bias sits on the centre row,
+    the only one that reaches every output row.
 
     With `cores`, kernel row dt runs on `cores[dt]` (a `CorePartition`), which
     splits the weights three ways rather than copying them to every core.
@@ -41,20 +43,26 @@ class _Conv2d(nn.Module):
         cores: list[list[int]] | None = None,
     ):
         super().__init__()
+        assert rounds >= 2
         self.rounds, self.cores = rounds, cores
         self.rows = nn.ModuleList(
-            nn.Conv1d(in_channels, out_channels, 3, bias=(dt == 0)) for dt in range(3)
+            nn.Conv1d(in_channels, out_channels, 3, bias=(dt == 1)) for dt in range(3)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """[T, in!, S] -> [T, out!, S]"""
-        x = _pad(x, (2, 0))  # [T+2, in!, S+2]
+        T = self.rounds
+        x = _pad(x, (2,))  # [T, in!, S+2]
+        # Kernel row dt reads input row t + dt - 1 for output row t.
+        inputs = [x[: T - 1], x, x[1:]]  # output rows 1.., all, ..T-2
         ys = []
         for dt, row in enumerate(self.rows):
-            core = CorePartition(self.cores[dt]) if self.cores else nullcontext()
-            with core:
-                ys.append(row(x[dt : dt + self.rounds]))  # [T, out!, S]
-        return torch.relu(ys[0] + ys[1] + ys[2])
+            with CorePartition(self.cores[dt]) if self.cores else nullcontext():
+                ys.append(row(inputs[dt]))  # [T or T-1, out!, S]
+        z = ys[0][:1] * 0  # [1, out!, S]
+        top = torch.cat([z, ys[0]], dim=0)
+        bottom = torch.cat([ys[2], z], dim=0)
+        return torch.relu(top + ys[1] + bottom)
 
 
 class FiLMDecoder(nn.Module):
@@ -135,14 +143,14 @@ class FiLMDecoder(nn.Module):
         for conv, ref in zip(self.convs, convs[1:]):
             for dt, row in enumerate(conv.rows):
                 row.weight.copy_(ref.weight[:, :, dt])
-            conv.rows[0].bias.copy_(ref.bias)
+            conv.rows[1].bias.copy_(ref.bias)
         self.head.weight.copy_(head.weight.view(self.head.weight.shape))
         self.head.bias.copy_(head.bias)
 
     @torch.no_grad()
     def fold_film(self, gamma: list[torch.Tensor], beta: list[torch.Tensor]):
         """Bake per-block gamma, beta (each of shape (channels[i],)) into the convs."""
-        first_and_rows = [self.first] + [c.rows[0] for c in self.convs]
+        first_and_rows = [self.first] + [c.rows[1] for c in self.convs]
         for layer, g, b in zip(first_and_rows, gamma, beta):
             layer.bias.mul_(g).add_(b)
         self.first.weight.mul_(gamma[0][:, None])
