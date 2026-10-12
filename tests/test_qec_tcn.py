@@ -52,23 +52,59 @@ def test_window_decoder_has_no_padding_parameters():
     assert count([model]) == count(convs + [head])
 
 
+def test_window_decoder_checkpoints_move_between_placements():
+    """Each conv block saves and loads the `Conv2d`'s `weight` and `bias`."""
+    torch.manual_seed(0)
+    stabilisers, rounds, channels = 4, 5, [8, 16, 32]
+    convs, head, reference = _reference(stabilisers, rounds, channels)
+    source = qec_tcn.FiLMDecoder(stabilisers, rounds, channels)
+    source.load_reference(convs, head)
+    for i, ref in enumerate(convs[1:]):
+        for name, value in ref.state_dict().items():
+            torch.testing.assert_close(source.state_dict()[f"convs.{i}.{name}"], value)
+
+    events = torch.randint(0, 2, (1, 1, rounds, stabilisers)).float()
+    for num_cores in [None, 3, 6]:
+        model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels, num_cores)
+        model.load_state_dict(source.state_dict())
+        assert list(model.state_dict()) == list(source.state_dict())
+        torch.testing.assert_close(
+            model(events.permute(0, 2, 3, 1))[0],
+            reference(events),
+            rtol=1e-4,
+            atol=1e-4,
+        )
+        source = model  # and on to the next placement
+
+    wider = qec_tcn.FiLMDecoder(stabilisers, rounds, [8, 16, 48])
+    with pytest.raises(RuntimeError):
+        source.load_state_dict(wider.state_dict())
+    missing = {k: v for k, v in source.state_dict().items() if k != "convs.0.bias"}
+    with pytest.raises(RuntimeError):
+        source.load_state_dict(missing)
+    extra = source.state_dict() | {"convs.0.rows.1.bias": torch.zeros(16)}
+    with pytest.raises(RuntimeError):
+        source.load_state_dict(extra)
+
+
 def test_window_decoder_folded_film_matches_conv2d_film():
     torch.manual_seed(0)
     stabilisers, rounds, channels = 4, 5, [8, 16, 32]
     convs, head, reference = _reference(stabilisers, rounds, channels)
-    model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels)
-    model.load_reference(convs, head)
     gamma = [torch.rand(c) + 0.5 for c in channels]
     beta = [torch.randn(c) for c in channels]
-    model.fold_film(gamma, beta)
-
     events = torch.randint(0, 2, (1, 1, rounds, stabilisers)).float()
-    torch.testing.assert_close(
-        model(events.permute(0, 2, 3, 1))[0],
-        reference(events, gamma, beta),
-        rtol=1e-4,
-        atol=1e-4,
-    )
+    # Both lowerings of the conv blocks (unspread and spread over 6 cores).
+    for num_cores in [None, 6]:
+        model = qec_tcn.FiLMDecoder(stabilisers, rounds, channels, num_cores)
+        model.load_reference(convs, head)
+        model.fold_film(gamma, beta)
+        torch.testing.assert_close(
+            model(events.permute(0, 2, 3, 1))[0],
+            reference(events, gamma, beta),
+            rtol=1e-4,
+            atol=1e-4,
+        )
 
 
 def test_streaming_folded_film_matches_input_film():

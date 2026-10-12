@@ -26,17 +26,25 @@ class _Conv2d(nn.Module):
     Exact `nn.Conv2d(in, out, 3, padding=1)` + ReLU from ops Vollo supports.
 
     Activations are a batch of grid rows [T, C!, S]: rounds on the batch axis,
-    stabilisers along the sequence axis, channels the data dimension. Kernel row dt
-    is a non-streaming `Conv1d` (kernel 3 along the stabilisers, over a zero column
-    either side) and the three are summed: the bf16 sum runs in a different order
-    to `Conv2d`'s. The compiler skips the multiplications by the zero columns, but
-    not by a whole zero row, so the top and bottom kernel rows only run over the
-    T - 1 output rows they reach, padded with a zero row before the sum. `Conv1d`
-    rows are `weight[:, :, dt]` of the `Conv2d`; the bias sits on the centre row,
-    the only one that reaches every output row.
+    stabilisers along the sequence axis, channels the data dimension. Output row t
+    reads input rows t - 1, t and t + 1 of the zero-bordered grid. Two lowerings,
+    the same function, picked by the placement:
 
-    With `cores`, kernel row dt runs on `cores[dt]` (a `CorePartition`), which
-    splits the weights three ways rather than copying them to every core.
+    - `cores=None`: the three input rows of output row t are interleaved along the
+      sequence axis, column by column, so the 3x3 window of output (t, s) is the 9
+      consecutive positions from 3s. One `Conv1d(kernel 9, stride 3)` then sums the
+      9 taps inside the matmul, and the compiler skips the multiplications by the
+      zero border. Its tap 3 * ds + dt is the `Conv2d`'s `weight[:, :, dt, ds]`.
+    - `cores`: kernel row dt is a `Conv1d` (kernel 3 along the stabilisers) on
+      `cores[dt]` (a `CorePartition`), which splits the weights three ways rather
+      than copying them to every core, and the three are summed. The compiler does
+      not skip a whole zero row, so the top and bottom kernel rows only run over the
+      T - 1 output rows they reach, padded with a zero row before the sum. Row dt is
+      `weight[:, :, dt]`; the bias sits on the centre row, which reaches every row.
+
+    Either way the bf16 sum runs in a different order to `Conv2d`'s. The state dict
+    is the `Conv2d`'s `weight` and `bias`, whichever the lowering, so checkpoints
+    move between placements.
     """
 
     @beartype
@@ -50,25 +58,105 @@ class _Conv2d(nn.Module):
         super().__init__()
         if rounds < 2:
             raise ValueError(f"rounds must be at least 2, got {rounds}")
-        self.rounds, self.cores = rounds, cores
-        self.rows = nn.ModuleList(
-            nn.Conv1d(in_channels, out_channels, 3, bias=(dt == 1)) for dt in range(3)
-        )
+        self.rounds, self.cores, self.in_channels = rounds, cores, in_channels
+        self.shapes = {
+            "weight": torch.Size([out_channels, in_channels, 3, 3]),
+            "bias": torch.Size([out_channels]),
+        }
+        if cores is None:
+            self.conv = nn.Conv1d(in_channels, out_channels, 9, stride=3)
+        else:
+            self.rows = nn.ModuleList(
+                nn.Conv1d(in_channels, out_channels, 3, bias=(dt == 1))
+                for dt in range(3)
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """[T, in!, S] -> [T, out!, S]"""
         T = self.rounds
+        if self.cores is None:
+            x = _pad(x, (0, 2))  # [T+2, in!, S+2]
+            rows = [x[dt : dt + T].unsqueeze(3) for dt in range(3)]
+            x = torch.cat(rows, dim=3)  # [T, in!, S+2, 3]: rows t..t+2 per column
+            x = x.reshape(T, self.in_channels, -1)  # [T, in!, 3(S+2)]
+            return torch.relu(self.conv(x))  # [T, out!, S]
         x = _pad(x, (2,))  # [T, in!, S+2]
         # Kernel row dt reads input row t + dt - 1 for output row t.
         inputs = [x[: T - 1], x, x[1:]]  # output rows 1.., all, ..T-2
         ys = []
         for dt, row in enumerate(self.rows):
-            with CorePartition(self.cores[dt]) if self.cores else nullcontext():
+            with CorePartition(self.cores[dt]):
                 ys.append(row(inputs[dt]))  # [T or T-1, out!, S]
         z = ys[0][:1] * 0  # [1, out!, S]
         top = torch.cat([z, ys[0]], dim=0)
         bottom = torch.cat([ys[2], z], dim=0)
         return torch.relu(top + ys[1] + bottom)
+
+    def _joined(self) -> list[torch.Tensor]:
+        """The `Conv2d`'s weight [out, in, 3, 3] and bias, from this lowering's."""
+        if self.cores is None:
+            weight = self.conv.weight.unflatten(2, (3, 3)).transpose(2, 3)
+            return [weight.contiguous(), self.conv.bias]
+        weight = torch.stack([row.weight for row in self.rows], dim=2)
+        return [weight, self.rows[1].bias]
+
+    def _split(self, weight: torch.Tensor, bias: torch.Tensor) -> dict:
+        """This lowering's parameters, by name, from the `Conv2d`'s weight and bias."""
+        if self.cores is None:
+            return {"conv.weight": weight.transpose(2, 3).flatten(2), "conv.bias": bias}
+        rows = {f"rows.{dt}.weight": weight[:, :, dt] for dt in range(3)}
+        return rows | {"rows.1.bias": bias}
+
+    def state_dict(self, *, destination=None, prefix="", keep_vars=False):
+        """Saved as the `Conv2d`'s `weight` and `bias`."""
+        if destination is None:
+            destination = OrderedDict()
+        for name, value in zip(self.shapes, self._joined()):
+            destination[prefix + name] = value if keep_vars else value.detach()
+        return destination
+
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        """Turn the `Conv2d`'s `weight` and `bias` into this lowering's keys."""
+        names = {prefix + name for name in self.shapes}
+        for key in [k for k in state_dict if k.startswith(prefix) and k not in names]:
+            unexpected_keys.append(key)
+            del state_dict[key]
+        values = []
+        for name, shape in self.shapes.items():
+            key = prefix + name
+            value = state_dict.pop(key, None)
+            if value is None:
+                missing_keys.append(key)
+            elif value.shape != shape:
+                error_msgs.append(
+                    f"size mismatch for {key}: copying a param with shape "
+                    f"{value.shape} from checkpoint, the shape in current model "
+                    f"is {shape}."
+                )
+                value = None
+            values.append(value)
+        # On an error, the parameters load their current values (so unchanged).
+        current = [v.detach() for v in self._joined()]
+        values = [c if v is None else v for v, c in zip(values, current)]
+        for name, value in self._split(*values).items():
+            state_dict[prefix + name] = value
+
+    @torch.no_grad()
+    def fold_film(self, gamma: torch.Tensor, beta: torch.Tensor):
+        """Bake gamma, beta (each of shape (out,)) into the weights and bias."""
+        for conv in [self.conv] if self.cores is None else self.rows:
+            conv.weight.mul_(gamma[:, None, None])
+            if conv.bias is not None:
+                conv.bias.mul_(gamma).add_(beta)
 
 
 class FiLMDecoder(nn.Module):
@@ -98,7 +186,8 @@ class FiLMDecoder(nn.Module):
         is unfolded into its 9 neighbours and given one `Linear`, and the flatten
         plus dense head is one `Conv1d` whose kernel spans all r * (d-1) positions.
         Weights load from the plain `Conv2d` / `Linear` form with
-        `load_reference` (this module's own parameter layout is the rewrite's).
+        `load_reference`. The conv blocks save and load the `Conv2d`'s layout
+        whatever the placement; the first layer and the head keep the rewrite's.
 
         Args:
             num_stabilisers: Syndrome bits per round (d - 1)
@@ -106,7 +195,8 @@ class FiLMDecoder(nn.Module):
             channels:        Output channels of each block (the paper's 128, 256, 512)
             num_cores:       Spread the kernel rows of every conv block over thirds
                              of this many cores (a multiple of 3). None leaves the
-                             placement to the compiler. See "Core placement" below
+                             placement to the compiler, with each block one strided
+                             `Conv1d` (see `_Conv2d`). See "Core placement" below
                              for when `_vm` picks each.
         """
         super().__init__()
@@ -150,22 +240,17 @@ class FiLMDecoder(nn.Module):
         self.first.weight.copy_(convs[0].weight.flatten(1))
         self.first.bias.copy_(convs[0].bias)
         for conv, ref in zip(self.convs, convs[1:]):
-            for dt, row in enumerate(conv.rows):
-                row.weight.copy_(ref.weight[:, :, dt])
-            conv.rows[1].bias.copy_(ref.bias)
+            conv.load_state_dict(ref.state_dict())
         self.head.weight.copy_(head.weight.view(self.head.weight.shape))
         self.head.bias.copy_(head.bias)
 
     @torch.no_grad()
     def fold_film(self, gamma: list[torch.Tensor], beta: list[torch.Tensor]):
         """Bake per-block gamma, beta (each of shape (channels[i],)) into the convs."""
-        first_and_rows = [self.first] + [c.rows[1] for c in self.convs]
-        for layer, g, b in zip(first_and_rows, gamma, beta):
-            layer.bias.mul_(g).add_(b)
         self.first.weight.mul_(gamma[0][:, None])
-        for conv, g in zip(self.convs, gamma[1:]):
-            for row in conv.rows:
-                row.weight.mul_(g[:, None, None])
+        self.first.bias.mul_(gamma[0]).add_(beta[0])
+        for conv, g, b in zip(self.convs, gamma[1:], beta[1:]):
+            conv.fold_film(g, b)
 
 
 class _CoreSplitConv(nn.Module):
@@ -370,9 +455,9 @@ class StreamingFiLMDecoder(nn.Module):
 #    core and splits the grid positions between them. Where a copy per core plus
 #    the head does not fit the cores' weight stores, `_spread_cores` spreads the
 #    kernel rows over core thirds instead, splitting the weights three ways
-#    (IA-420f, NT400D11 d5: 4285 vs 4676 unspread; IA-840f d11: 13559 vs 15774).
-#    Where the copies fit, unspread is faster (V80 d5: 3858 vs 4258; IA-840f d5:
-#    2184 vs 2250).
+#    (IA-420f, NT400D11 d5: 4285 vs 6916 unspread; IA-840f d11: 13559 vs 18725).
+#    Where the copies fit, unspread is faster (V80 d5: 3737 vs 4258; IA-840f d5:
+#    2089 vs 2250).
 # 2. Streaming decoder: run the small first block on core 1, off core 0, where
 #    the compiler starts placing every block (spaced -2..-7 cycles, contiguous
 #    up to -11%; any core but 0 measures the same on the folded entries).
