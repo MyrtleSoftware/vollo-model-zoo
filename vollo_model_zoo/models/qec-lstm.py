@@ -15,6 +15,7 @@ class QECLSTM(nn.Module):
         distance: int,
         hidden_size: int,
         soft: bool = False,
+        lstm2_cores: list[int] | None = None,
         head_core: int | None = None,
     ):
         """
@@ -41,24 +42,24 @@ class QECLSTM(nn.Module):
                                      for d=3 and 96-128 for d=5 and d=7)
                soft:                 Defect probabilities and leakage flags
                                      instead of hard defects
-               head_core:            Run the head on this one core
+               lstm2_cores:          Run the second LSTM layer on these cores
                                      (`vollo_torch.CorePartition`) rather than
-                                     letting the compiler spread it. Same
-                                     function; it only changes where the head
-                                     runs, and pays off while the head's
-                                     `state_to_hidden` is a few weight blocks
-                                     (see `_vm`)
+                                     letting the compiler place it
+               head_core:            Run the head on this one core rather than
+                                     letting the compiler spread it
+
+        The two core placements change where the work runs, not the function
+        (see `_vm` for when they pay off). The layers are two 1-layer
+        `nn.LSTM`s, rather than one 2-layer one, so that each can be placed: a
+        2-layer `nn.LSTM`'s `weight_ih_l1` etc. are `lstm2.weight_ih_l0` etc.
+        here (`tests/test_qec_lstm.py` converts a state dict).
         """
         super().__init__()
         stabilisers = distance**2 - 1
         self.num_defects = stabilisers * (2 if soft else 1)
 
-        self.lstm = nn.LSTM(
-            input_size=self.num_defects,
-            hidden_size=hidden_size,
-            num_layers=2,
-            batch_first=True,
-        )
+        self.lstm1 = nn.LSTM(self.num_defects, hidden_size, batch_first=True)
+        self.lstm2 = nn.LSTM(hidden_size, hidden_size, batch_first=True)
         # Two Linears summed rather than one on concat(state, final_defects): same
         # function, but no concatenation on the critical path
         self.state_to_hidden = nn.Linear(hidden_size, hidden_size)
@@ -66,6 +67,7 @@ class QECLSTM(nn.Module):
             stabilisers // 2, hidden_size, bias=False
         )
         self.logit = nn.Linear(hidden_size, 1)
+        self.lstm2_cores = lstm2_cores
         self.head_core = head_core
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -81,7 +83,13 @@ class QECLSTM(nn.Module):
         """
         defects = x[..., : self.num_defects]
         final_defects = x[..., self.num_defects :]
-        state, _ = self.lstm(defects)  # [B, T, hidden!]
+        state, _ = self.lstm1(defects)  # [B, T, hidden!]
+        with (
+            nullcontext()
+            if self.lstm2_cores is None
+            else vollo_torch.CorePartition(self.lstm2_cores)
+        ):
+            state, _ = self.lstm2(state)  # [B, T, hidden!]
         with (
             nullcontext()
             if self.head_core is None
@@ -104,11 +112,19 @@ def _vm(
     # A head of at most 4x4 weight blocks runs faster on one core than spread
     # over the cores: the spread saves less matmul time than its cross-core
     # transfers cost. At 8x8 blocks (hidden 256 on a block size of 32) the spread
-    # wins. Core 0 holds part of the LSTM, so the head's input is already local
-    block_size = CONFIGS[config].block_size
-    head_core = 0 if hidden_size <= 4 * block_size else None
+    # wins, so the compiler places everything. The second LSTM layer, on three
+    # cores including the head's, beats the compiler's choice of four
+    lstm2_cores, head_core = None, None
+    if hidden_size <= 4 * CONFIGS[config].block_size:
+        lstm2_cores, head_core = [0, 1, 2], 0
 
-    model = QECLSTM(distance, hidden_size, soft=soft, head_core=head_core)
+    model = QECLSTM(
+        distance,
+        hidden_size,
+        soft=soft,
+        lstm2_cores=lstm2_cores,
+        head_core=head_core,
+    )
     num_inputs = model.num_defects + (distance**2 - 1) // 2
     input = torch.randn(1, 5, num_inputs)
 

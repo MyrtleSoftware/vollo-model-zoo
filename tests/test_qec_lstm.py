@@ -1,10 +1,11 @@
 """
 The QEC LSTM decoder against a plain `torch.nn.LSTM` reference.
 
-The zoo model keeps `torch.nn.LSTM`'s own parameter layout, so trained weights
-load straight from a `torch.nn.LSTM` state dict; what is checked here is that
-the latency-minded head and its core placement compute the paper's head, both
-in PyTorch and in the compiled Vollo program.
+The zoo model splits the 2-layer `torch.nn.LSTM` into two 1-layer ones, so that
+each can be placed on its own cores, and splits the head's concatenated Linear
+in two; `convert_state_dict` maps trained weights across. What is checked here
+is that this layout and its core placement compute the paper's network, both in
+PyTorch and in the compiled Vollo program.
 """
 
 import importlib
@@ -51,12 +52,16 @@ class Reference(nn.Module):
 @beartype
 def convert_state_dict(reference: Reference) -> dict[str, torch.Tensor]:
     """
-    Convert the reference's state dict to the zoo model's: the LSTM is shared
-    as is, and the concatenated head Linear splits into one Linear per input.
+    Convert the reference's state dict to the zoo model's: layer `l` of the
+    2-layer LSTM becomes the 1-layer `lstm{l + 1}`, and the concatenated head
+    Linear splits into one Linear per input.
     """
     ref = reference.state_dict()
     hidden_size = reference.lstm.hidden_size
-    out = {k: v for k, v in ref.items() if k.startswith("lstm.")}
+    out = {}
+    for layer in range(2):
+        for name in ["weight_ih", "weight_hh", "bias_ih", "bias_hh"]:
+            out[f"lstm{layer + 1}.{name}_l0"] = ref[f"lstm.{name}_l{layer}"]
     out["state_to_hidden.weight"] = ref["to_hidden.weight"][:, :hidden_size]
     out["state_to_hidden.bias"] = ref["to_hidden.bias"]
     out["final_defects_to_hidden.weight"] = ref["to_hidden.weight"][:, hidden_size:]
@@ -67,10 +72,16 @@ def convert_state_dict(reference: Reference) -> dict[str, torch.Tensor]:
 
 @beartype
 def build(
-    distance: int, hidden_size: int, soft: bool, head_core: int | None
+    distance: int, hidden_size: int, soft: bool, pinned: bool
 ) -> tuple[nn.Module, Reference]:
     torch.manual_seed(0)
-    model = qec_lstm.QECLSTM(distance, hidden_size, soft=soft, head_core=head_core)
+    model = qec_lstm.QECLSTM(
+        distance,
+        hidden_size,
+        soft=soft,
+        lstm2_cores=[0, 1, 2] if pinned else None,
+        head_core=0 if pinned else None,
+    )
     num_final = (distance**2 - 1) // 2
     reference = Reference(model.num_defects, num_final, hidden_size)
     # Non-trivial weights everywhere, biases included
@@ -82,13 +93,11 @@ def build(
 
 
 @pytest.mark.parametrize("soft", [False, True])
-@pytest.mark.parametrize("head_core", [None, 0])
+@pytest.mark.parametrize("pinned", [False, True])
 @pytest.mark.parametrize("distance,hidden_size", [(3, 16), (5, 32)])
 @beartype
-def test_matches_reference(
-    distance: int, hidden_size: int, soft: bool, head_core: int | None
-):
-    model, reference = build(distance, hidden_size, soft, head_core)
+def test_matches_reference(distance: int, hidden_size: int, soft: bool, pinned: bool):
+    model, reference = build(distance, hidden_size, soft, pinned)
     x = torch.randn(2, 12, model.num_defects + (distance**2 - 1) // 2)
 
     with torch.no_grad():
@@ -98,27 +107,28 @@ def test_matches_reference(
 @pytest.mark.parametrize("config", ["V80", "IA-840f"])
 @pytest.mark.parametrize("distance,hidden_size", [(3, 64), (5, 128)])
 @beartype
-def test_vm_head_core_matches_reference(distance: int, hidden_size: int, config: str):
+def test_vm_placement_matches_reference(distance: int, hidden_size: int, config: str):
     """
     The compiled program, run one round per inference in the VM, against the
-    reference, with the head left to the compiler and pinned to one core.
+    reference, with everything left to the compiler and with the second layer
+    and the head pinned.
     """
     time = 16
     outputs = {}
-    for head_core in [None, 0]:
-        model, reference = build(distance, hidden_size, False, head_core)
+    for pinned in [False, True]:
+        model, reference = build(distance, hidden_size, False, pinned)
         x = torch.randn(1, time, model.num_defects + (distance**2 - 1) // 2)
         program = _vollo_compile(
             model, x, time_axis=1, config=CONFIGS[config], allow_dynamic_weights=False
         )
         vm = program.to_vm(bit_accurate=False)
-        outputs[head_core] = vm.run_timesteps(x.numpy(), 1, 1)
+        outputs[pinned] = vm.run_timesteps(x.numpy(), 1, 1)
 
         with torch.no_grad():
             expected = reference(x).numpy()
         # bf16 activations through two LSTM layers and the head
-        np.testing.assert_allclose(outputs[head_core], expected, atol=0.05, rtol=0.05)
+        np.testing.assert_allclose(outputs[pinned], expected, atol=0.05, rtol=0.05)
 
     # Moving the head between cores changes only how the VM's fp32 model of
     # the accumulators splits the sums
-    np.testing.assert_allclose(outputs[None], outputs[0], atol=1e-6, rtol=1e-4)
+    np.testing.assert_allclose(outputs[False], outputs[True], atol=1e-6, rtol=1e-4)

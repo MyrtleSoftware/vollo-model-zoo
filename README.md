@@ -253,10 +253,10 @@ The decoder has to keep up with the QEC round, about 1.1 µs on
 [Google Willow](https://arxiv.org/abs/2408.13687) and 700 ns on the QuTech
 device in [Ali et al. 2024](https://arxiv.org/abs/2403.00706).
 
-The file shows a latency-minded head: a logit instead of a sigmoid, two summed
-`Linear`s instead of a concatenation, and, while the head is only a few weight
-blocks, a `vollo_torch.CorePartition` keeping it on one core instead of spread
-over all of them, which saves the cross-core transfers. With `soft=True` the inputs are the
+The file shows a latency-minded head: a logit instead of a sigmoid, and two
+summed `Linear`s instead of a concatenation. While the head is only a few weight
+blocks, `vollo_torch.CorePartition` keeps it on one core, saving cross-core
+transfers, and the second LSTM layer on three. With `soft=True` the inputs are the
 analog-readout defect probabilities and leakage flags of Ali et al., which
 doubles the input width for almost no extra latency.
 
