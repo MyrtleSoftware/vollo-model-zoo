@@ -1,7 +1,7 @@
 """
 The SELU rebuilt from supported ops against `torch.nn.SELU`, which the Vollo
 compiler does not accept, and the interleaved first layer against the plain
-network.
+network, including loading its checkpoints.
 """
 
 import importlib
@@ -21,32 +21,41 @@ def test_selu_matches_torch():
 
 
 def _plain(widths, selu):
-    """The paper's network: plain Linears, nn.SELU or nn.ReLU between them."""
+    """The paper's network, in the layout of a plain checkpoint: `net` is an
+    `nn.Sequential` of Linears with nn.SELU or nn.ReLU between them."""
     layers = []
     for d_in, d_out in zip(widths, widths[1:]):
         linear = torch.nn.Linear(d_in, d_out)
         torch.nn.init.normal_(linear.weight, std=d_in**-0.5)
         torch.nn.init.normal_(linear.bias, std=0.1)
         layers += [linear, torch.nn.SELU() if selu else torch.nn.ReLU()]
-    return torch.nn.Sequential(*layers[:-1])
+    reference = torch.nn.Module()
+    reference.net = torch.nn.Sequential(*layers[:-1])
+    reference.forward = reference.net.forward
+    return reference
 
 
-@pytest.mark.parametrize("num_cores, block_size", [(1, 32), (6, 32), (3, 64)])
-@pytest.mark.parametrize(
-    "widths, selu",
-    [
-        ((1000, 1000, 500, 250, 32), True),
-        ((800, 800, 400, 200, 32), True),
-        ((1000, 500, 250, 243), False),
-    ],
-)
-def test_network_matches_plain(widths, selu, num_cores, block_size):
-    torch.manual_seed(0)
-    reference = _plain(widths, selu)
-    model = readout_mlp.ReadoutFNN(
+_WIDTHS = [
+    ((1000, 1000, 500, 250, 32), True),
+    ((800, 800, 400, 200, 32), True),
+    ((1000, 500, 250, 243), False),
+]
+_CORES = [(1, 32), (6, 32), (3, 64)]
+
+
+def _model(widths, selu, num_cores, block_size):
+    return readout_mlp.ReadoutFNN(
         widths[0], widths[1:-1], widths[-1], selu, num_cores, block_size
     )
-    model.load_reference([m for m in reference if isinstance(m, torch.nn.Linear)])
+
+
+@pytest.mark.parametrize("num_cores, block_size", _CORES)
+@pytest.mark.parametrize("widths, selu", _WIDTHS)
+def test_plain_checkpoint_loads(widths, selu, num_cores, block_size):
+    torch.manual_seed(0)
+    reference = _plain(widths, selu)
+    model = _model(widths, selu, num_cores, block_size)
+    model.load_state_dict(reference.state_dict())
     assert sum(p.numel() for p in model.parameters()) == sum(
         p.numel() for p in reference.parameters()
     )
@@ -54,6 +63,96 @@ def test_network_matches_plain(widths, selu, num_cores, block_size):
     x = torch.randn(64, widths[0])
     with torch.no_grad():
         torch.testing.assert_close(model(x), reference(x), atol=1e-5, rtol=1e-5)
+
+
+@pytest.mark.parametrize("widths, selu", _WIDTHS)
+def test_checkpoint_round_trips(widths, selu):
+    torch.manual_seed(0)
+    reference = _plain(widths, selu)
+    x = torch.randn(64, widths[0])
+    with torch.no_grad():
+        expected = reference(x)
+
+    saved = _model(widths, selu, 6, 32)
+    saved.load_state_dict(reference.state_dict())
+    state = saved.state_dict()
+    # Saved in the plain layout, whatever the split
+    assert state.keys() == reference.state_dict().keys()
+
+    for num_cores, block_size in _CORES:
+        model = _model(widths, selu, num_cores, block_size)
+        model.load_state_dict(state)
+        with torch.no_grad():
+            torch.testing.assert_close(model(x), expected, atol=1e-5, rtol=1e-5)
+    plain = _plain(widths, selu)
+    plain.load_state_dict(state)
+    with torch.no_grad():
+        torch.testing.assert_close(plain(x), expected, atol=1e-5, rtol=1e-5)
+
+
+@pytest.mark.parametrize("num_cores, block_size", _CORES)
+@pytest.mark.parametrize(
+    "widths, bad",
+    [
+        # Only the first layer is wrong: the trace length, or one row short
+        ((1000, 1000, 500, 250, 32), (900, 1000, 500, 250, 32)),
+        ((1000, 1000, 500, 250, 32), "row"),
+        # The first two layers are wrong
+        ((1000, 1000, 500, 250, 32), (1000, 960, 500, 250, 32)),
+    ],
+)
+def test_wrong_size_first_layer_is_reported(widths, bad, num_cores, block_size):
+    state = _plain(widths if bad == "row" else bad, True).state_dict()
+    if bad == "row":
+        state["net.0.weight"] = state["net.0.weight"][:-1]
+    model = _model(widths, True, num_cores, block_size)
+    before = model.state_dict()
+    with pytest.raises(RuntimeError, match=r"size mismatch for net\.0\.weight") as e:
+        model.load_state_dict(state)
+    # The error names the plain checkpoint's keys, never the pieces'
+    assert "pieces" not in str(e.value)
+    # Not strict still raises on a size mismatch, and leaves the first layer as it was
+    with pytest.raises(RuntimeError, match=r"size mismatch for net\.0\.weight"):
+        model.load_state_dict(state, strict=False)
+    torch.testing.assert_close(
+        model.state_dict()["net.0.weight"], before["net.0.weight"]
+    )
+
+
+@pytest.mark.parametrize("num_cores, block_size", _CORES)
+def test_missing_first_layer_is_reported(num_cores, block_size):
+    widths = (1000, 1000, 500, 250, 32)
+    state = _plain(widths, True).state_dict()
+    del state["net.0.weight"], state["net.0.bias"]
+    model = _model(widths, True, num_cores, block_size)
+    with pytest.raises(RuntimeError) as e:
+        model.load_state_dict(state)
+    assert "net.0.weight" in str(e.value) and "net.0.bias" in str(e.value)
+    assert "pieces" not in str(e.value)
+    result = model.load_state_dict(state, strict=False)
+    assert result.missing_keys == ["net.0.weight", "net.0.bias"]
+    assert result.unexpected_keys == []
+
+
+@pytest.mark.parametrize("num_cores, block_size", _CORES)
+def test_layout_matches_plain(num_cores, block_size):
+    """`net` indexes, names and orders like the plain network, at any split"""
+    widths = (1000, 1000, 500, 250, 32)
+    reference = _plain(widths, True)
+    model = _model(widths, True, num_cores, block_size)
+    model.load_state_dict(reference.state_dict())
+    assert list(model.state_dict()) == list(reference.state_dict())
+    assert len(model.net) == len(reference.net)
+    for ours, plain in zip(model.net, reference.net):
+        if isinstance(plain, torch.nn.Linear):
+            torch.testing.assert_close(ours.weight, plain.weight, rtol=0, atol=0)
+            torch.testing.assert_close(ours.bias, plain.bias, rtol=0, atol=0)
+            assert (ours.in_features, ours.out_features) == (
+                plain.in_features,
+                plain.out_features,
+            )
+        else:
+            assert not isinstance(ours, torch.nn.Linear)
 
 
 @pytest.mark.parametrize("rows", [200, 250, 400, 500, 800, 1000, 1024, 2000])

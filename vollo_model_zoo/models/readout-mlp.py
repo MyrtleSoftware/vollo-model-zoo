@@ -1,5 +1,5 @@
+from collections import OrderedDict
 from collections.abc import Generator
-from contextlib import nullcontext
 from pathlib import Path
 
 import torch
@@ -10,16 +10,22 @@ from torch import nn
 
 class _SELU(nn.Module):
     """
-    Exactly `nn.SELU`, built from ops Vollo supports. Replace with `nn.SELU` once
-    Vollo supports it natively.
+    `nn.SELU` built from ops Vollo supports. Replace with `nn.SELU` once Vollo
+    supports it natively.
 
     `scale * (relu(x) + alpha * (exp(min(x, 0)) - 1))`, rearranged to the form
     that measured fastest: `scale * alpha * (relu(x) / alpha + min(exp(x), 1) - 1)`.
     For x > 0 the clamped exponential is 1 and cancels the -1; for x <= 0 the
-    ReLU is 0. Vollo fuses the clamp into the exp, the 1/alpha into the ReLU,
-    and the outer `scale * alpha` and -1 into the next Linear, which leaves
-    three pointwise instructions (ReLU, exp, add). A scale on the exp's output
-    would cost a fourth.
+    ReLU is 0. That is exact in exact arithmetic; in fp32 the `+ 1 - 1` rounds,
+    to within 2.4e-7 of `nn.SELU` for |x| < 1 and 3 ulp beyond, far below the
+    bf16 rounding Vollo computes in. Grouping the -1 with the exponential,
+    `relu(x) / alpha + (min(exp(x), 1) - 1)`, avoids that but measured slower on
+    every config, as did grouping it with the ReLU (SDK 29.0.0).
+
+    Vollo fuses the clamp into the exp, the 1/alpha into the ReLU, and the outer
+    `scale * alpha` and -1 into the next Linear, which leaves three pointwise
+    instructions (ReLU, exp, add); a scale on the exp's output would cost a
+    fourth (SDK 29.0.0).
     """
 
     _ALPHA = 1.6732632423543772848170429916717
@@ -35,9 +41,9 @@ def _round_robin_rows(rows: int, block_size: int, num_cores: int) -> list[int]:
     """
     Row counts of the first layer's pieces: two or more rounds of one piece per
     core, each piece at least two blocks (a Linear with one output block runs
-    at half rate on the Agilex boards), and each core's total the compiler's
-    own whole-block share of the layer. One piece on one core, or if that
-    leaves one round.
+    at half rate on the Agilex boards, SDK 29.0.0), and each core's total the
+    compiler's own whole-block share of the layer. Returns `[rows]` (the layer
+    left whole) on one core, or when the layer is too small for two rounds.
     """
     blocks = -(-rows // block_size)
     rounds = blocks // (2 * num_cores)
@@ -53,6 +59,101 @@ def _round_robin_rows(rows: int, block_size: int, num_cores: int) -> list[int]:
     ]
     ends = [min(rows, sum(pieces[: i + 1]) * block_size) for i in range(len(pieces))]
     return [e - s for s, e in zip([0, *ends], ends)]
+
+
+class _InterleavedLinear(nn.Module):
+    @beartype
+    def __init__(self, in_features: int, rows: list[int], num_cores: int):
+        """
+        `nn.Linear(in_features, sum(rows))` split by output rows into pieces of
+        `rows` rows, piece `i` pinned to core `i % num_cores`; the outputs are
+        concatenated in order, so it computes exactly the plain Linear.
+
+        The parameters live in the pieces (`pieces.<i>.weight`, as
+        `named_parameters` shows), but the state dict presents them as a plain
+        Linear's `weight` and `bias`, joined (a copy, not a view), and loads
+        those back split across the pieces. So a plain `nn.Linear` checkpoint
+        loads, and a missing or wrong-size one is reported as `weight`/`bias`.
+        `.weight` and `.bias` also read the joined tensors, as copies.
+        """
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = sum(rows)
+        self.num_cores = num_cores
+        self.pieces = nn.ModuleList(nn.Linear(in_features, r) for r in rows)
+
+    @property
+    def weight(self) -> torch.Tensor:
+        return torch.cat([piece.weight for piece in self.pieces])
+
+    @property
+    def bias(self) -> torch.Tensor:
+        return torch.cat([piece.bias for piece in self.pieces])
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: Tensor of shape [B, in_features!]
+
+        Returns:
+            Tensor of shape [B, out_features!]
+        """
+        outputs = []
+        for i, piece in enumerate(self.pieces):
+            with vollo_torch.CorePartition([i % self.num_cores]):
+                outputs.append(piece(x))  # [B, rows_i!]
+        return torch.cat(outputs, dim=-1)  # [B, out_features!]
+
+    def state_dict(self, *, destination=None, prefix="", keep_vars=False):
+        """The pieces joined into a plain Linear's `weight` and `bias`"""
+        if destination is None:
+            destination = OrderedDict()
+        for name in ("weight", "bias"):
+            joined = torch.cat([getattr(piece, name) for piece in self.pieces])
+            destination[prefix + name] = joined if keep_vars else joined.detach()
+        return destination
+
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        """
+        Load a plain Linear's `weight` and `bias`, split into the pieces' keys
+        for them to load. A missing or wrong-size tensor is reported under its
+        plain name and leaves the pieces as they were.
+        """
+        names = {f"{prefix}weight", f"{prefix}bias"}
+        for key in [k for k in state_dict if k.startswith(prefix) and k not in names]:
+            unexpected_keys.append(key)
+            del state_dict[key]
+        rows = [piece.out_features for piece in self.pieces]
+        shapes = {
+            "weight": torch.Size([self.out_features, self.in_features]),
+            "bias": torch.Size([self.out_features]),
+        }
+        for name, shape in shapes.items():
+            key = prefix + name
+            value = state_dict.pop(key, None)
+            if value is None:
+                missing_keys.append(key)
+            elif value.shape != shape:
+                error_msgs.append(
+                    f"size mismatch for {key}: copying a param with shape "
+                    f"{value.shape} from checkpoint, the shape in current model "
+                    f"is {shape}."
+                )
+            if value is None or value.shape != shape:
+                parts = [getattr(piece, name).detach() for piece in self.pieces]
+            else:
+                parts = value.split(rows)
+            for i, part in enumerate(parts):
+                state_dict[f"{prefix}pieces.{i}.{name}"] = part
 
 
 class ReadoutFNN(nn.Module):
@@ -78,12 +179,19 @@ class ReadoutFNN(nn.Module):
 
         With `num_cores` > 1 the first Linear is split by output rows into
         pieces pinned to the cores round-robin, two or more pieces per core
-        (`_round_robin_rows`). Left whole, the compiler gives each core one
-        contiguous run of the hidden units, and the second layer, which reads
-        them in order, waits for each core's run to finish. Interleaved, the
-        first round of pieces lands on every core early and the second layer
-        starts on it while the cores compute the next round. Each output is
-        computed exactly as before; `load_reference` loads plain `nn.Linear`s.
+        (`_round_robin_rows`, `_InterleavedLinear`). Left whole, the compiler
+        gives each core one contiguous run of the hidden units, and the second
+        layer, which reads them in order, waits for each core's run to finish.
+        Interleaved, the first round of pieces lands on every core early and the
+        second layer starts on it while the cores compute the next round. Each
+        output is computed exactly as before. The pinning uses
+        `vollo_torch.CorePartition`, which is why this file imports
+        `vollo_torch`; the network is otherwise plain PyTorch.
+
+        `net` is the plain network's `nn.Sequential` (`net[0]` the first
+        Linear, `net[2]` the second, ...) and the state dict is its layout
+        whatever `num_cores` is, so a checkpoint of the plain network loads
+        directly, and a checkpoint saved at one `num_cores` loads at any other.
 
         Args:
             n_inputs:   Trace length, I and Q interleaved (500 MS/s ADC: 2 ns each)
@@ -94,11 +202,13 @@ class ReadoutFNN(nn.Module):
             block_size: The config's block size, so pieces are whole blocks
         """
         super().__init__()
-        self.num_cores = num_cores
         rows = _round_robin_rows(hidden[0], block_size, num_cores)
-        self.first = nn.ModuleList(nn.Linear(n_inputs, r) for r in rows)
-        self.act = _SELU() if selu else nn.ReLU()
-        layers: list[nn.Module] = []
+        first = (
+            nn.Linear(n_inputs, hidden[0])
+            if len(rows) == 1
+            else _InterleavedLinear(n_inputs, rows, num_cores)
+        )
+        layers: list[nn.Module] = [first, _SELU() if selu else nn.ReLU()]
         for d_in, d_out in zip(hidden, hidden[1:]):
             layers += [nn.Linear(d_in, d_out), _SELU() if selu else nn.ReLU()]
         layers.append(nn.Linear(hidden[-1], n_outputs))
@@ -112,31 +222,7 @@ class ReadoutFNN(nn.Module):
         Returns:
             Tensor of shape [B, n_outputs!], logits (argmax on the controller)
         """
-        pieces = []
-        split = len(self.first) > 1
-        for i, linear in enumerate(self.first):
-            with (
-                vollo_torch.CorePartition([i % self.num_cores])
-                if split
-                else nullcontext()
-            ):
-                pieces.append(linear(x))  # [B, rows_i!]
-        h = torch.cat(pieces, dim=-1) if len(pieces) > 1 else pieces[0]
-        return self.net(self.act(h))  # [B, n_outputs!]
-
-    @torch.no_grad()
-    def load_reference(self, linears: list[nn.Linear]):
-        """Load the plain network's Linears, in order (as in an `nn.Sequential`)."""
-        start = 0
-        for piece in self.first:
-            end = start + piece.out_features
-            piece.weight.copy_(linears[0].weight[start:end])
-            piece.bias.copy_(linears[0].bias[start:end])
-            start = end
-        rest = [m for m in self.net if isinstance(m, nn.Linear)]
-        for linear, ref in zip(rest, linears[1:], strict=True):
-            linear.load_state_dict(ref.state_dict())
-        return self
+        return self.net(x)  # [B, n_outputs!]
 
 
 class ReadoutTeachers(nn.Module):
@@ -147,7 +233,8 @@ class ReadoutTeachers(nn.Module):
         per qubit, each reading the whole multiplexed trace and giving that
         qubit's logit, so each qubit is classified independently (mid-circuit
         measurement). KLiNQ deploys only small distilled students on its FPGA;
-        Vollo runs the teachers themselves.
+        Vollo runs the teachers themselves. Each teacher's first layer is left
+        whole: `ReadoutTeachers` never interleaves.
 
         Args:
             n_qubits: Qubits, one teacher each
@@ -185,10 +272,13 @@ def _vm(
     if teachers:
         model = ReadoutTeachers(teachers, n_inputs, hidden)
     else:
-        # Interleaving measured 0 to -7% on the 6-core configs, but slower on
-        # the 3-core IA-840f's SELU entries, so that board keeps it whole.
+        # Interleave the first layer only on the block-32 (six-core) boards,
+        # where it measured faster (SDK 29.0.0); on the block-64 IA-840f it
+        # measured slower on the SELU entries, so that board keeps it whole.
+        # HERQULES's and Mude's 500-wide layer stays whole by the rule anyway.
         hw = CONFIGS[config]
-        cores = hw.num_cores if hw.block_size == 32 else 1
+        interleave = hw.block_size == 32
+        cores = hw.num_cores if interleave else 1
         model = ReadoutFNN(n_inputs, hidden, n_outputs, selu, cores, hw.block_size)
     input = torch.randn(1, n_inputs)
 
