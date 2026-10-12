@@ -102,14 +102,15 @@ trace once (`time_axis=None`).
 These are the networks hand-built FPGA logic struggles to hold. Synthesised with
 HLS, the HERQULES and Mude baselines need 2 to 5 times the LUTs of a Zynq
 xczu7ev, and the one FINN build of Lienhard's network quantises it to 2 bits and
-takes 3.8 µs. On V80 the baselines take 0.9 µs, Lienhard's network 1.5 µs, and
-all five KLiNQ teachers 5.1 µs. Vollo has no native SELU, so the file rebuilds
-it from `relu`, `exp` and `clamp`, exact up to fp32 rounding (2.0 µs with it).
-On the six-core boards a first layer of 24 or more blocks of 32 (more than 736
-units) is split into pieces interleaved over the cores, so the second layer can
-start before the first finishes, and on every board the first two layers' output
-blocks are shared out over the cores together, so that no core holds an extra
-block of both: the same function, 0.7 to 8% faster. Small
+takes 3.8 µs. On V80 the baselines take 0.8 to 0.9 µs, Lienhard's network 1.4 µs,
+and all five KLiNQ teachers 5.1 µs. Vollo has no native SELU, so the file rebuilds
+it from `relu`, `exp` and `clamp`, exact up to fp32 rounding (1.9 µs with it); the
+last SELU's add is summed inside the output Linear. The first two layers are
+split over the cores by hand: their output blocks are shared out together, so
+that no core holds an extra block of both, and the first layer is interleaved
+over the cores in rounds, so the second layer can start before the first
+finishes (on the six-core boards from 24 blocks of 32, more than 736 units; on
+V80 from 12 blocks). It is the same function, 1 to 10% faster. Small
 distilled readout networks remain hand-built RTL territory (20 to 50 ns).
 
 ### Transformer++'s SwiGLU feed-forward block
