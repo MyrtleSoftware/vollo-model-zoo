@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 
 import torch
@@ -50,11 +50,13 @@ class QECLSTM(nn.Module):
 
         The core placements change where the work runs, not the function
         (see `_vm` for when they pay off). The layers are two 1-layer
-        `nn.LSTM`s, rather than one 2-layer one, so that each can be placed,
-        but the state dict keeps a 2-layer `nn.LSTM`'s layout: `lstm2`'s
-        weights save and load as `lstm.weight_ih_l1` etc. So a checkpoint of a
-        decoder built on `nn.LSTM(num_layers=2)` named `lstm` loads directly,
-        and this model's checkpoints load into one.
+        `nn.LSTM`s, `lstm1` and `lstm2`, rather than one 2-layer one, so that
+        each can be placed: there is no `lstm` attribute. The state dict keeps
+        a 2-layer `nn.LSTM`'s layout, though: `lstm2`'s weights save and load
+        as `lstm.weight_ih_l1` etc., and a missing or wrong-size tensor is
+        reported under that name. So a checkpoint of a decoder built on
+        `nn.LSTM(num_layers=2)` named `lstm` loads directly, and this model's
+        checkpoints load into one.
         """
         super().__init__()
         stabilisers = distance**2 - 1
@@ -99,7 +101,10 @@ class QECLSTM(nn.Module):
 _LSTM_PARAMS = ("weight_ih", "weight_hh", "bias_ih", "bias_hh")
 
 
-def _save_as_two_layer_lstm(_module, state_dict, prefix, _local_metadata):
+@beartype
+def _save_as_two_layer_lstm(
+    _module: nn.Module, state_dict: dict, prefix: str, _local_metadata: dict
+) -> None:
     """
     Save `lstm1` and `lstm2` as layers 0 and 1 of a 2-layer `nn.LSTM` named
     `lstm`, keeping the order of the keys
@@ -115,19 +120,47 @@ def _save_as_two_layer_lstm(_module, state_dict, prefix, _local_metadata):
         state_dict[renames.get(key, key)] = value
 
 
-def _load_two_layer_lstm(_module, state_dict, prefix, *_):
+@beartype
+def _load_two_layer_lstm(
+    module: nn.Module,
+    state_dict: dict,
+    prefix: str,
+    _local_metadata: dict,
+    _strict: bool,
+    missing_keys: list,
+    _unexpected_keys: list,
+    error_msgs: list,
+) -> None:
     """
     Load layers 0 and 1 of a 2-layer `nn.LSTM` named `lstm` into `lstm1` and
-    `lstm2`
+    `lstm2`. A missing or wrong-size tensor is reported under the checkpoint's
+    name and leaves the layer's tensor as it was.
     """
     for layer in range(2):
+        lstm = getattr(module, f"lstm{layer + 1}")
         for name in _LSTM_PARAMS:
             key = f"{prefix}lstm.{name}_l{layer}"
+            target = f"{prefix}lstm{layer + 1}.{name}_l0"
+            current = getattr(lstm, f"{name}_l0")
             if key in state_dict:
-                state_dict[f"{prefix}lstm{layer + 1}.{name}_l0"] = state_dict.pop(key)
+                value = state_dict.pop(key)
+                if value.shape == current.shape:
+                    state_dict[target] = value
+                    continue
+                error_msgs.append(
+                    f"size mismatch for {key}: copying a param with shape "
+                    f"{value.shape} from checkpoint, the shape in current model "
+                    f"is {current.shape}."
+                )
+            elif target in state_dict:
+                continue  # already in the layers' own layout
+            else:
+                missing_keys.append(key)
+            state_dict[target] = current.detach()
 
 
-def _on_cores(cores: list[int] | None):
+@beartype
+def _on_cores(cores: list[int] | None) -> AbstractContextManager:
     """
     Run what is inside on `cores`, or wherever the compiler puts it for None
     """
@@ -148,7 +181,8 @@ def _vm(
     # saves less matmul time than its cross-core transfers cost. The second
     # LSTM layer, on three cores including the head's, beats the compiler's
     # choice of four. Past 4x4 blocks the compiler's own placement is kept: no
-    # fixed placement measured better at every hidden size from 160 to 256
+    # fixed placement measured better at every hidden size from 160 to 256.
+    # (Measured on SDK 29.0.0.)
     lstm2_cores, head_core = None, None
     if hidden_size <= 4 * CONFIGS[config].block_size:
         lstm2_cores, head_core = [0, 1, 2], 0

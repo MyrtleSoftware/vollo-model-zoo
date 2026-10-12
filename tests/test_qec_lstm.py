@@ -191,7 +191,30 @@ def test_two_layer_checkpoint_round_trips(soft: bool, placement: str):
         torch.testing.assert_close(reloaded(x), two_layer(x), rtol=0, atol=0)
 
 
-def test_wrong_size_checkpoint_is_reported():
+@pytest.mark.parametrize("placement", list(PLACEMENTS))
+@beartype
+def test_wrong_size_tensor_is_reported_by_its_checkpoint_name(placement: str):
     state = TwoLayerDecoder(5, 32, False).state_dict()
-    with pytest.raises(RuntimeError, match="size mismatch"):
-        qec_lstm.QECLSTM(5, 48).load_state_dict(state)
+    state["lstm.weight_hh_l1"] = state["lstm.weight_hh_l1"][:-1]
+    model = qec_lstm.QECLSTM(5, 32, **PLACEMENTS[placement])
+    before = model.lstm2.weight_hh_l0.clone()
+    with pytest.raises(
+        RuntimeError, match=r"size mismatch for lstm\.weight_hh_l1"
+    ) as e:
+        model.load_state_dict(state)
+    assert "lstm2" not in str(e.value)
+    torch.testing.assert_close(model.lstm2.weight_hh_l0, before, rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("placement", list(PLACEMENTS))
+@beartype
+def test_missing_tensor_is_reported_by_its_checkpoint_name(placement: str):
+    state = TwoLayerDecoder(5, 32, False).state_dict()
+    del state["lstm.weight_ih_l1"]
+    model = qec_lstm.QECLSTM(5, 32, **PLACEMENTS[placement])
+    with pytest.raises(RuntimeError, match=r"lstm\.weight_ih_l1") as e:
+        model.load_state_dict(state)
+    assert "lstm2" not in str(e.value)
+    result = model.load_state_dict(state, strict=False)
+    assert result.missing_keys == ["lstm.weight_ih_l1"]
+    assert result.unexpected_keys == []
