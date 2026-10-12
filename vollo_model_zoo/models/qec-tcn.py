@@ -199,6 +199,7 @@ class StreamingFiLMDecoder(nn.Module):
         dilation: int,
         film_input: bool = False,
         core_groups: list[int] | None = None,
+        first_core: int | None = None,
     ):
         """
         Causal, round-streaming redesign of `FiLMDecoder` (needs retraining).
@@ -229,11 +230,16 @@ class StreamingFiLMDecoder(nn.Module):
                              With `film_input`, each core then applies the FiLM
                              modulation to its own slice rather than one core doing
                              it all. `load_conv` loads the unsplit weights.
+            first_core:      Pin the first block to this core. Off core 0, where
+                             the compiler starts placing every block, the small
+                             first block stops queueing behind the larger second
+                             one (any other core measured the same, folded).
         """
         super().__init__()
         self.num_stabilisers = num_stabilisers
         self.channels = channels
         self.film_input = film_input
+        self.first_core = first_core
         ins = [num_stabilisers] + channels[:-1]
         self.convs = nn.ModuleList(
             PaddedConv1d(i, o, kernel_size, dilation=dilation)
@@ -256,7 +262,7 @@ class StreamingFiLMDecoder(nn.Module):
             film = x[:, self.num_stabilisers :]  # [B, 2*sum(channels)!, T]
             x = x[:, : self.num_stabilisers]  # [B, S!, T]
         offset = 0
-        for conv, c in zip(self.convs, self.channels):
+        for i, (conv, c) in enumerate(zip(self.convs, self.channels)):
             gamma = beta = None
             if self.film_input:
                 gamma = film[:, offset : offset + c]  # [B, c!, T]
@@ -265,10 +271,12 @@ class StreamingFiLMDecoder(nn.Module):
             if isinstance(conv, _CoreSplitConv):
                 x = conv(x, gamma, beta)  # [B, c!, T]
                 continue
-            x = conv(x)  # [B, c!, T]
-            if gamma is not None:
-                x = gamma * x + beta
-            x = torch.relu(x)
+            pin = i == 0 and self.first_core is not None
+            with CorePartition([self.first_core]) if pin else nullcontext():
+                x = conv(x)  # [B, c!, T]
+                if gamma is not None:
+                    x = gamma * x + beta
+                x = torch.relu(x)
         return self.head(x.transpose(1, 2))  # [B, T, d!]
 
     @torch.no_grad()
@@ -345,12 +353,21 @@ def _vm(
         # With film_input, gamma and beta ride along as extra input channels.
         num_inputs = num_stabilisers + 2 * sum(channels) * film_input
         input = torch.randn(1, num_inputs, 8)
+        # The first block runs on core 1; with film_input the last block is also
+        # split over every core, so each core modulates its own slice.
+        hw = CONFIGS[config]
         core_groups = None
         if film_input:
-            hw = CONFIGS[config]
             core_groups = _core_groups(channels[-1], hw.num_cores, hw.block_size)
+        first_core = 1
         model = StreamingFiLMDecoder(
-            num_stabilisers, channels, kernel_size, dilation, film_input, core_groups
+            num_stabilisers,
+            channels,
+            kernel_size,
+            dilation,
+            film_input,
+            core_groups,
+            first_core,
         )
         time_axis = 2
         meta |= dict(

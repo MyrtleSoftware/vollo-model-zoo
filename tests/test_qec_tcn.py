@@ -74,7 +74,10 @@ def test_streaming_folded_film_matches_input_film():
     torch.manual_seed(0)
     stabilisers, channels, rounds = 6, [32, 64], 12
     dynamic = qec_tcn.StreamingFiLMDecoder(stabilisers, channels, 3, 3, film_input=True)
-    folded = qec_tcn.StreamingFiLMDecoder(stabilisers, channels, 3, 3, film_input=False)
+    # Pinning the first block to a core is placement only.
+    folded = qec_tcn.StreamingFiLMDecoder(
+        stabilisers, channels, 3, 3, film_input=False, first_core=5
+    )
     folded.load_state_dict(dynamic.state_dict())
 
     gamma = [torch.rand(c) + 0.5 for c in channels]
