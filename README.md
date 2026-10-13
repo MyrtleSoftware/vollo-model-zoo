@@ -9,6 +9,7 @@ Models in the zoo include:
 | Category          | Model                                                 | Implementation                                                                                                                                        |
 | :---------------- | :---------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Dense**         | [Basic MLPs](#basic-multilayer-perceptrons-mlp)       | [`slp.py`](./vollo_model_zoo/models/slp.py), [`mlp.py`](./vollo_model_zoo/models/mlp.py), [`mlp-res-rms.py`](./vollo_model_zoo/models/mlp-res-rms.py) |
+|                   | [Qubit readout MLP](#qubit-readout-mlp)               | [`readout-mlp.py`](./vollo_model_zoo/models/readout-mlp.py)                                                                                           |
 |                   | [SwiGLU FFN](#transformer-swiglu-feed-forward-block)  | [`ffn-swiglu.py`](./vollo_model_zoo/models/ffn-swiglu.py)                                                                                             |
 |                   | [ResMLP](#resmlp)                                     | [`resmlp.py`](./vollo_model_zoo/models/resmlp.py)                                                                                                     |
 |                   | [Mixture of Experts](#mixture-of-experts-moe-block)   | [`moe.py`](./vollo_model_zoo/models/moe.py)                                                                                                           |
@@ -83,6 +84,28 @@ activation-functions available on Vollo, including:
 
 Some of these are _first-class_ (i.e. have hardware support) whilst others are
 composed of simpler operations.
+
+### Qubit readout MLP
+
+Code/model: [`readout-mlp.py`](./vollo_model_zoo/models/readout-mlp.py)
+
+The large neural networks proposed for reading out superconducting qubits, on
+the five-qubit multiplexed dataset of
+[Lienhard et al.](https://arxiv.org/abs/2102.12481): their raw-trace joint
+network (1000-1000-500-250-32, SELU), the smaller joint baselines that
+[HERQULES](https://arxiv.org/abs/2212.03895) and
+[Mude et al.](https://arxiv.org/abs/2405.08982) (three levels, 243 joint
+states) synthesised for FPGAs, and the five per-qubit teachers of
+[KLiNQ](https://arxiv.org/abs/2503.03544). Each classifies the whole ~1 µs I/Q
+trace once (`time_axis=None`).
+
+These are the networks hand-built FPGA logic struggles to hold. Synthesised with
+HLS, the HERQULES and Mude baselines need 2 to 5 times the LUTs of a Zynq
+xczu7ev, and the one FINN build of Lienhard's network quantises it to 2 bits and
+takes 3.8 µs. On V80 the baselines take 0.9 µs, Lienhard's network 1.6 µs, and
+all five KLiNQ teachers 5.1 µs. Vollo has no native SELU, so the file rebuilds
+it exactly from `relu`, `exp` and `clamp` (2.1 µs with it). Small distilled
+readout networks remain hand-built RTL territory (20 to 50 ns).
 
 ### Transformer++'s SwiGLU feed-forward block
 
