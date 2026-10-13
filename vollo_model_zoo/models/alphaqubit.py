@@ -1,5 +1,6 @@
 import math
 from collections.abc import Generator
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -52,6 +53,7 @@ class _Attention(nn.Module):
     Multi-head attention of `x` over `context` (default: itself). With
     `head_partitions`, head group `p` (its projections, scores and softmax) is
     pinned to core `p`; the output projection stays outside so it is not split.
+    With one head group nothing is pinned, leaving the spread to the compiler.
 
     With `rope` (cos and sin tables), q and k are rotated as `t * cos + rot(t) *
     sin`, where `rot` maps each `[a | b]` channel pair to `[-b | a]`. Both terms
@@ -114,9 +116,9 @@ class _Attention(nn.Module):
         def rotate(t):  # [h N dh!] -> [h N 1 dh!] @ [N dh dh]
             return (t.unsqueeze(-2) @ self.rotation).squeeze(-2)
 
-        outs = []
+        outs, pinned = [], len(self.q) > 1
         for p, (q, k, v) in enumerate(zip(self.q, self.k, self.v)):
-            with vollo_torch.CorePartition([p]):
+            with vollo_torch.CorePartition([p]) if pinned else nullcontext():
                 q, k, v = heads(q(x)), heads(k(context)), heads(v(context))
                 if self.rope:
                     q, k = rotate(q), rotate(k)
@@ -294,9 +296,9 @@ class AlphaQubitReadout(nn.Module):
         )
         self.mean = nn.Buffer(torch.full((1, n), 1 / n), persistent=False)
         self.observable = nn.Parameter(torch.randn(1, dim) * 0.02)
-        self.cross = nn.ModuleList(
-            _Layer(dim, heads, expand, head_partitions) for _ in range(2)
-        )
+        # One query: its work is the context's keys and values, which the
+        # compiler spreads over every core by tokens if its heads are not pinned
+        self.cross = nn.ModuleList(_Layer(dim, heads, expand, 1) for _ in range(2))
         self.dense = nn.ModuleList(
             nn.Sequential(
                 _norm(dim),
@@ -371,7 +373,8 @@ def main(config: str = "V80") -> Generator:
         # AQ2-RT: C=128, 1 RG-LRU + 2 transformer + 1 RG-LRU, G=6 cycles per step
         dict(**aq2, distance=3, dim=128, layers=2, heads=4),
         dict(**aq2, distance=5, dim=128, layers=2, heads=4),
-        # What head partitioning buys: the same step on a single core
+        # What partitioning buys: the same step with no `CorePartition`, spread
+        # over the cores by the compiler alone
         dict(**aq2, distance=5, dim=128, layers=2, heads=4, partitioned=False),
         # BEYOND THE PAPER (G <= 6; needs retraining): G=16 cycles per step. A step
         # costs the same, so per-cycle throughput rises, but the final step waits
