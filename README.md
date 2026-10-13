@@ -104,7 +104,7 @@ HLS, the HERQULES and Mude baselines need 2 to 5 times the LUTs of a Zynq
 xczu7ev, and the one FINN build of Lienhard's network quantises it to 2 bits and
 takes 3.8 µs. On V80 the baselines take 0.9 µs, Lienhard's network 1.6 µs, and
 all five KLiNQ teachers 5.1 µs. Vollo has no native SELU, so the file rebuilds
-it exactly from `relu`, `exp` and `clamp` (2.2 µs with it). Small distilled
+it exactly from `relu`, `exp` and `clamp` (2.1 µs with it). Small distilled
 readout networks remain hand-built RTL territory (20 to 50 ns).
 
 ### Transformer++'s SwiGLU feed-forward block
