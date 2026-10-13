@@ -1,54 +1,170 @@
+from collections import OrderedDict
 from collections.abc import Generator
+from contextlib import nullcontext
 from pathlib import Path
 
 import torch
 from beartype import beartype
 from torch import nn
+from vollo_torch import CorePartition
 from vollo_torch.nn import PaddedConv1d
 
 
-def _pad(x: torch.Tensor) -> torch.Tensor:
-    """Zero border of one on both spatial axes: [1, T, S, C!] -> [1, T+2, S+2, C!]."""
-    z = x[:, :, :1] * 0
-    x = torch.cat([z, x, z], dim=2)
-    z = x[:, :1] * 0
-    return torch.cat([z, x, z], dim=1)
+def _pad(x: torch.Tensor, dims: tuple[int, ...]) -> torch.Tensor:
+    """
+    Zero border of one on each of `dims` (all non-data axes). Not `@beartype`d:
+    it runs under torch.fx tracing, where `x` is a Proxy.
+    """
+    for dim in dims:
+        z = x.narrow(dim, 0, 1) * 0
+        x = torch.cat([z, x, z], dim=dim)
+    return x
 
 
 class _Conv2d(nn.Module):
     """
-    Exact `nn.Conv2d(in, out, 3, padding=1)` (+ ReLU) from ops Vollo supports.
+    Exact `nn.Conv2d(in, out, 3, padding=1)` + ReLU from ops Vollo supports.
 
-    Activations live as a flattened, zero-padded grid [1, in!, (T+2)*(S+2)], row
-    after row. A shift by one row is then a slice offset of S+2, so each of the 3
-    kernel rows is one non-streaming `Conv1d` (kernel 3, data dimension on channels)
-    over a row-shifted slice, and the three are summed. The two padding columns of
-    each row come out as garbage and are zeroed by a constant mask, which also
-    restores the zero border the next layer needs. `Conv1d` rows are `weight[:, :,
-    dt]` of the `Conv2d`; the bias sits on the first row only.
+    Activations are a batch of grid rows [T, C!, S]: rounds on the batch axis,
+    stabilisers along the sequence axis, channels the data dimension. Output row t
+    reads input rows t - 1, t and t + 1 of the zero-bordered grid. Two lowerings,
+    the same function, picked by the placement:
+
+    - `cores=None`: the three input rows of output row t are interleaved along the
+      sequence axis, column by column, so the 3x3 window of output (t, s) is the 9
+      consecutive positions from 3s. One `Conv1d(kernel 9, stride 3)` then sums the
+      9 taps inside the matmul, and the compiler skips the multiplications by the
+      zero border. Its tap 3 * ds + dt is the `Conv2d`'s `weight[:, :, dt, ds]`.
+    - `cores`: kernel row dt is a `Conv1d` (kernel 3 along the stabilisers) on
+      `cores[dt]` (a `CorePartition`), which splits the weights three ways rather
+      than copying them to every core, and the three are summed. The compiler does
+      not skip a whole zero row, so the top and bottom kernel rows only run over the
+      T - 1 output rows they reach, padded with a zero row before the sum. Row dt is
+      `weight[:, :, dt]`; the bias sits on the centre row, which reaches every row.
+
+    Either way the bf16 sum runs in a different order to `Conv2d`'s. The state dict
+    is the `Conv2d`'s `weight` and `bias`, whichever the lowering, so checkpoints
+    move between placements.
     """
 
-    def __init__(self, in_channels: int, out_channels: int, rounds: int, stabs: int):
+    @beartype
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        rounds: int,
+        cores: list[list[int]] | None = None,
+    ):
         super().__init__()
-        self.rounds, self.width = rounds, stabs + 2
-        self.rows = nn.ModuleList(
-            nn.Conv1d(in_channels, out_channels, 3, bias=(dt == 0)) for dt in range(3)
-        )
-        n = rounds * self.width
-        column = torch.arange(self.width + 1, n + self.width - 1) % self.width
-        mask = (column >= 1) & (column <= stabs)
-        self.mask = nn.Buffer(mask.float()[None, None], persistent=False)
+        if rounds < 2:
+            raise ValueError(f"rounds must be at least 2, got {rounds}")
+        self.rounds, self.cores, self.in_channels = rounds, cores, in_channels
+        self.shapes = {
+            "weight": torch.Size([out_channels, in_channels, 3, 3]),
+            "bias": torch.Size([out_channels]),
+        }
+        if cores is None:
+            self.conv = nn.Conv1d(in_channels, out_channels, 9, stride=3)
+        else:
+            self.rows = nn.ModuleList(
+                nn.Conv1d(in_channels, out_channels, 3, bias=(dt == 1))
+                for dt in range(3)
+            )
 
-    def forward(self, x: torch.Tensor, repad: bool) -> torch.Tensor:
-        n = self.rounds * self.width
-        y = self.rows[0](x[:, :, 0:n])  # [1, out!, n - 2]
-        y = y + self.rows[1](x[:, :, self.width : self.width + n])
-        y = y + self.rows[2](x[:, :, 2 * self.width : 2 * self.width + n])
-        y = torch.relu(y) * self.mask
-        if not repad:
-            return y
-        z = y[:, :, : self.width + 1] * 0
-        return torch.cat([z, y, z], dim=2)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """[T, in!, S] -> [T, out!, S]"""
+        T = self.rounds
+        if self.cores is None:
+            x = _pad(x, (0, 2))  # [T+2, in!, S+2]
+            rows = [x[dt : dt + T].unsqueeze(3) for dt in range(3)]
+            x = torch.cat(rows, dim=3)  # [T, in!, S+2, 3]: rows t..t+2 per column
+            x = x.reshape(T, self.in_channels, -1)  # [T, in!, 3(S+2)]
+            return torch.relu(self.conv(x))  # [T, out!, S]
+        x = _pad(x, (2,))  # [T, in!, S+2]
+        # Kernel row dt reads input row t + dt - 1 for output row t.
+        inputs = [x[: T - 1], x, x[1:]]  # output rows 1.., all, ..T-2
+        ys = []
+        for dt, row in enumerate(self.rows):
+            with CorePartition(self.cores[dt]):
+                ys.append(row(inputs[dt]))  # [T or T-1, out!, S]
+        z = ys[0][:1] * 0  # [1, out!, S]
+        top = torch.cat([z, ys[0]], dim=0)
+        bottom = torch.cat([ys[2], z], dim=0)
+        return torch.relu(top + ys[1] + bottom)
+
+    def _joined(self) -> list[torch.Tensor]:
+        """The `Conv2d`'s weight [out, in, 3, 3] and bias, from this lowering's."""
+        if self.cores is None:
+            weight = self.conv.weight.unflatten(2, (3, 3)).transpose(2, 3)
+            return [weight.contiguous(), self.conv.bias]
+        weight = torch.stack([row.weight for row in self.rows], dim=2)
+        return [weight, self.rows[1].bias]
+
+    def _split(self, weight: torch.Tensor, bias: torch.Tensor) -> dict:
+        """This lowering's parameters, by name, from the `Conv2d`'s weight and bias."""
+        if self.cores is None:
+            return {"conv.weight": weight.transpose(2, 3).flatten(2), "conv.bias": bias}
+        rows = {f"rows.{dt}.weight": weight[:, :, dt] for dt in range(3)}
+        return rows | {"rows.1.bias": bias}
+
+    def state_dict(self, *, destination=None, prefix="", keep_vars=False):
+        """Saved as the `Conv2d`'s `weight` and `bias`."""
+        if destination is None:
+            destination = OrderedDict()
+        for name, value in zip(self.shapes, self._joined()):
+            destination[prefix + name] = value if keep_vars else value.detach()
+        return destination
+
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        """Turn the `Conv2d`'s `weight` and `bias` into this lowering's keys."""
+        names = {prefix + name for name in self.shapes}
+        for key in [k for k in state_dict if k.startswith(prefix) and k not in names]:
+            unexpected_keys.append(key)
+            del state_dict[key]
+        values = []
+        for name, shape in self.shapes.items():
+            key = prefix + name
+            value = state_dict.pop(key, None)
+            if value is None:
+                missing_keys.append(key)
+            elif value.shape != shape:
+                error_msgs.append(
+                    f"size mismatch for {key}: copying a param with shape "
+                    f"{value.shape} from checkpoint, the shape in current model "
+                    f"is {shape}."
+                )
+                value = None
+            values.append(value)
+        # On an error, the parameters load their current values (so unchanged).
+        current = [v.detach() for v in self._joined()]
+        values = [c if v is None else v for v, c in zip(values, current)]
+        for name, value in self._split(*values).items():
+            state_dict[prefix + name] = value
+
+    @torch.no_grad()
+    def fold_film(self, gamma: torch.Tensor, beta: torch.Tensor):
+        """Bake gamma, beta (each of shape (out,)) into the weights and bias."""
+        for conv in [self.conv] if self.cores is None else self.rows:
+            conv.weight.mul_(gamma[:, None, None])
+            if conv.bias is not None:
+                conv.bias.mul_(gamma).add_(beta)
+
+
+def _thirds(num_cores: int | None) -> list[list[int]] | None:
+    """Cores for kernel rows 0, 1, 2 of a spread block: a third of the cores each."""
+    if num_cores is None:
+        return None
+    k = num_cores // 3
+    return [list(range(dt * k, (dt + 1) * k)) for dt in range(3)]
 
 
 class FiLMDecoder(nn.Module):
@@ -58,6 +174,7 @@ class FiLMDecoder(nn.Module):
         num_stabilisers: int,
         rounds: int,
         channels: list[int] = [128, 256, 512],
+        num_cores: int | list[int | None] | None = None,
     ):
         """
         Calibration-conditioned QEC decoder over the whole syndrome window.
@@ -75,48 +192,58 @@ class FiLMDecoder(nn.Module):
         Vollo has no `Conv2d` and cannot reshape the data dimension, so both are
         rewritten exactly (see `_Conv2d`): the first layer's single input channel
         is unfolded into its 9 neighbours and given one `Linear`, and the flatten
-        plus dense head is one full-length `Conv1d`. `load_reference` loads the
-        weights of the plain `Conv2d` / `Linear` form.
+        plus dense head is one `Conv1d` whose kernel spans all r * (d-1) positions.
+        Weights load from the plain `Conv2d` / `Linear` form with
+        `load_reference`. The conv blocks save and load the `Conv2d`'s layout
+        whatever the placement; the first layer and the head keep the rewrite's.
 
         Args:
             num_stabilisers: Syndrome bits per round (d - 1)
-            rounds:          Rounds r in the window
+            rounds:          Rounds r in the window, at least 2
             channels:        Output channels of each block (the paper's 128, 256, 512)
+            num_cores:       Spread the kernel rows of every conv block over thirds
+                             of this many cores (a multiple of 3), or a list giving
+                             it per conv block. None leaves the placement to the
+                             compiler, with the block one strided `Conv1d` (see
+                             `_Conv2d`). See "Core placement" below for when `_vm`
+                             picks each.
         """
         super().__init__()
         self.rounds, self.stabs = rounds, num_stabilisers
-        self.width = num_stabilisers + 2
+        blocks = list(zip(channels[:-1], channels[1:]))
+        if not isinstance(num_cores, list):
+            num_cores = [num_cores] * len(blocks)
+        if len(num_cores) != len(blocks):
+            raise ValueError(
+                f"num_cores needs one entry per conv block, got {num_cores}"
+            )
+        if any(n is not None and n % 3 for n in num_cores):
+            raise ValueError(f"num_cores must be multiples of 3, got {num_cores}")
         self.first = nn.Linear(9, channels[0])
         self.convs = nn.ModuleList(
-            _Conv2d(i, o, rounds, num_stabilisers)
-            for i, o in zip(channels[:-1], channels[1:])
+            _Conv2d(i, o, rounds, _thirds(n)) for (i, o), n in zip(blocks, num_cores)
         )
-        # The head sees the padded grid, minus its first and last (padding) cell,
-        # so a fifth of its weights (d=11) stay zero and unused.
         self.head = nn.Conv1d(
-            channels[-1], num_stabilisers + 1, rounds * self.width - 2
+            channels[-1], num_stabilisers + 1, rounds * num_stabilisers
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (1, rounds, num_stabilisers, 1): detection events
+            x: Tensor of shape (1, rounds, num_stabilisers, 1!): detection events
 
         Returns:
-            Tensor of shape (1, 1, num_stabilisers + 1): data-qubit flip logits
+            Tensor of shape (1, 1, num_stabilisers + 1!): data-qubit flip logits
         """
-        xp = _pad(x)  # [1, T+2, S+2, 1!]
-        taps = [
-            xp[:, i : i + self.rounds, j : j + self.stabs]
-            for i in range(3)
-            for j in range(3)
-        ]
+        T, S = self.rounds, self.stabs
+        xp = _pad(x, (2, 1))  # [1, T+2, S+2, 1!]
+        taps = [xp[:, i : i + T, j : j + S] for i in range(3) for j in range(3)]
         x = torch.relu(self.first(torch.cat(taps, dim=3)))  # [1, T, S, C!]
-        x = _pad(x).reshape(1, (self.rounds + 2) * self.width, -1)  # [1, L, C!]
-        x = x.transpose(1, 2)  # [1, C!, L]
-        for i, conv in enumerate(self.convs):
-            x = conv(x, repad=i < len(self.convs) - 1)  # [1, C!, L or L-2*width-2]
-        return self.head(x).transpose(1, 2)  # [1, 1, d!]
+        x = x[0].transpose(1, 2)  # [T, C!, S]
+        for conv in self.convs:
+            x = conv(x)  # [T, C!, S]
+        x = x.transpose(1, 2).reshape(1, T * S, -1)  # [1, T*S, C!]
+        return self.head(x.transpose(1, 2)).transpose(1, 2)  # [1, 1, d!]
 
     @torch.no_grad()
     def load_reference(self, convs: list[nn.Conv2d], head: nn.Linear):
@@ -125,26 +252,107 @@ class FiLMDecoder(nn.Module):
         self.first.weight.copy_(convs[0].weight.flatten(1))
         self.first.bias.copy_(convs[0].bias)
         for conv, ref in zip(self.convs, convs[1:]):
-            for dt, row in enumerate(conv.rows):
-                row.weight.copy_(ref.weight[:, :, dt])
-            conv.rows[0].bias.copy_(ref.bias)
-        w = head.weight.view(head.out_features, -1, self.rounds, self.stabs)
-        self.head.weight.zero_()
-        for t in range(self.rounds):
-            at = t * self.width
-            self.head.weight[:, :, at : at + self.stabs] = w[:, :, t]
+            conv.load_state_dict(ref.state_dict())
+        self.head.weight.copy_(head.weight.view(self.head.weight.shape))
         self.head.bias.copy_(head.bias)
 
     @torch.no_grad()
     def fold_film(self, gamma: list[torch.Tensor], beta: list[torch.Tensor]):
         """Bake per-block gamma, beta (each of shape (channels[i],)) into the convs."""
-        first_and_rows = [self.first] + [c.rows[0] for c in self.convs]
-        for layer, g, b in zip(first_and_rows, gamma, beta):
-            layer.bias.mul_(g).add_(b)
         self.first.weight.mul_(gamma[0][:, None])
-        for conv, g in zip(self.convs, gamma[1:]):
-            for row in conv.rows:
-                row.weight.mul_(g[:, None, None])
+        self.first.bias.mul_(gamma[0]).add_(beta[0])
+        for conv, g, b in zip(self.convs, gamma[1:], beta[1:]):
+            conv.fold_film(g, b)
+
+
+class _CoreSplitConv(nn.Module):
+    """
+    A `PaddedConv1d` + ReLU whose output channels are split into groups, group g
+    on core g (a `CorePartition`), so an optional FiLM modulation after it runs on
+    the core that produced each slice.
+
+    The parameters live in the groups (`parts.<g>.conv.*`), but the state dict
+    presents them joined as the unsplit `PaddedConv1d`'s `conv.weight` and
+    `conv.bias`, and loads those back split. So a checkpoint moves between boards
+    (whose group sizes differ) and to and from the unsplit model.
+    """
+
+    @beartype
+    def __init__(
+        self, in_channels: int, sizes: list[int], kernel_size: int, dilation: int
+    ):
+        super().__init__()
+        self.sizes = sizes
+        self.parts = nn.ModuleList(
+            PaddedConv1d(in_channels, z, kernel_size, dilation=dilation) for z in sizes
+        )
+        self.shapes = {
+            "conv.weight": torch.Size([sum(sizes), in_channels, kernel_size]),
+            "conv.bias": torch.Size([sum(sizes)]),
+        }
+
+    def forward(self, x, gamma=None, beta=None):
+        """[B, in!, T] (and gamma, beta [B, out!, T]) -> [B, out!, T]"""
+        ys, a = [], 0
+        for g, (part, z) in enumerate(zip(self.parts, self.sizes)):
+            with CorePartition([g]):
+                y = part(x)  # [B, z!, T]
+                if gamma is not None:
+                    y = gamma[:, a : a + z] * y + beta[:, a : a + z]
+                ys.append(torch.relu(y))
+            a += z
+        return torch.cat(ys, dim=1)  # [B, out!, T]
+
+    def state_dict(self, *, destination=None, prefix="", keep_vars=False):
+        """The groups joined into the unsplit `conv.weight` and `conv.bias`."""
+        if destination is None:
+            destination = OrderedDict()
+        for name in self.shapes:
+            leaf = name.split(".")[1]
+            joined = torch.cat([getattr(p.conv, leaf) for p in self.parts])
+            destination[prefix + name] = joined if keep_vars else joined.detach()
+        return destination
+
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        """Split the unsplit `conv.weight` and `conv.bias` into the groups' keys."""
+        names = {prefix + name for name in self.shapes}
+        for key in [k for k in state_dict if k.startswith(prefix) and k not in names]:
+            unexpected_keys.append(key)
+            del state_dict[key]
+        for name, shape in self.shapes.items():
+            key, leaf = prefix + name, name.split(".")[1]
+            value = state_dict.pop(key, None)
+            if value is None:
+                missing_keys.append(key)
+            elif value.shape != shape:
+                error_msgs.append(
+                    f"size mismatch for {key}: copying a param with shape "
+                    f"{value.shape} from checkpoint, the shape in current model "
+                    f"is {shape}."
+                )
+            if value is None or value.shape != shape:
+                parts = [getattr(p.conv, leaf).detach() for p in self.parts]
+            else:
+                parts = value.split(self.sizes)
+            for g, part in enumerate(parts):
+                state_dict[f"{prefix}parts.{g}.{name}"] = part
+
+    @torch.no_grad()
+    def load_conv(self, conv: PaddedConv1d):
+        """Load the weights of the unsplit `PaddedConv1d`, which must match in shape."""
+        got = {name: t.shape for name, t in conv.state_dict().items()}
+        if got != self.shapes:
+            raise ValueError(f"expected a PaddedConv1d of {self.shapes}, got {got}")
+        self.load_state_dict(conv.state_dict())
 
 
 class StreamingFiLMDecoder(nn.Module):
@@ -156,6 +364,8 @@ class StreamingFiLMDecoder(nn.Module):
         kernel_size: int,
         dilation: int,
         film_input: bool = False,
+        core_groups: list[int] | None = None,
+        first_core: int | None = None,
     ):
         """
         Causal, round-streaming redesign of `FiLMDecoder` (needs retraining).
@@ -181,46 +391,129 @@ class StreamingFiLMDecoder(nn.Module):
                              experiment (r <= 11 in the paper). Dilation is free on Vollo,
                              while a third block adds ~0.15 us of dependency depth.
             film_input:      Take gamma and beta as part of the input
+            core_groups:     Split the last block's output channels into groups of
+                             these sizes, group g on core g (`_CoreSplitConv`). The
+                             state dict keeps the unsplit layout, so checkpoints
+                             load whatever the groups.
+            first_core:      Run the first block on this core.
+
+        `core_groups` and `first_core` only place work on cores (see "Core
+        placement" below); the function is the same without them.
         """
         super().__init__()
         self.num_stabilisers = num_stabilisers
         self.channels = channels
         self.film_input = film_input
+        self.first_core = first_core
         ins = [num_stabilisers] + channels[:-1]
         self.convs = nn.ModuleList(
             PaddedConv1d(i, o, kernel_size, dilation=dilation)
             for i, o in zip(ins, channels)
         )
+        if core_groups is not None:
+            if sum(core_groups) != channels[-1]:
+                raise ValueError(
+                    f"core_groups {core_groups} must sum to {channels[-1]}"
+                )
+            self.convs[-1] = _CoreSplitConv(ins[-1], core_groups, kernel_size, dilation)
         self.head = nn.Linear(channels[-1], num_stabilisers + 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (Batch, num_stabilisers [+ 2 * sum(channels)], Time)
+            x: Tensor of shape (Batch, num_stabilisers [+ 2 * sum(channels)]!, Time)
 
         Returns:
-            Tensor of shape (Batch, Time, num_stabilisers + 1): data-qubit flip logits
+            Tensor of shape (Batch, Time, num_stabilisers + 1!): data-qubit flip logits
         """
         if self.film_input:
             film = x[:, self.num_stabilisers :]  # [B, 2*sum(channels)!, T]
             x = x[:, : self.num_stabilisers]  # [B, S!, T]
         offset = 0
-        for conv, c in zip(self.convs, self.channels):
-            x = conv(x)  # [B, c!, T]
+        for i, (conv, c) in enumerate(zip(self.convs, self.channels)):
+            gamma = beta = None
             if self.film_input:
-                gamma = film[:, offset : offset + c]
+                gamma = film[:, offset : offset + c]  # [B, c!, T]
                 beta = film[:, offset + c : offset + 2 * c]
-                x = gamma * x + beta
                 offset += 2 * c
-            x = torch.relu(x)
+            if isinstance(conv, _CoreSplitConv):
+                x = conv(x, gamma, beta)  # [B, c!, T]
+                continue
+            pin = i == 0 and self.first_core is not None
+            with CorePartition([self.first_core]) if pin else nullcontext():
+                x = conv(x)  # [B, c!, T]
+                if gamma is not None:
+                    x = gamma * x + beta
+                x = torch.relu(x)
         return self.head(x.transpose(1, 2))  # [B, T, d!]
 
     @torch.no_grad()
     def fold_film(self, gamma: list[torch.Tensor], beta: list[torch.Tensor]):
         """Bake per-block gamma, beta (each of shape (channels[i],)) into the convs."""
         for conv, g, b in zip(self.convs, gamma, beta):
-            conv.conv.weight.mul_(g[:, None, None])
-            conv.conv.bias.mul_(g).add_(b)
+            a = 0
+            for part in conv.parts if isinstance(conv, _CoreSplitConv) else [conv]:
+                z = part.conv.out_channels
+                part.conv.weight.mul_(g[a : a + z, None, None])
+                part.conv.bias.mul_(g[a : a + z]).add_(b[a : a + z])
+                a += z
+
+
+# Core placement. `_vm` places work on Vollo's cores with three rules. Each one
+# moves work between cores and never changes the function (SDK 29.0.0, spaced
+# latency in cycles):
+#
+# 1. Window decoder: by default the compiler copies the conv weights to every
+#    core and splits the grid positions between them. Where a copy per core plus
+#    the head does not fit the cores' weight stores, `_spread_cores` spreads the
+#    kernel rows over core thirds instead, splitting the weights three ways, for
+#    the fewest, largest blocks that make it fit (IA-420f, NT400D11 d5: all, 4285
+#    vs 6916 unspread; IA-840f d11: the last block, 13215 vs 13559 all and 18725
+#    none). Where the copies fit, unspread is faster (V80 d5: 3737 vs 4258;
+#    IA-840f d5: 2089 vs 2250).
+# 2. Streaming decoder: run the small first block on core 1, off core 0, where
+#    the compiler starts placing every block (spaced -2..-7 cycles, contiguous
+#    up to -11%; any core but 0 measures the same on the folded entries).
+# 3. Streaming decoder with `film_input`: split the last block into near-equal
+#    whole-block channel groups, one per core (`_core_groups`), so each core
+#    applies the FiLM modulation to its own slice (spaced -9..-11% at the zoo's
+#    [256, 512]; narrower last blocks lose on IA-840f: +20 cycles at 256).
+
+
+@beartype
+def _spread_cores(
+    config: str, num_stabilisers: int, rounds: int, channels: list[int]
+) -> list[int | None] | None:
+    """Rule 1: `num_cores` for `FiLMDecoder` on `config`: None not to spread, or
+    a list spreading the fewest, largest conv blocks that make the weights fit."""
+    from vollo_model_zoo.vm import CONFIGS
+
+    hw = CONFIGS[config]
+    n = hw.num_cores
+    blocks = lambda i, o: -(-i // hw.block_size) * -(-o // hw.block_size)
+    convs = [9 * blocks(i, o) for i, o in zip(channels[:-1], channels[1:])]
+    head = rounds * num_stabilisers * blocks(channels[-1], num_stabilisers + 1)
+    largest = sorted(range(len(convs)), key=lambda c: -convs[c])
+    for k in range(len(convs) + 1):
+        spread = set(largest[:k])
+        # Weight blocks stored over all cores: an unspread block is copied to
+        # every core, a spread one to the n / 3 cores of each kernel row's third.
+        stored = sum(w * (n // 3 if c in spread else n) for c, w in enumerate(convs))
+        if stored + head <= n * hw.weight_store_depth:
+            break
+    if not spread:
+        return None
+    return [n if c in spread else None for c in range(len(convs))]
+
+
+@beartype
+def _core_groups(channels: int, num_cores: int, block_size: int) -> list[int]:
+    """Rule 3: `channels` in near-equal whole-block groups, at most one per core."""
+    blocks = -(-channels // block_size)
+    sizes = [blocks // num_cores + (i < blocks % num_cores) for i in range(num_cores)]
+    groups = [z * block_size for z in sizes if z]
+    groups[-1] -= sum(groups) - channels
+    return groups
 
 
 @beartype
@@ -233,21 +526,39 @@ def _vm(
     dilation: int = 3,
     film_input: bool = False,
 ):
-    from vollo_model_zoo.vm import vollo_info
+    from vollo_model_zoo.vm import CONFIGS, vollo_info
 
     meta = dict(distance=num_stabilisers + 1, channels=str(channels))
     if rounds is not None:
         # The paper's decoder: one decision per window of `rounds` rounds.
         input = torch.randn(1, rounds, num_stabilisers, 1)
-        model = FiLMDecoder(num_stabilisers, rounds, channels)
+        model = FiLMDecoder(
+            num_stabilisers,
+            rounds,
+            channels,
+            # Placement rule 1.
+            num_cores=_spread_cores(config, num_stabilisers, rounds, channels),
+        )
         time_axis = None
         meta |= dict(model="window", rounds=rounds)
     else:
         # With film_input, gamma and beta ride along as extra input channels.
         num_inputs = num_stabilisers + 2 * sum(channels) * film_input
         input = torch.randn(1, num_inputs, 8)
+        hw = CONFIGS[config]
         model = StreamingFiLMDecoder(
-            num_stabilisers, channels, kernel_size, dilation, film_input
+            num_stabilisers,
+            channels,
+            kernel_size,
+            dilation,
+            film_input,
+            # Placement rules 3 and 2.
+            core_groups=(
+                _core_groups(channels[-1], hw.num_cores, hw.block_size)
+                if film_input
+                else None
+            ),
+            first_core=1,
         )
         time_axis = 2
         meta |= dict(
@@ -275,7 +586,7 @@ def main(config: str = "V80") -> Generator:
     # syndrome round. Baseline: 10 * 384 * 5 + 384 * 512 * 5 = 1.00M conv weights,
     # plus a 512 * 11 head, ~1.01M. Its contiguous latency sits right at the round
     # time. The paper's whole-window decoder comes last, as its reaction latency
-    # after the final round is tens of us, and (d=11) its weights are 2.2M.
+    # after the final round is tens of us, and (d=11) its weights are 2.1M.
     for x in [
         dict(num_stabilisers=4, channels=[128, 256]),
         dict(num_stabilisers=6, channels=[256, 512]),
