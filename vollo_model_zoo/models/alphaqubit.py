@@ -1,5 +1,5 @@
 import math
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Literal, Optional
@@ -18,6 +18,79 @@ def _head_partitions(heads: int, cores: int) -> int:
     # The largest even grouping of the heads, one core per group: uneven groups
     # are far slower than none
     return max(p for p in range(1, min(heads, cores) + 1) if heads % p == 0)
+
+
+def _spread(
+    heads: int, tokens: int, cores: int, weights: float, store: int
+) -> tuple[int, int]:
+    """
+    How to spread a step over `cores` cores, as (token groups, head groups).
+
+    Splitting only the heads leaves cores idle during attention (two of six at
+    d=5), so the tokens are split into three or more groups as well when either:
+    - there are at least two tokens per core, or
+    - one core's weight store (`store` blocks) cannot hold all the weights
+      (`weights`, in blocks). The compiler spreads the tokens itself by copying
+      the weights to every core, which then does not work.
+    Each token group holds a copy of the weights on its cores, so their share
+    must fit. d=5 on six cores is three groups of eight tokens on two cores
+    each: 10% faster on V80 and 20% on IA-420f and IA-840f (SDK 29.0.0).
+    Otherwise only the heads are split, as at d=3 on V80, where a group's work
+    is too short to share out.
+    """
+    head_groups = _head_partitions(heads, max(cores // 3, 1))
+    split = tokens >= 2 * cores or weights > store
+    if split and weights <= head_groups * store:
+        return cores // head_groups, head_groups
+    return 1, _head_partitions(heads, cores)
+
+
+def _cat(ts: list[torch.Tensor], dim: int) -> torch.Tensor:
+    return ts[0] if len(ts) == 1 else torch.cat(ts, dim=dim)
+
+
+class _Cores:
+    """
+    How a step is spread over the cores: the N tokens (stabilisers) in
+    `token_groups` contiguous groups, the smaller ones first, each on
+    `head_groups` cores of its own. A group's per-token work (embedding, norms,
+    RG-LRU, dense block, output projection) is pinned to its cores, and head
+    group p of its attention to the p-th of them. Only attention mixes tokens,
+    so the groups meet only there, to gather each other's keys and values: a
+    concatenation along the token axis, not the data dimension. With one token
+    group the per-token work is left to the compiler, which spreads the tokens
+    itself, and with one head group as well nothing is pinned.
+    """
+
+    @beartype
+    def __init__(self, tokens: int, token_groups: int = 1, head_groups: int = 1):
+        if not 1 <= token_groups <= tokens:
+            raise ValueError(f"{token_groups} token groups for {tokens} tokens")
+        # The smaller groups first (8 tokens in 3: 2, 3, 3), about 1% faster
+        # than last on IA-420f and IA-840f (SDK 29.0.0)
+        bounds = [tokens * g // token_groups for g in range(token_groups + 1)]
+        self.groups = list(zip(bounds, bounds[1:]))
+        self.head_groups = head_groups
+
+    def pin(self, g: int, p: Optional[int] = None):
+        """Pin to token group `g`'s cores, or to the core of its head group `p`"""
+        h = self.head_groups
+        if len(self.groups) == 1 and (p is None or h == 1):
+            return nullcontext()
+        cores = range(g * h, (g + 1) * h) if p is None else [g * h + p]
+        return vollo_torch.CorePartition(list(cores))
+
+    def per_token(self, fn: Callable, *xs: torch.Tensor):
+        """`fn` of each token group of `xs` (each [N, ...]) on its cores, concatenated"""
+        if len(self.groups) == 1:
+            return fn(*xs)
+        outs = []
+        for g, (a, b) in enumerate(self.groups):
+            with self.pin(g):
+                outs.append(fn(*(x[a:b] for x in xs)))
+        if isinstance(outs[0], tuple):
+            return tuple(_cat(list(o), dim=0) for o in zip(*outs))
+        return _cat(outs, dim=0)
 
 
 def _stabiliser_coordinates(distance: int) -> torch.Tensor:
@@ -50,10 +123,13 @@ def _rope_tables(distance: int, dim_head: int) -> tuple[torch.Tensor, torch.Tens
 
 class _Attention(nn.Module):
     """
-    Multi-head attention of `x` over `context` (default: itself). With
-    `head_partitions`, head group `p` (its projections, scores and softmax) is
-    pinned to core `p`; the output projection stays outside so it is not split.
-    With one head group nothing is pinned, leaving the spread to the compiler.
+    Multi-head attention of `x` over `context` (default: itself), spread over
+    the cores by `cores`: head group `p` of token group `g` (its projections,
+    scores and softmax) on one core. The output projection is not split by
+    heads: it runs per token group, after a concatenation of the heads. Each
+    token group emits its keys and values before its queries, since every group
+    waits for the keys and values while the queries stay at home (up to 3%
+    faster, SDK 29.0.0).
 
     With `rope` (cos and sin tables), q and k are rotated as `t * cos + rot(t) *
     sin`, where `rot` maps each `[a | b]` channel pair to `[-b | a]`. Both terms
@@ -78,16 +154,17 @@ class _Attention(nn.Module):
         dim: int,
         heads: int,
         dim_head: int,
-        head_partitions: int,
+        cores: _Cores,
         rope: Optional[tuple[torch.Tensor, torch.Tensor]] = None,
     ):
         super().__init__()
-        self.heads_per_core = heads // head_partitions
+        self.cores = cores
+        self.heads_per_core = heads // cores.head_groups
         self.dim_head = dim_head
         width = self.heads_per_core * dim_head
         # q, k and v, one Linear per head group
         self.q, self.k, self.v = (
-            nn.ModuleList(nn.Linear(dim, width) for _ in range(head_partitions))
+            nn.ModuleList(nn.Linear(dim, width) for _ in range(cores.head_groups))
             for _ in range(3)
         )
         self.rope = rope is not None
@@ -107,26 +184,46 @@ class _Attention(nn.Module):
         self, x: torch.Tensor, context: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """x: [N, C!], context: [M, C!] -> [N, C!]"""
+        groups, pin = self.cores.groups, self.cores.pin
+        if context is not None and len(groups) > 1:
+            raise ValueError("cross-attention takes one token group")
         context = x if context is None else context
         h, dh = self.heads_per_core, self.dim_head
 
-        def heads(t):
-            return t.view(-1, h, dh).transpose(0, 1)  # [h N dh!]
+        def take(t, g):  # token group g's rows of t
+            return t if len(groups) == 1 else t[groups[g][0] : groups[g][1]]
 
-        def rotate(t):  # [h N dh!] -> [h N 1 dh!] @ [N dh dh]
-            return (t.unsqueeze(-2) @ self.rotation).squeeze(-2)
+        def heads(t):  # [n h*dh!] -> [h n dh!]
+            return t.view(-1, h, dh).transpose(0, 1)
 
-        outs, pinned = [], len(self.q) > 1
+        def rotate(t, g):  # [h n dh!] -> [h n 1 dh!] @ [n dh dh]
+            return (t.unsqueeze(-2) @ take(self.rotation, g)).squeeze(-2)
+
+        outs = [[] for _ in groups]  # [g][p]: [n h*dh!]
         for p, (q, k, v) in enumerate(zip(self.q, self.k, self.v)):
-            with vollo_torch.CorePartition([p]) if pinned else nullcontext():
-                q, k, v = heads(q(x)), heads(k(context)), heads(v(context))
-                if self.rope:
-                    q, k = rotate(q), rotate(k)
-                # The scores in base 2, s / ln 2: [h N dh!] @ [h dh M!]
-                e = torch.exp2((q * (dh**-0.5 / math.log(2))) @ k.transpose(1, 2))
-                a = (e @ v) / e.sum(-1, keepdim=True)  # [h N M!] @ [h M dh!]
-                outs.append(a.transpose(0, 1).reshape(-1, h * dh))  # [N h*dh!]
-        return self.proj_o(torch.cat(outs, dim=-1))
+            queries, keys, values = [], [], []
+            for g in range(len(groups)):
+                with pin(g, p):
+                    k_g = k(take(context, g))
+                    values.append(heads(v(take(context, g))))
+                    q_g = q(take(x, g))
+                    k_g, q_g = heads(k_g), heads(q_g)
+                    if self.rope:
+                        k_g, q_g = rotate(k_g, g), rotate(q_g, g)
+                    keys.append(k_g)
+                    queries.append(q_g)
+            k, v = _cat(keys, dim=1), _cat(values, dim=1)  # [h M dh!]
+            for g, q_g in enumerate(queries):
+                with pin(g, p):
+                    # The scores in base 2, s / ln 2: [h n dh!] @ [h dh M!]
+                    e = torch.exp2((q_g * (dh**-0.5 / math.log(2))) @ k.transpose(1, 2))
+                    a = (e @ v) / e.sum(-1, keepdim=True)  # [h n M!] @ [h M dh!]
+                    outs[g].append(a.transpose(0, 1).reshape(-1, h * dh))
+        ys = []
+        for g, heads_out in enumerate(outs):
+            with pin(g):
+                ys.append(self.proj_o(_cat(heads_out, dim=-1)))  # [n C!]
+        return _cat(ys, dim=0)
 
 
 class _Layer(nn.Module):
@@ -144,12 +241,13 @@ class _Layer(nn.Module):
         dim: int,
         heads: int,
         expand: int,
-        head_partitions: int,
+        cores: _Cores,
         rope: Optional[tuple[torch.Tensor, torch.Tensor]] = None,
     ):
         super().__init__()
+        self.cores = cores
         self.norm_attn, self.norm_dense = _norm(dim), _norm(dim)
-        self.attn = _Attention(dim, heads, 32, head_partitions, rope)
+        self.attn = _Attention(dim, heads, 32, cores, rope)
         self.up = nn.Linear(dim, expand * dim)
         self.gate = nn.Linear(dim, expand * dim)
         self.down = nn.Linear(expand * dim, dim)
@@ -158,8 +256,12 @@ class _Layer(nn.Module):
         self, x: torch.Tensor, context: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """x: [N, C!], context (for cross-attention): [M, C!] -> [N, C!]"""
-        h = self.norm_attn(x)
-        x = x + self.attn(h, None if context is None else self.norm_attn(context))
+        each = self.cores.per_token
+        h = each(self.norm_attn, x)
+        a = self.attn(h, None if context is None else self.norm_attn(context))
+        return each(self._dense, each(torch.add, x, a))
+
+    def _dense(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm_dense(x)
         return x + self.down(torch.nn.functional.gelu(self.up(h)) * self.gate(h))
 
@@ -206,9 +308,10 @@ class _Step(nn.Module):
         layers: int,
         heads: int,
         expand: int,
-        head_partitions: int,
+        cores: _Cores,
     ):
         super().__init__()
+        self.cores = cores
         # The paper embeds each cycle's bits and "concatenates and projects" the
         # group: two Linears with nothing between, i.e. one Linear on the 2G bits.
         self.embed = nn.Linear(2 * cycles, dim)
@@ -220,17 +323,18 @@ class _Step(nn.Module):
         rope = _rope_tables(distance, 32)
         self.rnn_in, self.rnn_out = _RGLRU(dim), _RGLRU(dim)
         self.layers = nn.Sequential(
-            *[
-                _Layer(dim, heads, expand, head_partitions, rope=rope)
-                for _ in range(layers)
-            ]
+            *[_Layer(dim, heads, expand, cores, rope) for _ in range(layers)]
         )
 
     def forward(self, syndromes: torch.Tensor, state: list[torch.Tensor]):
         """syndromes: [N, 2G!], state: two [N, C!] -> [N, C!], new state"""
-        x = self.embed(syndromes) + self.position  # [N C!]
-        x, rnn_in = self.rnn_in(x, state[0])
-        x, rnn_out = self.rnn_out(self.layers(x), state[1])
+        each = self.cores.per_token
+
+        def first(syndromes, position, state):  # [n 2G!], [n C!], [n C!]
+            return self.rnn_in(self.embed(syndromes) + position, state)
+
+        x, rnn_in = each(first, syndromes, self.position, state[0])
+        x, rnn_out = each(self.rnn_out, self.layers(x), state[1])
         return x, [rnn_in, rnn_out]
 
 
@@ -250,6 +354,9 @@ class AlphaQubit(nn.Module):
     representations. At the end of an experiment the paper also runs the final
     cycle, recomputed from the data-qubit measurements, through this same stack
     with its own embedding: one more step of the same cost before the readout.
+
+    The step is spread over `token_groups` x `head_partitions` cores (see
+    `_Cores`). Every spread computes the same function.
     """
 
     @beartype
@@ -262,10 +369,12 @@ class AlphaQubit(nn.Module):
         heads: int,
         expand: int,
         head_partitions: int,
+        token_groups: int = 1,
     ):
         super().__init__()
+        cores = _Cores(distance**2 - 1, token_groups, head_partitions)
         self.scan = vollo_torch.nn.Scan(
-            _Step(distance, cycles, dim, layers, heads, expand, head_partitions)
+            _Step(distance, cycles, dim, layers, heads, expand, cores)
         )
         self.rnn_in_0 = nn.Buffer(torch.zeros(distance**2 - 1, dim), persistent=False)
         self.rnn_out_0 = nn.Buffer(torch.zeros(distance**2 - 1, dim), persistent=False)
@@ -281,24 +390,34 @@ class AlphaQubitReadout(nn.Module):
     AQ2-RT's end-of-experiment readout: two spatial transformer layers, then a
     query (the mean over stabilisers plus a learned observable embedding) goes
     through two cross-attention layers over the stabilisers, two residual dense
-    layers and a projection to the logical-flip logit.
+    layers and a projection to the logical-flip logit. The spatial layers are
+    spread like `AlphaQubit`'s step.
     """
 
     @beartype
     def __init__(
-        self, distance: int, dim: int, heads: int, expand: int, head_partitions: int
+        self,
+        distance: int,
+        dim: int,
+        heads: int,
+        expand: int,
+        head_partitions: int,
+        token_groups: int = 1,
     ):
         super().__init__()
         n = distance**2 - 1
         rope = _rope_tables(distance, 32)
+        cores = _Cores(n, token_groups, head_partitions)
         self.mix = nn.Sequential(
-            *[_Layer(dim, heads, expand, head_partitions, rope=rope) for _ in range(2)]
+            *[_Layer(dim, heads, expand, cores, rope) for _ in range(2)]
         )
         self.mean = nn.Buffer(torch.full((1, n), 1 / n), persistent=False)
         self.observable = nn.Parameter(torch.randn(1, dim) * 0.02)
         # One query: its work is the context's keys and values, which the
         # compiler spreads over every core by tokens if its heads are not pinned
-        self.cross = nn.ModuleList(_Layer(dim, heads, expand, 1) for _ in range(2))
+        self.cross = nn.ModuleList(
+            _Layer(dim, heads, expand, _Cores(n)) for _ in range(2)
+        )
         self.dense = nn.ModuleList(
             nn.Sequential(
                 _norm(dim),
@@ -335,16 +454,27 @@ def _vm(
 ):
     from vollo_model_zoo.vm import CONFIGS, vollo_info
 
-    n = distance**2 - 1
-    partitions = _head_partitions(heads, CONFIGS[config].num_cores)
-    partitions = partitions if partitioned else 1
-    args = distance, dim, heads, expand, partitions
+    conf, n = CONFIGS[config], distance**2 - 1
+
+    def build(partitions: int, groups: int):
+        if variant == "aq2":
+            args = distance, cycles, dim, layers, heads, expand, partitions, groups
+            return AlphaQubit(*args)
+        return AlphaQubitReadout(distance, dim, heads, expand, partitions, groups)
+
+    # What a token group holds: the step's weights, or the readout's spatial
+    # layers' (its cross-attention is never split)
+    held = build(1, 1) if variant == "aq2" else build(1, 1).mix
+    weights = sum(p.numel() for p in held.parameters()) / conf.block_size**2
+    groups = partitions = 1
+    if partitioned:
+        store = conf.weight_store_depth
+        groups, partitions = _spread(heads, n, conf.num_cores, weights, store)
+    model = build(partitions, groups)
     match variant:
         case "aq2":
-            model = AlphaQubit(distance, cycles, dim, layers, heads, expand, partitions)
             x, time_axis = torch.randn(2, n, 2 * cycles), 0
         case "readout":
-            model = AlphaQubitReadout(*args)
             x, time_axis = torch.randn(n, dim), None
     return vollo_info(
         model,
@@ -360,6 +490,7 @@ def _vm(
             dim=dim,
             layers=layers,
             heads=heads,
+            token_groups=groups,
             partitions=partitions,
         ),
     )

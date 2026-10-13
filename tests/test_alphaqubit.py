@@ -1,7 +1,8 @@
 """
 `_Attention` (RoPE as one matmul, a late, base-2 softmax) against attention with
 explicit RoPE and `torch.softmax`, and the step and the readout against the
-paper's network written out from the paper (fp64, every parameter randomised).
+paper's network written out from the paper (fp64, every parameter randomised),
+for each spread over the cores (token groups x head groups).
 """
 
 import importlib
@@ -37,12 +38,23 @@ def explicit_rope_attention(attn, x: torch.Tensor, cos, sin) -> torch.Tensor:
 def test_rope_matches_explicit_rope():
     torch.manual_seed(0)
     cos, sin = alphaqubit._rope_tables(DISTANCE, DIM_HEAD)
-    attn = alphaqubit._Attention(DIM, HEADS, DIM_HEAD, 1, rope=(cos, sin))
+    cores = alphaqubit._Cores(DISTANCE**2 - 1)
+    attn = alphaqubit._Attention(DIM, HEADS, DIM_HEAD, cores, rope=(cos, sin))
 
     x = torch.randn(DISTANCE**2 - 1, DIM)
     torch.testing.assert_close(
         attn(x), explicit_rope_attention(attn, x, cos, sin), atol=1e-5, rtol=1e-5
     )
+
+
+def test_smaller_token_groups_first():
+    assert alphaqubit._Cores(8, 3, 2).groups == [(0, 2), (2, 5), (5, 8)]
+    assert alphaqubit._Cores(24, 3, 2).groups == [(0, 8), (8, 16), (16, 24)]
+
+
+def test_more_token_groups_than_tokens_is_an_error():
+    with pytest.raises(ValueError, match="9 token groups for 8 tokens"):
+        alphaqubit.AlphaQubit(3, 6, DIM_STEP, 2, 4, 4, 1, 9)
 
 
 # The paper's network, written out from the paper and Griffin, independently of
@@ -138,12 +150,17 @@ def randomise_all(model: torch.nn.Module) -> torch.nn.Module:
     return model
 
 
+# (token groups, head groups): none, the heads only (d=3 on six cores), three
+# token groups of two head groups (d=5 on six cores) or of one (three cores)
+SPREADS = [(1, 1), (1, 4), (3, 2), (3, 1)]
+
+
 @pytest.mark.parametrize("distance, layers", [(3, 2), (5, 2), (3, 3)])
-@pytest.mark.parametrize("head_partitions", [1, 4])
-def test_step_matches_paper_reference(distance, layers, head_partitions):
+@pytest.mark.parametrize("token_groups, head_partitions", SPREADS)
+def test_step_matches_paper_reference(distance, layers, token_groups, head_partitions):
     torch.manual_seed(0)
     n = distance**2 - 1
-    args = distance, 6, DIM_STEP, layers, 4, 4, head_partitions
+    args = distance, 6, DIM_STEP, layers, 4, 4, head_partitions, token_groups
     model = randomise_all(alphaqubit.AlphaQubit(*args)).eval()
     sd = model.state_dict()
     rope = tuple(t.double() for t in alphaqubit._rope_tables(distance, DIM_HEAD))
@@ -158,10 +175,11 @@ def test_step_matches_paper_reference(distance, layers, head_partitions):
     )
 
 
-@pytest.mark.parametrize("head_partitions", [1, 4])
-def test_readout_matches_paper_reference(head_partitions):
+@pytest.mark.parametrize("token_groups, head_partitions", SPREADS)
+def test_readout_matches_paper_reference(token_groups, head_partitions):
     torch.manual_seed(0)
-    model = alphaqubit.AlphaQubitReadout(5, DIM_STEP, 4, 4, head_partitions)
+    args = head_partitions, token_groups
+    model = alphaqubit.AlphaQubitReadout(5, DIM_STEP, 4, 4, *args)
     model = randomise_all(model).eval()
     rope = tuple(t.double() for t in alphaqubit._rope_tables(5, DIM_HEAD))
     x = torch.randn(24, DIM_STEP, dtype=torch.float64)
