@@ -24,6 +24,7 @@ Models in the zoo include:
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
 |                   | [Nano LLM](#nano-llm)                                 | [`nano-llm.py`](./vollo_model_zoo/models/nano-llm.py)                                                                                                 |
 | **Attention**     | [Sliding window attention](#sliding-window-attention) | [`swa.py`](./vollo_model_zoo/models/swa.py)                                                                                                           |
+|                   | [AlphaQubit](#alphaqubit)                             | [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)                                                                                             |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM
 and calculate the compute-latency for any of these models. Alternatively, have
@@ -478,6 +479,38 @@ holds its K/V window in the accelerator's tensor RAM: the KV cache stays on the
 card between inferences, and the host sends a single timestep rather than a
 growing context. `window_size` fixes how much of it there is, so the state and
 the work per inference are constant in the sequence length.
+
+### AlphaQubit
+
+Code/model: [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)
+
+The real-time AlphaQubit 2 decoder (AQ2-RT) for the surface code,
+[Senior et al.](https://arxiv.org/abs/2512.07737), successor to
+[AlphaQubit](https://arxiv.org/abs/2310.05900). Each of the d²−1 stabilisers
+carries a 128-vector; a step takes six syndrome cycles and applies Griffin's
+RG-LRU recurrent block, two pre-norm transformer layers across the stabilisers
+(spatial RoPE, gated dense) and a second RG-LRU block. The readout runs once per
+experiment, so it is its own entry.
+
+A superconducting cycle is about 1.1 µs, so a six-cycle step has 6.6 µs. One
+step at a time, Vollo takes longer than that (8.3 µs at d=3, 16.0 µs at d=5 on
+V80), so the decoder falls behind and its backlog grows with the experiment. The
+paper keeps up on a TPU, to d=11, by processing blocks of 24–96 cycles at once.
+Trapped-ion and neutral-atom machines, with millisecond rounds, leave ample time.
+A step costs the same for any G that fits one block of inputs, so the G=16 pair
+(beyond the paper's G ≤ 6, needs retraining) keeps up at d=3 and d=5 (16.0 µs
+on V80 against 17.6 µs), at the cost of waiting up to 16 cycles longer before
+the final step.
+
+The file shows `Scan` with several states, `allow_dynamic_weights` for
+attention, RoPE as one matmul per stabiliser with a constant rotation matrix (no
+slicing of the data dimension), and `vollo_torch.CorePartition` spreading the
+step over the cores: attention heads in groups, one per core, and the
+stabilisers in groups too when there are at least two per core (d=5) or when the
+weights do not fit one core's weight store (IA-420f and NT400D11). Each group's
+per-stabiliser work then runs on its own cores, and the groups meet only to
+gather attention's keys and values. At d=5 that is 9% faster than the
+compiler's own spread on V80, and 20% on IA-420f and IA-840f.
 
 ## Other utilities
 
