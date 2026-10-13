@@ -14,6 +14,7 @@ Models in the zoo include:
 |                   | [Mixture of Experts](#mixture-of-experts-moe-block)   | [`moe.py`](./vollo_model_zoo/models/moe.py)                                                                                                           |
 | **Convolutional** | [Basic CNN](#basic-convolutional-neural-networks-cnn) | [`cnn.py`](./vollo_model_zoo/models/cnn.py)                                                                                                           |
 |                   | [TCN](#tcn)                                           | [`tcn.py`](./vollo_model_zoo/models/tcn.py)                                                                                                           |
+|                   | [QEC TCN (FiLM)](#qec-tcn-film)                       | [`qec-tcn.py`](./vollo_model_zoo/models/qec-tcn.py)                                                                                                   |
 |                   | [WaveNet](#wavenet)                                   | [`wavenet.py`](./vollo_model_zoo/models/wavenet.py)                                                                                                   |
 |                   | [MobileNet](#mobilenet)                               | [`mobilenet.py`](./vollo_model_zoo/models/mobilenet.py)                                                                                               |
 | **Recurrent**     | [LSTM](#lstm)                                         | [`lstm.py`](./vollo_model_zoo/models/lstm.py)                                                                                                         |
@@ -191,6 +192,36 @@ Code/model: [tcn.py](./vollo_model_zoo/models/tcn.py)
 
 TCNs often outperform RNNs (like LSTMs and GRUs) on a variety of sequence
 modeling tasks while being more parallelizable.
+
+### QEC TCN (FiLM)
+
+Code/model: [`qec-tcn.py`](./vollo_model_zoo/models/qec-tcn.py)
+
+The calibration-conditioned repetition-code decoder of
+[Stein et al. 2026](https://arxiv.org/abs/2601.16123), as published: three 3x3
+`Conv2d` blocks (128, 256, 512 channels) over the whole (rounds x stabilisers)
+window, each `relu(gamma * conv(x) + beta)`, then a dense head with one flip
+logit per data qubit. gamma and beta come from the device's calibration data via
+a graph network that runs offline; `fold_film` bakes them into the conv weights.
+It decides once, after the last round, so the table is the reaction latency
+after the final round (d=11, r=11 is tens of µs), not a per-round figure.
+
+Vollo has no `Conv2d`, so the file rewrites it exactly: the grid is a batch of
+rows, and the flatten plus dense head is one `Conv1d` spanning every position.
+Each 3x3 block interleaves the three input rows an output row reads, column by
+column, so every 3x3 window is 9 consecutive positions: one non-streaming
+`Conv1d` of kernel 9 and stride 3 sums all 9 taps inside the matmul, and the
+compiler skips the multiplications by the zero border. Where the conv weights
+fit, the compiler copies them to every core and splits the positions. On boards
+whose weight stores cannot hold the copies, the fewest, largest blocks that make
+them fit run each kernel row as its own `Conv1d` on its own third of the cores
+(a `CorePartition`), and the three are summed. Tests check both lowerings
+against `Conv2d` and `Linear` with shared weights, in PyTorch and on the VM.
+
+For comparison, `StreamingFiLMDecoder` is a Vollo-oriented redesign (not the
+paper's network, so it needs retraining): a causal, dilated `PaddedConv1d` over
+rounds with the stabilisers in channels, consuming one round per inference
+in under 1 µs. `film_input=True` sends gamma and beta with every round instead.
 
 ### WaveNet
 
