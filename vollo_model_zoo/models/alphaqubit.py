@@ -1,3 +1,4 @@
+import math
 from collections.abc import Generator
 from pathlib import Path
 from typing import Literal, Optional
@@ -53,9 +54,20 @@ class _Attention(nn.Module):
     pinned to core `p`; the output projection stays outside so it is not split.
 
     With `rope` (cos and sin tables), q and k are rotated as `t * cos + rot(t) *
-    sin`, where `rot` maps each `[a | b]` channel pair to `[-b | a]`: a matmul
-    with a signed permutation of a head's channels, so no slice or concatenate
-    over the data dimension is needed.
+    sin`, where `rot` maps each `[a | b]` channel pair to `[-b | a]`. Both terms
+    are one matmul per stabiliser, `t @ (diag(cos) + rot diag(sin))`, with a
+    constant matrix of two nonzeros per row: no slice or concatenate over the
+    data dimension, and one instruction on the way to the scores rather than
+    four (SDK 29.0.0).
+
+    The softmax is normalised after the value matmul, `(exp(s) @ v) / sum(exp(s))`,
+    so the sum runs alongside the matmul rather than ahead of it, and its
+    exponential is `exp(s) = exp2(s / ln 2)`, the `1 / ln 2` joining q's `1 /
+    sqrt(dh)` scale: an exp of a matmul's output costs an instruction more than
+    an exp2 (SDK 29.0.0). It is unshifted (no `- max(s)`), as Vollo has no max
+    reduction: equal to `torch.softmax` in exact arithmetic, but in PyTorch fp32
+    `exp` overflows for scores above about 88, so mind that if you train with
+    this file.
     """
 
     @beartype
@@ -78,16 +90,15 @@ class _Attention(nn.Module):
         )
         self.rope = rope is not None
         if rope:
-            cos, sin = rope
-            self.cos = nn.Buffer(cos, persistent=False)  # [N dh]
-            self.sin = nn.Buffer(sin, persistent=False)
             # rot as a matrix: t @ rot, t = [a | b] per half -> [-b | a]
             q, half = torch.arange(dim_head // 4), dim_head // 2
             rot = torch.zeros(dim_head, dim_head)
             for a in (q, q + half):  # the x half, then the y half
                 rot[a + dim_head // 4, a] = -1
                 rot[a, a + dim_head // 4] = 1
-            self.rot = nn.Buffer(rot, persistent=False)
+            cos, sin = rope  # [N dh]
+            rotation = torch.diag_embed(cos) + rot * sin.unsqueeze(1)  # [N dh dh]
+            self.rotation = nn.Buffer(rotation, persistent=False)
         self.proj_o = nn.Linear(heads * dim_head, dim)
 
     def forward(
@@ -100,8 +111,8 @@ class _Attention(nn.Module):
         def heads(t):
             return t.view(-1, h, dh).transpose(0, 1)  # [h N dh!]
 
-        def rotate(t):  # [h N dh!]
-            return t * self.cos + (t @ self.rot) * self.sin  # [h N dh!] @ [dh dh]
+        def rotate(t):  # [h N dh!] -> [h N 1 dh!] @ [N dh dh]
+            return (t.unsqueeze(-2) @ self.rotation).squeeze(-2)
 
         outs = []
         for p, (q, k, v) in enumerate(zip(self.q, self.k, self.v)):
@@ -109,8 +120,9 @@ class _Attention(nn.Module):
                 q, k, v = heads(q(x)), heads(k(context)), heads(v(context))
                 if self.rope:
                     q, k = rotate(q), rotate(k)
-                s = (q * dh**-0.5) @ k.transpose(1, 2)  # [h N dh!] @ [h dh M!]
-                a = torch.softmax(s, dim=-1) @ v  # [h N M!] @ [h M dh!]
+                # The scores in base 2, s / ln 2: [h N dh!] @ [h dh M!]
+                e = torch.exp2((q * (dh**-0.5 / math.log(2))) @ k.transpose(1, 2))
+                a = (e @ v) / e.sum(-1, keepdim=True)  # [h N M!] @ [h M dh!]
                 outs.append(a.transpose(0, 1).reshape(-1, h * dh))  # [N h*dh!]
         return self.proj_o(torch.cat(outs, dim=-1))
 
@@ -172,7 +184,10 @@ class _RGLRU(nn.Module):
         h = self.norm(x)
         u = self.inp(h)
         r, i = torch.sigmoid(self.proj_r(u)), torch.sigmoid(self.proj_i(u))
-        a = torch.exp(-8 * torch.nn.functional.softplus(self.decay) * r)
+        # exp(x) as exp2(x / ln 2): Vollo folds a constant scale into exp2, not
+        # into exp (SDK 29.0.0)
+        c = -8 / math.log(2)
+        a = torch.exp2(c * torch.nn.functional.softplus(self.decay) * r)
         state = a * state + torch.sqrt(1 - a * a) * (i * u)
         return x + self.out(state * torch.nn.functional.gelu(self.gate(h))), state
 

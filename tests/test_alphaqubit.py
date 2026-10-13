@@ -1,7 +1,7 @@
 """
-`_Attention` against attention with explicit RoPE, and the step and the readout
-against the paper's network written out from the paper (fp64, every parameter
-randomised).
+`_Attention` (RoPE as one matmul, a late, base-2 softmax) against attention with
+explicit RoPE and `torch.softmax`, and the step and the readout against the
+paper's network written out from the paper (fp64, every parameter randomised).
 """
 
 import importlib
