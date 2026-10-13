@@ -53,11 +53,9 @@ class _Attention(nn.Module):
     pinned to core `p`; the output projection stays outside so it is not split.
 
     With `rope` (cos and sin tables), q and k are rotated as `t * cos + rot(t) *
-    sin`, where `rot` maps each `[a | b]` channel pair to `[-b | a]`. The rotation
-    is folded into a second pair of projections (`W_rot = rot(W)`), so no slice or
-    concatenate over the data dimension is needed; they are the only extra
-    parameters, and are tied to the first pair in a trained model
-    (`tests/test_alphaqubit.py` checks the folding against explicit RoPE).
+    sin`, where `rot` maps each `[a | b]` channel pair to `[-b | a]`: a matmul
+    with a signed permutation of a head's channels, so no slice or concatenate
+    over the data dimension is needed.
     """
 
     @beartype
@@ -73,16 +71,23 @@ class _Attention(nn.Module):
         self.heads_per_core = heads // head_partitions
         self.dim_head = dim_head
         width = self.heads_per_core * dim_head
-        # q, k, v, then (with RoPE) q and k again, folded with the rotation
-        self.proj = nn.ModuleList(
-            nn.ModuleList(nn.Linear(dim, width) for _ in range(5 if rope else 3))
-            for _ in range(head_partitions)
+        # q, k and v, one Linear per head group
+        self.q, self.k, self.v = (
+            nn.ModuleList(nn.Linear(dim, width) for _ in range(head_partitions))
+            for _ in range(3)
         )
         self.rope = rope is not None
         if rope:
-            cos, sin = (t.repeat(self.heads_per_core, 1, 1) for t in rope)
-            self.cos = nn.Buffer(cos, persistent=False)  # [h N dh]
+            cos, sin = rope
+            self.cos = nn.Buffer(cos, persistent=False)  # [N dh]
             self.sin = nn.Buffer(sin, persistent=False)
+            # rot as a matrix: t @ rot, t = [a | b] per half -> [-b | a]
+            q, half = torch.arange(dim_head // 4), dim_head // 2
+            rot = torch.zeros(dim_head, dim_head)
+            for a in (q, q + half):  # the x half, then the y half
+                rot[a + dim_head // 4, a] = -1
+                rot[a, a + dim_head // 4] = 1
+            self.rot = nn.Buffer(rot, persistent=False)
         self.proj_o = nn.Linear(heads * dim_head, dim)
 
     def forward(
@@ -95,13 +100,15 @@ class _Attention(nn.Module):
         def heads(t):
             return t.view(-1, h, dh).transpose(0, 1)  # [h N dh!]
 
+        def rotate(t):  # [h N dh!]
+            return t * self.cos + (t @ self.rot) * self.sin  # [h N dh!] @ [dh dh]
+
         outs = []
-        for p, (q, k, v, *rotated) in enumerate(self.proj):
+        for p, (q, k, v) in enumerate(zip(self.q, self.k, self.v)):
             with vollo_torch.CorePartition([p]):
                 q, k, v = heads(q(x)), heads(k(context)), heads(v(context))
                 if self.rope:
-                    q = q * self.cos + heads(rotated[0](x)) * self.sin
-                    k = k * self.cos + heads(rotated[1](context)) * self.sin
+                    q, k = rotate(q), rotate(k)
                 s = (q * dh**-0.5) @ k.transpose(1, 2)  # [h N dh!] @ [h dh M!]
                 a = torch.softmax(s, dim=-1) @ v  # [h N M!] @ [h M dh!]
                 outs.append(a.transpose(0, 1).reshape(-1, h * dh))  # [N h*dh!]
@@ -357,15 +364,14 @@ def main(config: str = "V80") -> Generator:
         dict(**aq2, distance=3, dim=128, layers=2, heads=4, cycles=16),
         dict(**aq2, distance=5, dim=128, layers=2, heads=4, cycles=16),
         # ~1M parameter baseline, not a paper size; d=3 so that it fits every board.
-        # AQ2-RT: C=160 with 5 heads of 32, gated dense of widening 3. Per layer:
-        # two norms 2 * 160 + attention (q, k, v, the folded q and k, and the
-        # output projection: 6 * (160 * 160 + 160)) = 154,560 + dense (up, gate,
-        # down: 2 * (160 * 480 + 480) + 480 * 160 + 160) = 231,520 -> 386,400. Two
-        # layers 772,800; each RG-LRU block norm 160 + 5 * (160 * 160 + 160) +
-        # decay 160 = 129,120, two 258,240; embed 12 * 160 + 160 = 2,080:
-        # 1,033,120. (The folded q and k are tied to the plain ones in a trained
-        # model, so it has 2 * 25,760 fewer per layer.)
-        dict(variant="aq2", distance=3, dim=160, layers=2, heads=5, expand=3),
+        # AQ2-RT's C=128, heads and widening, with the three transformer layers of
+        # the paper's Willow model (whose C is 256). Per layer: two norms 2 * 128 +
+        # attention (q, k, v and output projections: 4 * (128 * 128 + 128)) =
+        # 66,048 + dense (up, gate, down: 2 * (128 * 512 + 512) + 512 * 128 + 128)
+        # = 197,760 -> 264,064. Three layers 792,192; each RG-LRU block norm 128 +
+        # 5 * (128 * 128 + 128) + decay 128 = 82,816, two 165,632; embed 12 * 128
+        # + 128 = 1,664: 959,488.
+        dict(**aq2, distance=3, dim=128, layers=3, heads=4),
         # AQ2-RT reads out once per experiment, not per step: the streamed entries
         # above are the per-step cost, this is the one-off cost after the last step
         dict(variant="readout", distance=5, dim=128, layers=2, heads=4, expand=4),
