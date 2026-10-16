@@ -133,7 +133,7 @@ unbumped version means your change is never measured. A minor bump; the number
 carries no compatibility promise.
 
 - **Bump** for any change under `models/` that moves a number (architecture, a
-  sweep in `main()`, a constructor default), or to `vm.py`, which sets the compile
+  size in `SIZES`, a constructor default), or to `vm.py`, which sets the compile
   options every model is measured with. Commit the `uv.lock` re-lock with it.
 - **Don't** for README prose, tests or the reporting tooling — that spends a
   benchmark run reproducing numbers we have.
@@ -155,6 +155,7 @@ Two consequences:
 vollo_model_zoo/
   models/*.py     one file per model — the actual content of the zoo
   vm.py           compile + measure harness (vollo_info, CONFIGS, Result types, vollo_fn)
+  catalog.py      every model's SIZES as data, without importing torch; builds one size
   zoo.py          `zoo` CLI: run one model, print markdown table or JSON
   benchmark.py \
   parse.py       | CI latency-history tooling feeding benchmarks/ and plots/;
@@ -178,21 +179,23 @@ class MyModel(nn.Module):        # public, plain PyTorch, @beartype'd __init__
     ...                          # helper submodules are _private
 
 @beartype
-def _vm(<hyperparams>, config: str):
-    from vollo_model_zoo.vm import vollo_info   # deferred import: keeps the file standalone
+def instance(<hyperparams>, config: str) -> dict:  # one size, as vollo_info's arguments
     input = torch.randn(...)                    # a representative single-batch input
     model = MyModel(...)
-    return vollo_info(
-        model, input,
-        config=config,
+    return dict(
+        model=model, x=input,
         time_axis=<int | None>,
         meta=dict(...),        # hyperparams shown in the CLI table / benchmark metadata
     )
 
+SIZES = [dict(...), dict(...)]                 # size sweep, smallest first; plain data
+
 @beartype
 def main(config: str = "V80") -> Generator:    # discovered and called by vm.get_results
-    for x in [dict(...), dict(...)]:           # size sweep, smallest first
-        yield _vm(**x, config=config)
+    # Deferred import: keeps the file standalone
+    from vollo_model_zoo.vm import sweep, vollo_info
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 if __name__ == "__main__":
     print(f"Model '{Path(__file__).stem}':")
@@ -209,10 +212,30 @@ with `__`, and `vm.get_results()` `importlib`-imports it and calls
 - Hyphenated files are importable only via `importlib.import_module`, which tests
   must use for them.
 
+`SIZES` is **data**: `catalog.py` reads it from the file's source without
+importing it, so tools can list every size without torch or the SDK
+(`uv run python -m vollo_model_zoo.catalog` prints them all as JSON) and then build one
+at a time with `catalog.build(model, name, config)`. So:
+
+- `SIZES` is one top-level assignment of literals, arithmetic and comprehensions
+  (`[128] * 3`, `32 * 6 * 4`). It may call `dict`, `list`, `range` and `tuple`,
+  but use nothing defined in the file, which is why `mlp-res-rms.py` spells out
+  its activations.
+- A size's name comes from its arguments in the order they are written
+  (`num_layers2-hidden_features512`), so changing an argument, reordering them
+  or spelling out a default renames the size for anything that tracks it by
+  name.
+- What a size needs of the config is part of its data, as `_`-prefixed keys that
+  `sweep` drops from `instance`'s arguments: `_features=["fp8"]` (`rnnt.py`) and
+  `_min_cores=24` (`nano-llm.py`). `main()` must not filter sizes any other way,
+  or the catalog lists sizes `main()` never runs.
+- A multi-model file's `instance` returns `dict(entries=[...])`, the arguments
+  of `vollo_multi_model_info`, which its `main()` calls instead (`rnnt.py`).
+
 `tests/test_models.py` enforces on every model:
 
 - At least one yielded `Ok` result.
-- A sweep monotonic in `param_count` **or** `latency_spaced` — order `main()`
+- A sweep monotonic in `param_count` **or** `latency_spaced` — order `SIZES`
   accordingly.
 - At least one configuration in **0.95M–1.05M parameters**, the "baseline" size
   models are compared at. Show the arithmetic in a comment, as `lstm.py` does.
@@ -331,10 +354,13 @@ What that means here:
   built with `hasattr` probes so the repo still works against older SDKs missing
   a config. Add new configs the same defensive way.
 - `config_supports(config, feature) -> bool` probes `Config.features`, e.g.
-  `"fp8"`, which only the V80 family has. Gate a sweep entry needing a feature on
-  it (`rnnt.py`, `stateless-rnnt.py` do, for their fp8 size): the compiler
-  rejects such a model with a bare `RuntimeError` that `vollo_info` does _not_
-  catch, so the entry has to be left out rather than reported as an error value.
+  `"fp8"`, which only the V80 family has. Gate a size needing a feature on it
+  with `_features` (`rnnt.py`, `stateless-rnnt.py` do, for their fp8 size): the
+  compiler rejects such a model with a bare `RuntimeError` that `vollo_info` does
+  _not_ catch, so the size has to be left out rather than reported as an error
+  value.
+- `sweep(SIZES, config)` yields the sizes `config` can run, as `instance`'s
+  arguments.
 - `vollo_info(model, x, *, time_axis, config, meta=None, allow_dynamic_weights=False, quick_compile=False) -> Result`
   calls `model(x)` first (nicer errors), then `prepare_shape` → `to_nnir` →
   optional `streaming_transform` → `to_program` → `pack()`. Returns `Ok` or a
@@ -372,7 +398,7 @@ x = torch.randn(1, 5, 64)
 model, _ = vt.fx.prepare_shape(model, x)   # torch.fx trace + shape propagation
 nnir = vt.fx.nnir.to_nnir(model)
 print(nnir)                                # <-- the whole point
-streamed, out_axis = nnir.streaming_transform(1)   # same time_axis as _vm passes
+streamed, out_axis = nnir.streaming_transform(1)   # same time_axis as instance returns
 print(streamed)                            # <-- diff against the above
 program = streamed.to_program(vc.Config.amd_v80_c6b32())
 program.pack()                             # AllocationError surfaces here, not earlier
@@ -441,6 +467,9 @@ Two levels further out:
 
 - `test_models.py` — the bulk test: every model × (default + all 5 configs),
   asserting the invariants above. Slow; scope with `-k`.
+- `test_catalog.py` — `SIZES` reads the same from source as on import, every
+  size has its own name and builds, and listing the sizes needs only the
+  standard library.
 - `test_gru.py` — numerical equivalence against `torch.nn.GRU`, including the
   **state-dict conversion** from PyTorch layout to the zoo's split-linear layout.
 - `test_mamba1.py` / `test_mamba2.py` — equivalence against
@@ -479,7 +508,7 @@ reference implementation.
     it (the ~1M baseline size, the monotonic sweep, no allocation errors on the
     default / `V80` / `V80LL`). A size only the experimental config can run is
     kept out by `main()` itself, gated on what the config provides
-    (`nano-llm`'s trained size needs `CONFIGS[config].num_cores`), so the sweep
+    (`nano-llm`'s trained size has `_min_cores=24`), so the sweep
     shrinks to what the board can hold rather than reporting failures. Its
     `main()` default config must therefore be a real one, since
     `get_results(model, None)` calls `main()` bare.
@@ -491,8 +520,8 @@ reference implementation.
 ## Checklist: adding a model
 
 1. `vollo_model_zoo/models/<name>.py` following the contract above; no
-   `vollo_model_zoo` imports outside `_vm`.
-2. A sweep for `main()`: monotonic in params or latency, including one
+   `vollo_model_zoo` imports at module level.
+2. A `SIZES` sweep: monotonic in params or latency, including one
    ~1M-parameter size; expose Vollo trade-offs (fp32 vs bf16, fused vs unfused)
    as paired entries.
 3. `uv run zoo <name>` and `uv run zoo <name> --config IA-420f` — check it

@@ -52,21 +52,18 @@ class _StepSSM(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     dim: int,
     hidden: int,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     input = torch.randn(1, dim)
 
     model = SSM(dim=dim, hidden=hidden)
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=0,
         allow_dynamic_weights=True,
         meta=dict(
@@ -76,15 +73,20 @@ def _vm(
     )
 
 
+SIZES = [
+    dict(dim=32 * 12, hidden=32 * 12),
+    dict(dim=32 * 18, hidden=32 * 14),
+    dict(dim=32 * 6 * 4, hidden=32 * 6 * 8),
+    dict(dim=32 * 6 * 8, hidden=32 * 6 * 16),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(dim=32 * 12, hidden=32 * 12),
-        dict(dim=32 * 18, hidden=32 * 14),
-        dict(dim=32 * 6 * 4, hidden=32 * 6 * 8),
-        dict(dim=32 * 6 * 8, hidden=32 * 6 * 16),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

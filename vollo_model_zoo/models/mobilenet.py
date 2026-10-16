@@ -114,21 +114,18 @@ class _DepthwiseSeparableConv1d(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     width_mult: float,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     in_channels = 3
     input_tensor = torch.randn(1, in_channels, 4)
 
     model = MobileNet1D(in_channels=in_channels, width_mult=width_mult)
 
-    return vollo_info(
-        model,
-        input_tensor,
-        config=config,
+    return dict(
+        model=model,
+        x=input_tensor,
         time_axis=2,
         meta=dict(
             width_mult=width_mult,
@@ -136,14 +133,19 @@ def _vm(
     )
 
 
+SIZES = [
+    dict(width_mult=0.1),
+    dict(width_mult=0.42),
+    dict(width_mult=1.0),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(width_mult=0.1),
-        dict(width_mult=0.42),
-        dict(width_mult=1.0),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

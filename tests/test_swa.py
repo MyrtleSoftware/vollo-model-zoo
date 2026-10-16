@@ -203,7 +203,7 @@ def test_a_partitioned_checkpoint_loads_at_another_partitioning(
     saved: int, loaded: int
 ):
     """
-    And between two partitionings, which is the pair `_vm` actually asks for:
+    And between two partitionings, which is the pair `instance` actually asks for:
     it partitions over the cores of the target config, so a checkpoint trained
     against a six-core V80 has to load into the three-way split of an IA-840f.
     """
