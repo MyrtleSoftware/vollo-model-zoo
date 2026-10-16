@@ -78,22 +78,19 @@ class QECLSTM(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     distance: int,
     hidden_size: int,
     soft: bool,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     model = QECLSTM(distance, hidden_size, soft=soft)
     num_inputs = model.num_defects + (distance**2 - 1) // 2
     input = torch.randn(1, 5, num_inputs)
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=1,
         meta=dict(
             distance=distance,
@@ -103,20 +100,25 @@ def _vm(
     )
 
 
+SIZES = [
+    # Paper sizes (Varbanov et al. 2023), hard defects, then soft inputs
+    dict(distance=3, hidden_size=64, soft=False),
+    dict(distance=3, hidden_size=64, soft=True),
+    dict(distance=5, hidden_size=128, soft=False),
+    dict(distance=5, hidden_size=128, soft=True),
+    dict(distance=7, hidden_size=128, soft=False),
+    dict(distance=9, hidden_size=128, soft=False),
+    # ~1M parameters baseline, d=11 (120 stabilisers, 60 final defects):
+    dict(distance=11, hidden_size=256, soft=False),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        # Paper sizes (Varbanov et al. 2023), hard defects, then soft inputs
-        dict(distance=3, hidden_size=64, soft=False),
-        dict(distance=3, hidden_size=64, soft=True),
-        dict(distance=5, hidden_size=128, soft=False),
-        dict(distance=5, hidden_size=128, soft=True),
-        dict(distance=7, hidden_size=128, soft=False),
-        dict(distance=9, hidden_size=128, soft=False),
-        # ~1M parameters baseline, d=11 (120 stabilisers, 60 final defects):
-        dict(distance=11, hidden_size=256, soft=False),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

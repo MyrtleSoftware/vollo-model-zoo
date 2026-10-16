@@ -61,17 +61,14 @@ class _Expert(nn.Module):
 
 
 @beartype
-def _vm(dim: int, hidden_dim: int, log_n_experts: int, config: str):
-    from vollo_model_zoo.vm import vollo_info
-
+def instance(dim: int, hidden_dim: int, log_n_experts: int, config: str) -> dict:
     input = torch.randn(1, 4, dim)
 
     model = MoE(dim=dim, hidden_dim=hidden_dim, log_n_experts=log_n_experts)
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=1,
         meta=dict(
             dim=dim,
@@ -81,14 +78,19 @@ def _vm(dim: int, hidden_dim: int, log_n_experts: int, config: str):
     )
 
 
+SIZES = [
+    dict(dim=192, hidden_dim=640, log_n_experts=2),
+    dict(dim=192, hidden_dim=640, log_n_experts=3),
+    dict(dim=192, hidden_dim=640, log_n_experts=4),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(dim=192, hidden_dim=640, log_n_experts=2),
-        dict(dim=192, hidden_dim=640, log_n_experts=3),
-        dict(dim=192, hidden_dim=640, log_n_experts=4),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,4 @@
 import importlib
-import os
 from collections.abc import Generator
 from dataclasses import asdict, dataclass
 from functools import cache, partial
@@ -11,6 +10,8 @@ import vollo_torch as vt
 from beartype import beartype
 from beartype.typing import Callable, Optional, Sequence, Union
 from vollo_compiler import AllocationError, SaveError
+
+from vollo_model_zoo import catalog
 
 # Names changed over time, fallback to depreciated for backwards-compat
 _CONFIG_CONSTRUCTORS = {
@@ -367,20 +368,20 @@ def to_dict(r: Result) -> dict:
 @beartype
 def get_models() -> list[str]:
     """
-    Parse the models directory to find available models. Each model should be a
-    .py file not starting with __ (to exclude __init__.py, etc.). The model
-    name is derived from the filename.
+    The available models, by name: see `catalog.models`.
     """
-    models_dir = os.path.join(os.path.dirname(__file__), "models")
+    return catalog.models()
 
-    if not os.path.exists(models_dir):
-        raise FileNotFoundError(f"Models directory not found: {models_dir}")
 
-    @beartype
-    def is_valid_model_file(filename: str) -> bool:
-        return filename.endswith(".py") and not filename.startswith("__")
-
-    return sorted(f[:-3] for f in os.listdir(models_dir) if is_valid_model_file(f))
+@beartype
+def sweep(sizes: Sequence[dict], config: str) -> Generator[dict, None, None]:
+    """
+    The sizes in a model's `SIZES` that `config` can run, as arguments to the
+    model's `instance`.
+    """
+    for size in sizes:
+        if catalog.runs_on(size, config):
+            yield catalog.split(size)[0]
 
 
 @beartype

@@ -322,7 +322,7 @@ def multi_model_entries(
 
 
 @beartype
-def _vm(
+def instance(
     *,
     n_classes: int,
     pred_n_hid: int,
@@ -334,11 +334,9 @@ def _vm(
     joint_n_hid: int,
     fp8_weights: bool,
     config: str,
-) -> list:
-    from vollo_model_zoo.vm import vollo_multi_model_info
-
-    return vollo_multi_model_info(
-        multi_model_entries(
+) -> dict:
+    return dict(
+        entries=multi_model_entries(
             n_classes=n_classes,
             pred_n_hid=pred_n_hid,
             pred_rnn_layers=pred_rnn_layers,
@@ -349,59 +347,58 @@ def _vm(
             joint_n_hid=joint_n_hid,
             fp8_weights=fp8_weights,
         ),
-        config=config,
     )
+
+
+SIZES = [
+    # 1M baseline used by the model-zoo test suite.
+    dict(
+        n_classes=256,
+        pred_n_hid=192,
+        pred_rnn_layers=1,
+        in_feats=40,
+        enc_n_hid=176,
+        enc_pre_rnn_layers=1,
+        enc_post_rnn_layers=1,
+        joint_n_hid=288,
+        fp8_weights=False,
+    ),
+    # 23M model for BF16/FP32
+    dict(
+        n_classes=1024,
+        pred_n_hid=424,
+        pred_rnn_layers=2,
+        in_feats=240,
+        enc_n_hid=680,
+        enc_pre_rnn_layers=2,
+        enc_post_rnn_layers=3,
+        joint_n_hid=256,
+        fp8_weights=False,
+    ),
+    # 49M model via fp8 weights, which only some fabrics support.
+    dict(
+        n_classes=1024,
+        pred_n_hid=512,
+        pred_rnn_layers=2,
+        in_feats=240,
+        enc_n_hid=1024,
+        enc_pre_rnn_layers=2,
+        enc_post_rnn_layers=3,
+        joint_n_hid=512,
+        fp8_weights=True,
+        _features=["fp8"],
+    ),
+]
 
 
 @beartype
 def main(config: str = "V80") -> Generator:
-    from vollo_model_zoo.vm import config_supports
+    from vollo_model_zoo.vm import sweep, vollo_multi_model_info
 
-    models = [
-        # 1M baseline used by the model-zoo test suite.
-        dict(
-            n_classes=256,
-            pred_n_hid=192,
-            pred_rnn_layers=1,
-            in_feats=40,
-            enc_n_hid=176,
-            enc_pre_rnn_layers=1,
-            enc_post_rnn_layers=1,
-            joint_n_hid=288,
-            fp8_weights=False,
-        ),
-        # 23M model for BF16/FP32
-        dict(
-            n_classes=1024,
-            pred_n_hid=424,
-            pred_rnn_layers=2,
-            in_feats=240,
-            enc_n_hid=680,
-            enc_pre_rnn_layers=2,
-            enc_post_rnn_layers=3,
-            joint_n_hid=256,
-            fp8_weights=False,
-        ),
-    ]
-
-    # 49M model via fp8 weights, which only some fabrics support.
-    if config_supports(config, "fp8"):
-        models.append(
-            dict(
-                n_classes=1024,
-                pred_n_hid=512,
-                pred_rnn_layers=2,
-                in_feats=240,
-                enc_n_hid=1024,
-                enc_pre_rnn_layers=2,
-                enc_post_rnn_layers=3,
-                joint_n_hid=512,
-                fp8_weights=True,
-            )
+    for size in sweep(SIZES, config):
+        yield from vollo_multi_model_info(
+            **instance(**size, config=config), config=config
         )
-
-    for x in models:
-        yield from _vm(**x, config=config)
 
 
 if __name__ == "__main__":
