@@ -22,7 +22,8 @@ class QECLSTM(nn.Module):
         2-layer LSTM; the head turns the recurrent state into the logit that the
         logical qubit has flipped. Follows Varbanov et al. 2023
         (https://arxiv.org/abs/2307.03280), after Baireuther et al. 2018
-        (https://arxiv.org/abs/1705.07855). The last round also carries the
+        (https://arxiv.org/abs/1705.07855) and 2019
+        (https://arxiv.org/abs/1804.02926). The last round also carries the
         `final_defects` of the logical basis, recomputed from the data-qubit
         readout, which only the head sees; the controller feeds zeros in earlier
         rounds and reads the output after the last one. The paper's auxiliary

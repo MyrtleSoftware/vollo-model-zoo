@@ -246,7 +246,8 @@ Each inference takes one round of syndrome defects and updates a 2-layer LSTM;
 the head outputs the logit that the logical qubit has flipped, and the final
 round also carries the defects recomputed from the data-qubit readout. It
 follows [Varbanov et al. 2023](https://arxiv.org/abs/2307.03280), after
-[Baireuther et al. 2018](https://arxiv.org/abs/1705.07855), minus the paper's
+[Baireuther et al. 2018](https://arxiv.org/abs/1705.07855) and
+[Baireuther et al. 2019](https://arxiv.org/abs/1804.02926), minus the paper's
 training-only auxiliary head.
 
 The decoder has to keep up with the QEC round, about 1.1 µs on
