@@ -1,6 +1,8 @@
 import importlib
+import importlib.util
 import inspect
 import json
+import os
 import subprocess
 import sys
 
@@ -26,16 +28,20 @@ def test_sizes_match_import(model_name: str):
     assert catalog.sizes(model_name) == module.SIZES
 
 
+@pytest.mark.parametrize("experimental", [False, True])
 @pytest.mark.parametrize("config", [*CONFIGS])
 @pytest.mark.parametrize("model_name", _MODELS)
 @beartype
-def test_main_sweeps_sizes(model_name: str, config: str, monkeypatch):
+def test_main_sweeps_sizes(
+    model_name: str, config: str, experimental: bool, monkeypatch
+):
     """
-    `main()` builds exactly the sizes the catalog says `config` can run, in
-    `SIZES` order. Nothing is built or compiled: `instance` and the compile
-    functions are replaced with recorders.
+    `main()` builds exactly the sizes `config` can run, in `SIZES` order, and
+    the experimental ones only when asked. Nothing is built or compiled:
+    `instance` and the compile functions are replaced with recorders.
     """
     module = importlib.import_module(f"vollo_model_zoo.models.{model_name}")
+    monkeypatch.setattr(vm, "sweep_experimental", experimental)
     calls = []
     monkeypatch.setattr(module, "instance", lambda **kw: calls.append(kw) or {})
     monkeypatch.setattr(vm, "vollo_info", lambda **kw: None)
@@ -46,8 +52,31 @@ def test_main_sweeps_sizes(model_name: str, config: str, monkeypatch):
     assert calls == [
         {**catalog.split(size)[0], "config": config}
         for size in catalog.sizes(model_name)
-        if catalog.runs_on(size, config)
+        if vm.runs_on(size, config)
+        and (experimental or not catalog.split(size)[1].get("_experimental"))
     ]
+
+
+def test_copied_file_sweeps_its_own_sizes(tmp_path, monkeypatch):
+    """
+    A model file copied out of the zoo, renamed and with its `SIZES` edited,
+    sweeps the sizes it lists.
+    """
+    source = os.path.join(catalog.MODELS_DIR, "mlp.py")
+    with open(source) as f:
+        text = f.read()
+    copy = tmp_path / "my_mlp.py"
+    copy.write_text(text + "\nSIZES = SIZES[:1]\n")
+    spec = importlib.util.spec_from_file_location("my_mlp", copy)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    calls = []
+    monkeypatch.setattr(module, "instance", lambda **kw: calls.append(kw) or {})
+    monkeypatch.setattr(vm, "vollo_info", lambda **kw: None)
+    list(module.main(config="V80"))
+
+    assert calls == [{**catalog.split(catalog.sizes("mlp")[0])[0], "config": "V80"}]
 
 
 @pytest.mark.parametrize("model_name", _MODELS)
@@ -61,7 +90,7 @@ def test_build(model_name: str):
     assert len(named) == len(catalog.sizes(model_name))
 
     for name, size in named.items():
-        config = next(c for c in CONFIGS if catalog.runs_on(size, c))
+        config = next(c for c in CONFIGS if vm.runs_on(size, c))
         instance = catalog.build(model_name, name, config)
         target = vm.vollo_multi_model_info if "entries" in instance else vm.vollo_info
         inspect.signature(target).bind(**instance, config=config)
@@ -76,16 +105,39 @@ def test_runs_on():
     def needing(model, requirement):
         return next(s for s in catalog.sizes(model) if requirement in s)
 
-    trained_llm = needing("nano-llm", "_min_cores")
-    assert catalog.runs_on(trained_llm, "4xV80")
-    assert not catalog.runs_on(trained_llm, "V80")
-
     fp8_rnnt = needing("rnnt", "_features")
-    assert catalog.runs_on(fp8_rnnt, "V80")
-    assert not catalog.runs_on(fp8_rnnt, "IA-420f")
+    assert vm.runs_on(fp8_rnnt, "V80")
+    assert not vm.runs_on(fp8_rnnt, "IA-420f")
+
+    with pytest.raises(ValueError, match="Unknown config"):
+        vm.runs_on(catalog.sizes("mlp")[0], "nope")
 
 
-def test_build_is_seeded():
+def test_boards():
+    """
+    A size compiled for several boards gets their cores, and the config it is
+    a copy of is left as it was.
+    """
+    assert vm._config("V80", 4).num_cores == 4 * CONFIGS["V80"].num_cores
+    assert vm._config("V80") is CONFIGS["V80"]
+
+
+@pytest.mark.parametrize(
+    "size",
+    [
+        dict(_features="fp8"),
+        dict(_features=[8]),
+        dict(_experimental=1),
+        dict(_min_cores=24),
+        dict(_x=1),
+    ],
+)
+def test_split_rejects_bad_requirements(size):
+    with pytest.raises(ValueError):
+        catalog.split(size)
+
+
+def test_build_is_seeded(monkeypatch):
     """
     A size's weights and inputs don't depend on what was built before it, and
     building leaves the caller's RNG as it was.
@@ -95,6 +147,11 @@ def test_build_is_seeded():
     catalog.build("mlp", first, "V80")
 
     state = torch.random.get_rng_state()
+    monkeypatch.setattr(
+        torch.cuda,
+        "manual_seed_all",
+        lambda seed: pytest.fail("`build` reseeded the GPUs"),
+    )
     b = catalog.build("mlp", second, "V80")
     assert (torch.random.get_rng_state() == state).all()
 

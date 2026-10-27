@@ -3,14 +3,12 @@ import json
 
 from beartype import beartype
 
+from vollo_model_zoo import catalog, vm
 from vollo_model_zoo.vm import (
     CONFIGS,
     DEFAULT_CONFIG,
-    EXPERIMENTAL_CONFIG_MODEL_COMBOS,
     EXPERIMENTAL_MODELS,
     Ok,
-    default_config,
-    get_models,
     get_results,
     to_dict,
 )
@@ -39,7 +37,7 @@ def main() -> int:
     """
     Entry point for 'zoo' command. Supports running a specific model.
     """
-    available_models = get_models()
+    available_models = catalog.models()
 
     parser = argparse.ArgumentParser(
         description="Run (compute) latency simulations for Vollo models"
@@ -57,8 +55,7 @@ def main() -> int:
         type=str,
         choices=list(CONFIGS.keys()),
         default=None,
-        help=f"Hardware configuration (FPGA) to simulate (default: {DEFAULT_CONFIG},"
-        " or the model's own config if it has an experimental one)",
+        help=f"Hardware configuration (FPGA) to simulate (default: {DEFAULT_CONFIG})",
     )
 
     parser.add_argument(
@@ -71,39 +68,29 @@ def main() -> int:
     parser.add_argument(
         "--experimental",
         action="store_true",
-        help="Allow running experimental models and configs",
+        help="Allow running experimental models, and sweep experimental sizes",
     )
 
     args = parser.parse_args()
-    config = args.config if args.config is not None else default_config(args.model)
+    config = args.config if args.config is not None else DEFAULT_CONFIG
 
-    if not check_experimental(args.model, config, args.experimental):
+    if not check_experimental(args.model, args.experimental):
         return 1
+    vm.sweep_experimental = args.experimental
 
     return run_model(args.model, config, args.json)
 
 
 @beartype
-def check_experimental(model: str, config: str, experimental: bool) -> bool:
+def check_experimental(model: str, experimental: bool) -> bool:
     """
-    Check if the requested model or config is experimental, and return whether the run is allowed
+    Check if the requested model is experimental, and return whether the run is allowed
     """
-    needs_flag = False
-    supported = True
+    if model not in EXPERIMENTAL_MODELS:
+        return True
 
-    if model in EXPERIMENTAL_MODELS:
-        print(f"Note: the '{model}' model is experimental (requires --experimental)")
-        needs_flag = True
-
-    if (supported_model := EXPERIMENTAL_CONFIG_MODEL_COMBOS.get(config)) is not None:
-        print(
-            f"Note: the '{config}' config is experimental (requires --experimental)"
-            f" and is only available for the '{supported_model}' model"
-        )
-        needs_flag = True
-        supported = model == supported_model
-
-    if needs_flag and not (experimental and supported):
+    print(f"Note: the '{model}' model is experimental (requires --experimental)")
+    if not experimental:
         print(f"If you are interested in {model} please contact Myrtle to find out")
         print("about upcoming improvements")
         return False

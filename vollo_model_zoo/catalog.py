@@ -12,6 +12,15 @@ and a tool can then build and compile them one at a time with `build`.
 
 That is also why this module imports only the standard library at module level
 and, unlike the rest of the zoo, uses no `@beartype`.
+
+Tools outside the zoo may use only these, so they change only for very good
+reason:
+
+- `python -m vollo_model_zoo.catalog`, and `listing()`, which it prints;
+- `build(model, name, config, *, seed=0)`.
+
+The rest of this module is the zoo's own. Which configs provide a size's
+`_features` is `vm.runs_on`: it needs the Vollo SDK to know.
 """
 
 import ast
@@ -32,8 +41,8 @@ _SIZES_BUILTINS = {"dict": dict, "list": list, "range": range, "tuple": tuple}
 _REQUIREMENTS = {
     # Compiler features the config's fabric must provide, e.g. "fp8".
     "_features",
-    # The fewest cores the config may have.
-    "_min_cores",
+    # Whether the size is only swept on request (`zoo --experimental`).
+    "_experimental",
 }
 
 
@@ -85,27 +94,17 @@ def split(size: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     unknown = {k for k in size if k.startswith("_")} - _REQUIREMENTS
     if unknown:
         raise ValueError(f"Unknown size requirements: {sorted(unknown)}")
+    features = size.get("_features", [])
+    if not (isinstance(features, list) and all(isinstance(f, str) for f in features)):
+        raise ValueError(f"`_features` must be a list of strings, not {features!r}")
+    if not isinstance(size.get("_experimental", False), bool):
+        raise ValueError(
+            f"`_experimental` must be a bool, not {size['_experimental']!r}"
+        )
 
     arguments = {k: v for k, v in size.items() if not k.startswith("_")}
     requirements = {k: v for k, v in size.items() if k.startswith("_")}
     return arguments, requirements
-
-
-def runs_on(size: dict[str, Any], config: str) -> bool:
-    from vollo_model_zoo.vm import CONFIGS, config_supports
-
-    if config not in CONFIGS:
-        raise ValueError(f"Unknown config: {config}, valid configs are: {[*CONFIGS]}")
-
-    _, requirements = split(size)
-    if not all(
-        config_supports(config, feature)
-        for feature in requirements.get("_features", [])
-    ):
-        return False
-    if "_min_cores" in requirements:
-        return CONFIGS[config].num_cores >= requirements["_min_cores"]
-    return True
 
 
 def size_name(size: dict[str, Any]) -> str:
@@ -139,9 +138,11 @@ def build(model: str, name: str, config: str, *, seed: int = 0) -> dict[str, Any
     """
     The size `name` of `model`, built for `config` by the model's `instance`:
     the arguments, other than `config`, of `vollo_info`, or of
-    `vollo_multi_model_info` for a multi-model file.
+    `vollo_multi_model_info` for a multi-model file. It doesn't check that
+    `config` provides the size's features (see `vm.runs_on`); compiling one it
+    doesn't fails.
 
-    Torch's RNG is seeded with `seed` first, so the weights and inputs don't
+    Torch's CPU RNG is seeded with `seed` first, so the weights and inputs don't
     depend on what was built before, and restored after, so the caller's RNG is
     left as it was. `main()` doesn't reseed between sizes, so its sweep
     compiles different weights.
@@ -151,22 +152,20 @@ def build(model: str, name: str, config: str, *, seed: int = 0) -> dict[str, Any
     named = named_sizes(model)
     if name not in named:
         raise ValueError(f"{model} has no size {name}; its sizes are: {[*named]}")
-    size = named[name]
-    if not runs_on(size, config):
-        raise ValueError(f"{model} size {name} can't run on {config}")
-
     module = importlib.import_module(f"vollo_model_zoo.models.{model}")
 
-    arguments, _ = split(size)
+    arguments, _ = split(named[name])
     with torch.random.fork_rng(devices=[]):
-        torch.manual_seed(seed)
+        # Not `torch.manual_seed`, which would also reseed every GPU, whose
+        # RNGs `fork_rng(devices=[])` doesn't restore.
+        torch.default_generator.manual_seed(seed)
         return module.instance(**arguments, config=config)
 
 
 def listing() -> dict[str, list[dict[str, Any]]]:
     """
     Every model's sizes, in `SIZES` order, as JSON-ready data:
-    `{model: [{"name", "arguments", "features", "min_cores"}, ...]}`.
+    `{model: [{"name", "arguments", "features", "experimental"}, ...]}`.
     """
     entries = {}
     for model in models():
@@ -178,7 +177,7 @@ def listing() -> dict[str, list[dict[str, Any]]]:
                     "name": name,
                     "arguments": arguments,
                     "features": requirements.get("_features", []),
-                    "min_cores": requirements.get("_min_cores", 1),
+                    "experimental": requirements.get("_experimental", False),
                 }
             )
     return entries

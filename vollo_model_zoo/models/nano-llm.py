@@ -174,13 +174,15 @@ def instance(
     distributed_norm: bool = False,
     ssm_fp32: bool = True,
     ffn_fp8: bool = True,
+    boards: int = 1,
 ) -> dict:
     # Defer import
     from vollo_model_zoo.vm import CONFIGS
 
-    # Split the model's heads across the cores of whichever config we compile for.
+    # Split the model's heads across the cores of whichever config we compile
+    # for, over all of its boards.
     n_heads = int(expand * d_model) // d_head
-    head_partitions = head_partitions_for(n_heads, CONFIGS[config].num_cores)
+    head_partitions = head_partitions_for(n_heads, CONFIGS[config].num_cores * boards)
 
     input = torch.randn(5, d_model)
 
@@ -205,7 +207,8 @@ def instance(
         time_axis=0,
         allow_dynamic_weights=True,
         quick_compile=True,
-        allow_unserializable=True,
+        allow_unserializable=boards > 1,
+        boards=boards,
         meta=dict(
             d_model=d_model,
             d_head=d_head,
@@ -213,6 +216,7 @@ def instance(
             n_layers=n_layers,
             head_partitions=head_partitions,
             ffn_fp8=ffn_fp8,
+            boards=boards,
         ),
     )
 
@@ -244,7 +248,8 @@ SIZES = [
         ffn_fp8=False,
     ),
     # 140M model Myrtle trained; see README.md. Its weights need four V80s'
-    # worth of weight store, so it only runs on a config with the cores for it.
+    # worth of weight store, so it is compiled for four boards' worth of cores:
+    # experimental, as no program runs across boards yet.
     dict(
         d_model=768,
         d_state=64,
@@ -256,13 +261,15 @@ SIZES = [
         vocab_size=32768,
         ssm_fp32=False,
         ffn_fp8=True,
-        _min_cores=24,
+        boards=4,
+        _features=["fp8"],
+        _experimental=True,
     ),
 ]
 
 
 @beartype
-def main(config: str = "4xV80") -> Generator:
+def main(config: str = "V80") -> Generator:
     from vollo_model_zoo.vm import sweep, vollo_info
 
     for size in sweep(SIZES, config):

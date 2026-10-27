@@ -23,8 +23,7 @@ Requires [`uv`](https://docs.astral.sh/uv/) and Python 3.13 (`.python-version`).
 `uv run` bootstraps the venv from `uv.lock` — never `pip install` into it by hand.
 
 ```fish
-uv run zoo <model>                 # latency table for one model (default config: V80,
-                                   # or the model's own EXPERIMENTAL_CONFIG_MODEL_COMBOS entry)
+uv run zoo <model>                 # latency table for one model (default config: V80)
 uv run zoo <model> --config V80LL  # pick a hardware config
 uv run zoo <model> -j              # machine-readable JSON
 uv run zoo --help                  # list all models + configs
@@ -203,7 +202,7 @@ if __name__ == "__main__":
         print(f"\t{result}")
 ```
 
-Discovery is by filename: `vm.get_models()` lists `models/*.py` not starting
+Discovery is by filename: `catalog.models()` lists `models/*.py` not starting
 with `__`, and `vm.get_results()` `importlib`-imports it and calls
 `main(config=...)`. Hence:
 
@@ -225,10 +224,15 @@ at a time with `catalog.build(model, name, config)`. So:
   (`num_layers2-hidden_features512`), so changing an argument, reordering them
   or spelling out a default renames the size for anything that tracks it by
   name.
-- What a size needs of the config is part of its data, as `_`-prefixed keys that
-  `sweep` drops from `instance`'s arguments: `_features=["fp8"]` (`rnnt.py`) and
-  `_min_cores=24` (`nano-llm.py`). `main()` must not filter sizes any other way,
-  or the catalog lists sizes `main()` never runs.
+- What a size needs is part of its data, as `_`-prefixed keys that `sweep`
+  drops from `instance`'s arguments: `_features=["fp8"]` (`rnnt.py`) for what
+  the config must provide, and `_experimental=True` (`nano-llm.py`) for a size
+  swept only on request. `main()` sweeps with `sweep(SIZES, config)` and must
+  not filter sizes any other way, or the catalog lists sizes `main()` never
+  runs.
+- Tools outside the zoo may use only `catalog.listing()` (which
+  `python -m vollo_model_zoo.catalog` prints) and `catalog.build`; keep those
+  stable. The rest of `catalog.py` is the zoo's own.
 - A multi-model file's `instance` returns `dict(entries=[...])`, the arguments
   of `vollo_multi_model_info`, which its `main()` calls instead (`rnnt.py`).
 
@@ -350,7 +354,7 @@ What that means here:
 
 ## `vm.py` API
 
-- `CONFIGS`: `{"4xV80", "V80", "V80LL", "IA-420f", "IA-840f", "NT400D11"}` → `vc.Config`,
+- `CONFIGS`: `{"V80", "V80LL", "IA-420f", "IA-840f", "NT400D11"}` → `vc.Config`,
   built with `hasattr` probes so the repo still works against older SDKs missing
   a config. Add new configs the same defensive way.
 - `config_supports(config, feature) -> bool` probes `Config.features`, e.g.
@@ -359,9 +363,12 @@ What that means here:
   compiler rejects such a model with a bare `RuntimeError` that `vollo_info` does
   _not_ catch, so the size has to be left out rather than reported as an error
   value.
-- `sweep(SIZES, config)` yields the sizes `config` can run, as `instance`'s
-  arguments.
-- `vollo_info(model, x, *, time_axis, config, meta=None, allow_dynamic_weights=False, quick_compile=False) -> Result`
+- `runs_on(size, config) -> bool`: whether the config provides the size's
+  `_features`.
+- `sweep(sizes, config)` yields the sizes `runs_on` allows, as `instance`'s
+  arguments, leaving out the `_experimental` ones unless `sweep_experimental`
+  is set (see below).
+- `vollo_info(model, x, *, time_axis, config, meta=None, allow_dynamic_weights=False, quick_compile=False, allow_unserializable=False, boards=1) -> Result`
   calls `model(x)` first (nicer errors), then `prepare_shape` → `to_nnir` →
   optional `streaming_transform` → `to_program` → `pack()`. Returns `Ok` or a
   caught `AllocationError | SaveError | ValueError`: compile failures are
@@ -484,38 +491,31 @@ reference implementation.
 ## Conventions and gotchas
 
 - `@beartype` on public constructors and module-level functions; type hints
-  everywhere. `beartype.typing` and `collections.abc` are both used for
+  everywhere. The exception is `catalog.py`, which imports only the standard
+  library so the sizes can be listed without the zoo's dependencies.
+  `beartype.typing` and `collections.abc` are both used for
   `Generator`/`Optional` — match the file you're in.
 - Formatting is `black` + `isort`; `codespell` runs over all text with `vollo`
   allow-listed.
 - Docstrings state tensor shapes on `forward`. Do this; it is how readers
   navigate the streaming and data-dimension rules.
-- Experimental gating is two declarations in `vm.py` — `EXPERIMENTAL_MODELS`, and
-  `EXPERIMENTAL_CONFIG_MODEL_COMBOS` mapping a config to the one model it may run with.
-  The refusal is `zoo.check_experimental`, so that part is CLI-only. Notes print
-  unconditionally, so an experimental result is labelled as one; only the refusal
-  is conditional.
+- Experimental gating is two declarations — `EXPERIMENTAL_MODELS` in `vm.py`,
+  and `_experimental=True` on a size — and both are lifted by
+  `zoo --experimental`. The refusal with a message is `zoo.check_experimental`,
+  so that part is CLI-only. Notes print unconditionally, so an experimental
+  result is labelled as one; only the refusal is conditional.
   - Marking a **model** experimental is adding it to the set _and_ the README
     banner; there is still no per-model metadata, so nothing else sees it. Such
     models are benchmarked and tested normally (`moe` is in `benchmarks/`).
-  - An experimental **config** is skipped by `test_models.py` and
-    `benchmark.py`: both filter `CONFIGS` through
-    `EXPERIMENTAL_CONFIG_MODEL_COMBOS`'s keys, because it is not a board anyone
-    has. `4xV80` is the current case — four V80s' worth of cores, tracking
-    multi-board work — and it is the only thing CI leaves out.
-  - **The model it names is not exempt.** It is tested and benchmarked on every
-    real config like any other, so all of `test_models.py`'s invariants hold for
-    it (the ~1M baseline size, the monotonic sweep, no allocation errors on the
-    default / `V80` / `V80LL`). A size only the experimental config can run is
-    kept out by `main()` itself, gated on what the config provides
-    (`nano-llm`'s trained size has `_min_cores=24`), so the sweep
-    shrinks to what the board can hold rather than reporting failures. Its
-    `main()` default config must therefore be a real one, since
-    `get_results(model, None)` calls `main()` bare.
-  - Check the pairing by hand with `uv run zoo <model> --experimental`:
-    `vm.default_config` reads `EXPERIMENTAL_CONFIG_MODEL_COMBOS` backwards, so
-    such a model runs on the config it exists for unless `--config` says
-    otherwise. That is the only way to see those sizes.
+  - An experimental **size** is left out of `sweep` unless
+    `vm.sweep_experimental` is set, which `zoo --experimental` does, so
+    benchmarks never report it. `test_models.py` sets it for the default
+    config only, so the size is still compiled. `nano-llm`'s trained 140M size
+    is the current case: it needs four V80s' worth of weight store, so its
+    `instance` passes `boards=4` to `vollo_info`, which compiles for that many
+    boards' worth of the config's cores, as one program, tracking multi-board
+    work. Such a program can't be serialized, hence `allow_unserializable`.
+  - See those sizes by hand with `uv run zoo <model> --experimental`.
 
 ## Checklist: adding a model
 

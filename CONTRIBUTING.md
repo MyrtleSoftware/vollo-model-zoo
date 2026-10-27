@@ -8,6 +8,34 @@ and (more importantly) makes it easier to understand a model without jumping
 between files in an editor. Hence, each model file should not directly import
 any `vollo_model_zoo` components.
 
+## Model sizes
+
+Each model file lists the sizes its `main()` sweeps in a top-level `SIZES`, one
+`dict` of `instance` arguments per size:
+
+```python
+SIZES = [
+    dict(hidden_size=256, fp8_weights=False),
+    dict(hidden_size=512, fp8_weights=True, _features=["fp8"]),
+]
+```
+
+`SIZES` must be plain data (literals, arithmetic, comprehensions, `dict`,
+`list`, `range` and `tuple`), because tools read it from the file's source
+without importing it: `uv run python -m vollo_model_zoo.catalog` lists every
+model's sizes as JSON.
+
+- A size is named after its arguments in the order they are written
+  (`hidden_size512-fp8_weightsTrue`), so reordering or adding an argument
+  renames it.
+- Keys starting with `_` are not arguments, but say when the size is swept:
+  - `_features`: the compiler features the config must provide, e.g.
+    `["fp8"]` for a size using fp8 weights; a config that lacks them doesn't
+    run the size;
+  - `_experimental=True`: the size is swept only with `zoo --experimental`.
+
+See [AGENTS.md](./AGENTS.md) for the details.
+
 ## Pre-commit Hooks
 
 We use `pre-commit` to ensure code quality and consistency. The hooks include:
