@@ -1,5 +1,5 @@
+import copy
 import importlib
-import os
 from collections.abc import Generator
 from dataclasses import asdict, dataclass
 from functools import cache, partial
@@ -12,9 +12,10 @@ from beartype import beartype
 from beartype.typing import Callable, Optional, Sequence, Union
 from vollo_compiler import AllocationError, SaveError
 
+from vollo_model_zoo import catalog
+
 # Names changed over time, fallback to depreciated for backwards-compat
 _CONFIG_CONSTRUCTORS = {
-    "4xV80": ("amd_v80_c6b32", "v80_c6b32"),
     "V80": ("amd_v80_c6b32", "v80_c6b32"),
     "V80LL": ("amd_v80ll_c6b32", "v80ll_c6b32"),
     "IA-420f": ("bittware_ia420f_c6b32", "ia_420f_c6b32"),
@@ -26,29 +27,12 @@ _CONFIG_CONSTRUCTORS = {
 # Models behind `zoo --experimental`
 EXPERIMENTAL_MODELS = {"moe", "nano-llm"}
 
-# Note that the experimental config `4xV80` is 24 cores,
-# above the cap of the serializable program architecture, so
-# `to_program` will error if `allow_unserializable=True` is not set
-# Experimental configs are only available for specific models as
-# indicated below.
-EXPERIMENTAL_CONFIG_MODEL_COMBOS = {"4xV80": "nano-llm"}
+# Whether `sweep` includes the sizes marked `_experimental`. Only
+# `zoo --experimental` sets it, so tests and benchmarks leave them out.
+sweep_experimental = False
 
 # The config `zoo` runs when `--config` is not given.
 DEFAULT_CONFIG = "V80"
-
-
-@beartype
-def default_config(model: str) -> str:
-    """
-    The config to run `model` on when `--config` is not given.
-
-    A model that an experimental config exists for defaults to that config
-    """
-    for config, experimental_model in EXPERIMENTAL_CONFIG_MODEL_COMBOS.items():
-        if experimental_model == model:
-            return config
-
-    return DEFAULT_CONFIG
 
 
 @beartype
@@ -63,10 +47,6 @@ def _get_configs() -> dict[str, vc.Config]:
             if hasattr(vc.Config, constructor):
                 configs[name] = getattr(vc.Config, constructor)()
                 break
-
-    # Experimental: scale a V80's core count up
-    if "4xV80" in configs:
-        configs["4xV80"].num_cores *= 4
 
     return configs
 
@@ -132,12 +112,20 @@ type Result = Union[Ok, AllocationError, SaveError, ValueError]
 
 
 @beartype
-def _config(conf: str) -> vc.Config:
+def _config(conf: str, boards: int = 1) -> vc.Config:
+    """
+    The config `conf`, or for `boards` > 1, that many boards' worth of its
+    cores as one config.
+    """
     if conf not in CONFIGS:
         raise ValueError(
             f"Unknown config: {conf}, valid configs are: {list(CONFIGS.keys())}"
         )
-    return CONFIGS[conf]
+    if boards == 1:
+        return CONFIGS[conf]
+    config = copy.copy(CONFIGS[conf])
+    config.num_cores *= boards
+    return config
 
 
 @beartype
@@ -152,6 +140,23 @@ def config_supports(config: str, feature: str) -> bool:
 
 
 @beartype
+def runs_on(size: dict, config: str) -> bool:
+    """
+    Whether `config` provides the compiler features a size requires (its
+    `_features`, see `catalog.split`).
+    """
+    _, requirements = catalog.split(size)
+    return _provides(config, requirements)
+
+
+@beartype
+def _provides(config: str, requirements: dict) -> bool:
+    _config(config)
+    features = requirements.get("_features", [])
+    return all(config_supports(config, feature) for feature in features)
+
+
+@beartype
 def vollo_info(
     model: torch.nn.Module,
     x: torch.Tensor,
@@ -162,10 +167,16 @@ def vollo_info(
     allow_dynamic_weights: bool = False,
     quick_compile: bool = False,
     allow_unserializable: bool = False,
+    boards: int = 1,
 ) -> Result:
     """
     For a given model/input compile it to a vollo program and return
     key information about the model and it's performance.
+
+    With `boards` > 1, the program is compiled for that many boards' worth of
+    `config`'s cores, a stand-in for running across several boards. Above one
+    board's worth of cores, a program can't be serialized, so this needs
+    `allow_unserializable=True`.
     """
 
     try:
@@ -173,7 +184,7 @@ def vollo_info(
             model,
             x,
             time_axis=time_axis,
-            config=_config(config),
+            config=_config(config, boards),
             allow_dynamic_weights=allow_dynamic_weights,
             quick_compile=quick_compile,
             allow_unserializable=allow_unserializable,
@@ -365,22 +376,18 @@ def to_dict(r: Result) -> dict:
 
 
 @beartype
-def get_models() -> list[str]:
+def sweep(sizes: Sequence[dict], config: str) -> Generator[dict, None, None]:
     """
-    Parse the models directory to find available models. Each model should be a
-    .py file not starting with __ (to exclude __init__.py, etc.). The model
-    name is derived from the filename.
+    The sizes in a model's `SIZES` that `config` can run (see `runs_on`), in
+    order, as arguments to the model's `instance`. Sizes marked `_experimental`
+    are left out unless `sweep_experimental` is set.
     """
-    models_dir = os.path.join(os.path.dirname(__file__), "models")
-
-    if not os.path.exists(models_dir):
-        raise FileNotFoundError(f"Models directory not found: {models_dir}")
-
-    @beartype
-    def is_valid_model_file(filename: str) -> bool:
-        return filename.endswith(".py") and not filename.startswith("__")
-
-    return sorted(f[:-3] for f in os.listdir(models_dir) if is_valid_model_file(f))
+    for size in sizes:
+        arguments, requirements = catalog.split(size)
+        if requirements.get("_experimental") and not sweep_experimental:
+            continue
+        if _provides(config, requirements):
+            yield arguments
 
 
 @beartype

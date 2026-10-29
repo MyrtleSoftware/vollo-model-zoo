@@ -485,14 +485,14 @@ class _ShortConv(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     dim: int,
     state: int,
     layers: int,
     fp32: bool,
     config: str,
-):
-    from vollo_model_zoo.vm import CONFIGS, vollo_info
+) -> dict:
+    from vollo_model_zoo.vm import CONFIGS
 
     # Head group `p` runs on core `p`, so use one group per core of this config.
     partitions = CONFIGS[config].num_cores
@@ -510,10 +510,9 @@ def _vm(
         for _ in range(layers)
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=0,
         allow_dynamic_weights=True,
         quick_compile=True,
@@ -526,23 +525,28 @@ def _vm(
     )
 
 
+SIZES = [
+    # Note: some of these configurations are sub-optimal for core splitting
+    # because the number of heads is not divisible by the number of cores,
+    # but they are left unmodified so that we can compare with historical
+    # data
+    dict(dim=400, state=16, layers=1, fp32=False),
+    dict(dim=400, state=16, layers=1, fp32=True),
+    dict(dim=400, state=32, layers=1, fp32=False),
+    dict(dim=400, state=32, layers=1, fp32=True),
+    dict(dim=400, state=16, layers=2, fp32=False),
+    dict(dim=400, state=16, layers=2, fp32=True),
+    dict(dim=768, state=32, layers=1, fp32=False),
+    dict(dim=768, state=32, layers=1, fp32=True),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        # Note: some of these configurations are sub-optimal for core splitting
-        # because the number of heads is not divisible by the number of cores,
-        # but they are left unmodified so that we can compare with historical
-        # data
-        dict(dim=400, state=16, layers=1, fp32=False),
-        dict(dim=400, state=16, layers=1, fp32=True),
-        dict(dim=400, state=32, layers=1, fp32=False),
-        dict(dim=400, state=32, layers=1, fp32=True),
-        dict(dim=400, state=16, layers=2, fp32=False),
-        dict(dim=400, state=16, layers=2, fp32=True),
-        dict(dim=768, state=32, layers=1, fp32=False),
-        dict(dim=768, state=32, layers=1, fp32=True),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

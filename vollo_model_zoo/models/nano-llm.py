@@ -161,7 +161,7 @@ class NanoLLM(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     d_model: int,
     d_state: int,
     d_conv: int,
@@ -174,13 +174,15 @@ def _vm(
     distributed_norm: bool = False,
     ssm_fp32: bool = True,
     ffn_fp8: bool = True,
-):
+    boards: int = 1,
+) -> dict:
     # Defer import
-    from vollo_model_zoo.vm import CONFIGS, vollo_info
+    from vollo_model_zoo.vm import CONFIGS
 
-    # Split the model's heads across the cores of whichever config we compile for.
+    # Split the model's heads across the cores of whichever config we compile
+    # for, over all of its boards.
     n_heads = int(expand * d_model) // d_head
-    head_partitions = head_partitions_for(n_heads, CONFIGS[config].num_cores)
+    head_partitions = head_partitions_for(n_heads, CONFIGS[config].num_cores * boards)
 
     input = torch.randn(5, d_model)
 
@@ -199,14 +201,14 @@ def _vm(
         ffn_fp8=ffn_fp8,
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=0,
         allow_dynamic_weights=True,
         quick_compile=True,
-        allow_unserializable=True,
+        allow_unserializable=boards > 1,
+        boards=boards,
         meta=dict(
             d_model=d_model,
             d_head=d_head,
@@ -214,66 +216,64 @@ def _vm(
             n_layers=n_layers,
             head_partitions=head_partitions,
             ffn_fp8=ffn_fp8,
+            boards=boards,
         ),
     )
 
 
+SIZES = [
+    # ~1M parameter baseline
+    dict(
+        d_model=256,
+        d_state=32,
+        d_conv=4,
+        d_head=32,
+        expand=1.5,
+        mlp_dim=768,
+        n_layers=1,
+        vocab_size=512,
+        ssm_fp32=True,
+        ffn_fp8=False,
+    ),
+    dict(
+        d_model=384,
+        d_state=32,
+        d_conv=4,
+        d_head=32,
+        expand=2.0,
+        mlp_dim=1536,
+        n_layers=1,
+        vocab_size=1024,
+        ssm_fp32=False,
+        ffn_fp8=False,
+    ),
+    # 140M model Myrtle trained; see README.md. Its weights need four V80s'
+    # worth of weight store, so it is compiled for four boards' worth of cores:
+    # experimental, as no program runs across boards yet.
+    dict(
+        d_model=768,
+        d_state=64,
+        d_conv=4,
+        d_head=48,
+        expand=1.5,
+        mlp_dim=3072,
+        n_layers=12,
+        vocab_size=32768,
+        ssm_fp32=False,
+        ffn_fp8=True,
+        boards=4,
+        _features=["fp8"],
+        _experimental=True,
+    ),
+]
+
+
 @beartype
-def main(config: str = "4xV80") -> Generator:
-    from vollo_model_zoo.vm import CONFIGS
+def main(config: str = "V80") -> Generator:
+    from vollo_model_zoo.vm import sweep, vollo_info
 
-    models = [
-        # ~1M parameter baseline
-        dict(
-            d_model=256,
-            d_state=32,
-            d_conv=4,
-            d_head=32,
-            expand=1.5,
-            mlp_dim=768,
-            n_layers=1,
-            vocab_size=512,
-            ssm_fp32=True,
-            ffn_fp8=False,
-        ),
-        dict(
-            d_model=384,
-            d_state=32,
-            d_conv=4,
-            d_head=32,
-            expand=2.0,
-            mlp_dim=1536,
-            n_layers=1,
-            vocab_size=1024,
-            ssm_fp32=False,
-            ffn_fp8=False,
-        ),
-        # 140M model Myrtle trained; see README.md. Its weights need four V80s
-        # worth of weight store, so it is only reachable on a config with the
-        # cores to hold it — a smaller board reports it as an `AllocationError`.
-        dict(
-            d_model=768,
-            d_state=64,
-            d_conv=4,
-            d_head=48,
-            expand=1.5,
-            mlp_dim=3072,
-            n_layers=12,
-            vocab_size=32768,
-            ssm_fp32=False,
-            ffn_fp8=True,
-            min_cores=24,
-        ),
-    ]
-
-    for size in models:
-        x = dict(size)
-
-        # Leave out the 140M size the requires the experimental config to run
-        if CONFIGS[config].num_cores < x.pop("min_cores", 1):
-            continue
-
-        yield _vm(**x, config=config)
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

@@ -5,13 +5,8 @@ import pytest
 from beartype import beartype
 from vollo_compiler import AllocationError, SaveError
 
-from vollo_model_zoo.vm import (
-    CONFIGS,
-    EXPERIMENTAL_CONFIG_MODEL_COMBOS,
-    Ok,
-    get_models,
-    get_results,
-)
+from vollo_model_zoo import catalog, vm
+from vollo_model_zoo.vm import CONFIGS, Ok, get_results
 
 
 def is_sorted(xs, *, key):
@@ -24,17 +19,17 @@ def idfn(config):
     return config
 
 
-# Exclude experimental configs from test. Every model, including
-# experimental, is still tested on every real config
-_CONFIGS = [name for name in CONFIGS if name not in EXPERIMENTAL_CONFIG_MODEL_COMBOS]
-_MODELS = get_models()
+# Every model, including experimental, is tested on every config
+_MODELS = catalog.models()
 
 
-@pytest.mark.parametrize("config", [None, *_CONFIGS], ids=idfn)
+@pytest.mark.parametrize("config", [None, *CONFIGS], ids=idfn)
 @pytest.mark.parametrize("model_name", _MODELS)
 @beartype
-def test_models(model_name: str, config: Optional[str]):
-    #
+def test_models(model_name: str, config: Optional[str], monkeypatch):
+    # The default config also sweeps the experimental sizes, so they are
+    # compiled somewhere.
+    monkeypatch.setattr(vm, "sweep_experimental", config is None)
     results: list[Ok] = []
 
     for r in get_results(model_name, config=config):

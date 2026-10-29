@@ -168,10 +168,7 @@ class _1x1Conv1d(nn.Module):
 
 
 @beartype
-def _vm(hidden: int, layers: int, blocks: int, config: str):
-    # Defer import
-    from vollo_model_zoo.vm import vollo_info
-
+def instance(hidden: int, layers: int, blocks: int, config: str) -> dict:
     in_channels = 1
     out_channels = 3
 
@@ -187,10 +184,9 @@ def _vm(hidden: int, layers: int, blocks: int, config: str):
         skip_channels=hidden,
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=2,
         meta=dict(
             layers=layers,
@@ -200,16 +196,21 @@ def _vm(hidden: int, layers: int, blocks: int, config: str):
     )
 
 
+SIZES = [
+    dict(layers=4, blocks=1, hidden=32 * 6 + 6),
+    dict(layers=4, blocks=1, hidden=32 * 6 * 2),
+    dict(layers=1, blocks=1, hidden=32 * 6 * 10),
+    dict(layers=2, blocks=1, hidden=32 * 6 * 7),
+    dict(layers=4, blocks=1, hidden=32 * 6 * 5),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(layers=4, blocks=1, hidden=32 * 6 + 6),
-        dict(layers=4, blocks=1, hidden=32 * 6 * 2),
-        dict(layers=1, blocks=1, hidden=32 * 6 * 10),
-        dict(layers=2, blocks=1, hidden=32 * 6 * 7),
-        dict(layers=4, blocks=1, hidden=32 * 6 * 5),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":
