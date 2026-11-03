@@ -216,7 +216,8 @@ def instance(
             n_layers=n_layers,
             head_partitions=head_partitions,
             ffn_fp8=ffn_fp8,
-            boards=boards,
+            # Only above one, so the other sizes keep their benchmark labels.
+            **(dict(boards=boards) if boards > 1 else {}),
         ),
     )
 
