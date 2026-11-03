@@ -27,9 +27,9 @@ _MODELS = catalog.models()
 @pytest.mark.parametrize("model_name", _MODELS)
 @beartype
 def test_models(model_name: str, config: Optional[str], monkeypatch):
-    # The default config also sweeps the experimental sizes, so they are
-    # compiled somewhere.
-    monkeypatch.setattr(vm, "sweep_experimental", config is None)
+    # Experimental sizes too, on every config that can run them. The default
+    # config is V80 again, so it leaves them out.
+    monkeypatch.setattr(vm, "sweep_experimental", config is not None)
     results: list[Ok] = []
 
     for r in get_results(model_name, config=config):

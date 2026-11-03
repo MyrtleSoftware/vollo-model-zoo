@@ -222,6 +222,8 @@ def instance(
     )
 
 
+EXPERIMENTAL = "Vollo's support for LLMs is still being improved"
+
 SIZES = [
     # ~1M parameter baseline
     dict(
@@ -264,7 +266,7 @@ SIZES = [
         ffn_fp8=True,
         boards=4,
         _features=["fp8"],
-        _experimental=True,
+        _experimental="Needs four boards; no program runs across boards yet",
     ),
 ]
 

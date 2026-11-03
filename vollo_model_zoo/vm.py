@@ -24,11 +24,8 @@ _CONFIG_CONSTRUCTORS = {
 }
 
 
-# Models behind `zoo --experimental`
-EXPERIMENTAL_MODELS = {"moe", "nano-llm"}
-
 # Whether `sweep` includes the sizes marked `_experimental`. Only
-# `zoo --experimental` sets it, so tests and benchmarks leave them out.
+# `zoo --experimental` and the tests set it, so benchmarks leave them out.
 sweep_experimental = False
 
 # The config `zoo` runs when `--config` is not given.

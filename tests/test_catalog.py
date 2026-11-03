@@ -20,12 +20,13 @@ _MODELS = catalog.models()
 @beartype
 def test_sizes_match_import(model_name: str):
     """
-    Reading `SIZES` from the source gives what importing the file does. This is
-    what holds a file to one top-level `SIZES = ...`: the catalog reads only
-    the first.
+    Reading `SIZES` and `EXPERIMENTAL` from the source gives what importing the
+    file does. This is what holds a file to one top-level assignment of each:
+    the catalog reads only the first.
     """
     module = importlib.import_module(f"vollo_model_zoo.models.{model_name}")
     assert catalog.sizes(model_name) == module.SIZES
+    assert catalog.experimental(model_name) == getattr(module, "EXPERIMENTAL", None)
 
 
 @pytest.mark.parametrize("experimental", [False, True])
@@ -127,7 +128,8 @@ def test_boards():
     [
         dict(_features="fp8"),
         dict(_features=[8]),
-        dict(_experimental=1),
+        dict(_experimental=True),
+        dict(_experimental=""),
         dict(_min_cores=24),
         dict(_x=1),
     ],
@@ -182,4 +184,8 @@ def test_listing_needs_only_the_standard_library():
     result = subprocess.run(
         [sys.executable, "-c", script], capture_output=True, text=True, check=True
     )
-    assert json.loads(result.stdout).keys() == set(_MODELS)
+    listing = json.loads(result.stdout)
+    assert listing.keys() == set(_MODELS)
+    assert listing["nano-llm"]["experimental"]
+    assert not listing["mlp"]["experimental"]
+    assert listing["nano-llm"]["sizes"][-1]["experimental"]

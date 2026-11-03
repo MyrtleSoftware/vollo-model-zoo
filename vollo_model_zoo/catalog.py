@@ -2,11 +2,18 @@
 The zoo's models and their sizes, as data.
 
 Each model file lists the sizes its `main()` sweeps in a top-level `SIZES`, and
-builds any one of them with `instance(**size, config=...)`. This module reads
-`SIZES` from the file's source rather than importing it, so the sizes can be
-listed without torch or the Vollo SDK installed:
+builds any one of them with `instance(**size, config=...)`. A file may also set
+a top-level `EXPERIMENTAL` to why the whole model is experimental. This module
+reads both from the file's source rather than importing it, so the models can
+be listed without torch or the Vollo SDK installed:
 
-    python -m vollo_model_zoo.catalog   # every model's sizes, as JSON
+    python -m vollo_model_zoo.catalog   # every model and its sizes, as JSON
+
+Being experimental means something different for a model and for a size. An
+experimental model compiles and runs, but isn't yet one Vollo supports, so
+`zoo` asks for `--experimental` and the benchmarks still run it. An
+experimental size can't run on a board yet (nano-llm's 140M size needs four),
+so `sweep` leaves it out unless asked, and the benchmarks leave it out.
 
 and a tool can then build and compile them one at a time with `build`.
 
@@ -41,7 +48,8 @@ _SIZES_BUILTINS = {"dict": dict, "list": list, "range": range, "tuple": tuple}
 _REQUIREMENTS = {
     # Compiler features the config's fabric must provide, e.g. "fp8".
     "_features",
-    # Whether the size is only swept on request (`zoo --experimental`).
+    # Why the size is experimental, which sweeps it only on request
+    # (`zoo --experimental`).
     "_experimental",
 }
 
@@ -60,9 +68,13 @@ def models() -> list[str]:
     )
 
 
-def sizes(model: str) -> list[dict[str, Any]]:
+_MISSING = object()
+
+
+def _constant(model: str, name: str, default: Any = _MISSING) -> Any:
     """
-    A model's `SIZES`, evaluated from its file's source.
+    The value of the model file's top-level `name = ...`, evaluated from its
+    source, or `default` if it has none.
     """
     path = os.path.join(MODELS_DIR, f"{model}.py")
     with open(path) as f:
@@ -73,18 +85,43 @@ def sizes(model: str) -> list[dict[str, Any]]:
             isinstance(node, ast.Assign)
             and len(node.targets) == 1
             and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id == "SIZES"
+            and node.targets[0].id == name
         ):
             code = compile(ast.Expression(node.value), path, "eval")
             try:
                 return eval(code, {"__builtins__": _SIZES_BUILTINS})
             except NameError as e:
                 raise ValueError(
-                    f"{path}: `SIZES` must be plain data, using no names but"
+                    f"{path}: `{name}` must be plain data, using no names but"
                     f" {sorted(_SIZES_BUILTINS)}: {e}"
                 ) from e
 
-    raise ValueError(f"{path} has no top-level `SIZES = ...`")
+    if default is _MISSING:
+        raise ValueError(f"{path} has no top-level `{name} = ...`")
+    return default
+
+
+def sizes(model: str) -> list[dict[str, Any]]:
+    """
+    A model's `SIZES`, evaluated from its file's source.
+    """
+    return _constant(model, "SIZES")
+
+
+def experimental(model: str) -> str | None:
+    """
+    Why a model is experimental, from its file's `EXPERIMENTAL`, or None if it
+    isn't.
+    """
+    reason = _constant(model, "EXPERIMENTAL", None)
+    if reason is not None:
+        _check_reason("EXPERIMENTAL", reason)
+    return reason
+
+
+def _check_reason(name: str, reason: Any) -> None:
+    if not (isinstance(reason, str) and reason):
+        raise ValueError(f"`{name}` must be a non-empty string, not {reason!r}")
 
 
 def split(size: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -97,10 +134,8 @@ def split(size: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     features = size.get("_features", [])
     if not (isinstance(features, list) and all(isinstance(f, str) for f in features)):
         raise ValueError(f"`_features` must be a list of strings, not {features!r}")
-    if not isinstance(size.get("_experimental", False), bool):
-        raise ValueError(
-            f"`_experimental` must be a bool, not {size['_experimental']!r}"
-        )
+    if "_experimental" in size:
+        _check_reason("_experimental", size["_experimental"])
 
     arguments = {k: v for k, v in size.items() if not k.startswith("_")}
     requirements = {k: v for k, v in size.items() if k.startswith("_")}
@@ -162,24 +197,27 @@ def build(model: str, name: str, config: str, *, seed: int = 0) -> dict[str, Any
         return module.instance(**arguments, config=config)
 
 
-def listing() -> dict[str, list[dict[str, Any]]]:
+def listing() -> dict[str, dict[str, Any]]:
     """
-    Every model's sizes, in `SIZES` order, as JSON-ready data:
-    `{model: [{"name", "arguments", "features", "experimental"}, ...]}`.
+    Every model and its sizes, in `SIZES` order, as JSON-ready data:
+    `{model: {"experimental", "sizes": [{"name", "arguments", "features",
+    "experimental"}, ...]}}`, where `experimental` is why the model or size is
+    experimental, or None.
     """
     entries = {}
     for model in models():
-        entries[model] = []
+        sizes = []
         for name, size in named_sizes(model).items():
             arguments, requirements = split(size)
-            entries[model].append(
+            sizes.append(
                 {
                     "name": name,
                     "arguments": arguments,
                     "features": requirements.get("_features", []),
-                    "experimental": requirements.get("_experimental", False),
+                    "experimental": requirements.get("_experimental"),
                 }
             )
+        entries[model] = {"experimental": experimental(model), "sizes": sizes}
     return entries
 
 

@@ -7,7 +7,6 @@ from vollo_model_zoo import catalog, vm
 from vollo_model_zoo.vm import (
     CONFIGS,
     DEFAULT_CONFIG,
-    EXPERIMENTAL_MODELS,
     Ok,
     get_results,
     to_dict,
@@ -86,10 +85,12 @@ def check_experimental(model: str, experimental: bool) -> bool:
     """
     Check if the requested model is experimental, and return whether the run is allowed
     """
-    if model not in EXPERIMENTAL_MODELS:
+    reason = catalog.experimental(model)
+    if reason is None:
         return True
 
-    print(f"Note: the '{model}' model is experimental (requires --experimental)")
+    print(f"Note: the '{model}' model is experimental (requires --experimental):")
+    print(f"{reason}.")
     if not experimental:
         print(f"If you are interested in {model} please contact Myrtle to find out")
         print("about upcoming improvements")

@@ -226,10 +226,14 @@ at a time with `catalog.build(model, name, config)`. So:
   name.
 - What a size needs is part of its data, as `_`-prefixed keys that `sweep`
   drops from `instance`'s arguments: `_features=["fp8"]` (`rnnt.py`) for what
-  the config must provide, and `_experimental=True` (`nano-llm.py`) for a size
+  the config must provide, and `_experimental="why"` (`nano-llm.py`) for a size
   swept only on request. `main()` sweeps with `sweep(SIZES, config)` and must
   not filter sizes any other way, or the catalog lists sizes `main()` never
   runs.
+- A model that isn't yet supported says why in a top-level
+  `EXPERIMENTAL = "..."` (`moe.py`), also plain data, and `zoo` runs it only
+  with `--experimental`. See `catalog.py` for how that differs from an
+  experimental size.
 - Tools outside the zoo may use only `catalog.listing()` (which
   `python -m vollo_model_zoo.catalog` prints) and `catalog.build`; keep those
   stable. The rest of `catalog.py` is the zoo's own.

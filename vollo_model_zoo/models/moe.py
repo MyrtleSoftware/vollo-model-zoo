@@ -78,6 +78,8 @@ def instance(dim: int, hidden_dim: int, log_n_experts: int, config: str) -> dict
     )
 
 
+EXPERIMENTAL = "Vollo's support for MoE is still being improved"
+
 SIZES = [
     dict(dim=192, hidden_dim=640, log_n_experts=2),
     dict(dim=192, hidden_dim=640, log_n_experts=3),

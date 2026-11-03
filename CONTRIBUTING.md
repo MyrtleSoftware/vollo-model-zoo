@@ -32,7 +32,10 @@ model's sizes as JSON.
   - `_features`: the compiler features the config must provide, e.g.
     `["fp8"]` for a size using fp8 weights; a config that lacks them doesn't
     run the size;
-  - `_experimental=True`: the size is swept only with `zoo --experimental`.
+  - `_experimental="why"`: the size is swept only with `zoo --experimental`.
+
+A model that isn't yet supported sets a top-level `EXPERIMENTAL = "why"`, which
+`zoo` asks for `--experimental` to run.
 
 See [AGENTS.md](./AGENTS.md) for the details.
 
