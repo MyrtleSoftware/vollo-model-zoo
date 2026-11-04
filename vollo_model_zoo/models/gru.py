@@ -106,25 +106,22 @@ class _Step(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     input_size: int,
     hidden_size: int,
     layers: int,
     fp32: bool,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     input = torch.randn(1, input_size)
 
     model = GRU(
         input_size=input_size, hidden_size=hidden_size, num_layers=layers, fp32=fp32
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=0,
         allow_dynamic_weights=True,
         meta=dict(
@@ -136,17 +133,22 @@ def _vm(
     )
 
 
+SIZES = [
+    dict(input_size=512, hidden_size=384, layers=1, fp32=False),
+    dict(input_size=512, hidden_size=384, layers=1, fp32=True),
+    dict(input_size=512, hidden_size=512, layers=1, fp32=False),
+    dict(input_size=512, hidden_size=512, layers=1, fp32=True),
+    dict(input_size=512, hidden_size=512, layers=3, fp32=False),
+    dict(input_size=512, hidden_size=512, layers=3, fp32=True),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(input_size=512, hidden_size=384, layers=1, fp32=False),
-        dict(input_size=512, hidden_size=384, layers=1, fp32=True),
-        dict(input_size=512, hidden_size=512, layers=1, fp32=False),
-        dict(input_size=512, hidden_size=512, layers=1, fp32=True),
-        dict(input_size=512, hidden_size=512, layers=3, fp32=False),
-        dict(input_size=512, hidden_size=512, layers=3, fp32=True),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

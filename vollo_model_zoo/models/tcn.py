@@ -129,14 +129,12 @@ class _1x1Conv1d(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     num_inputs: int,
     num_channels: list[int],
     kernel_size: int,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     input = torch.randn(1, num_inputs, 10)
 
     model = TCN(
@@ -145,10 +143,9 @@ def _vm(
         kernel_size=kernel_size,
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=2,
         meta=dict(
             inputs=num_inputs,
@@ -158,15 +155,20 @@ def _vm(
     )
 
 
+SIZES = [
+    dict(num_inputs=1, num_channels=[128] * 3, kernel_size=3),
+    dict(num_inputs=1, num_channels=[256] * 3, kernel_size=3),
+    dict(num_inputs=1, num_channels=[512] * 3, kernel_size=3),
+    dict(num_inputs=1, num_channels=[2**i for i in range(5, 11)], kernel_size=3),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(num_inputs=1, num_channels=[128] * 3, kernel_size=3),
-        dict(num_inputs=1, num_channels=[256] * 3, kernel_size=3),
-        dict(num_inputs=1, num_channels=[512] * 3, kernel_size=3),
-        dict(num_inputs=1, num_channels=[2**i for i in range(5, 11)], kernel_size=3),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

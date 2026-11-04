@@ -131,16 +131,14 @@ class _Aff(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     dim: int,
     classes: int,
     patches: int,
     layers: int,
     activation: str,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     input = torch.randn(1, patches, dim)
 
     model = ResMLP(
@@ -151,10 +149,9 @@ def _vm(
         activation=activation,
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=None,  # Not a streaming model
         allow_dynamic_weights=True,
         meta=dict(
@@ -166,15 +163,20 @@ def _vm(
     )
 
 
+SIZES = [
+    dict(dim=64, classes=10, patches=6**2, layers=4, activation="ReLU"),
+    dict(dim=64, classes=10, patches=6**2, layers=4, activation="GELU"),
+    dict(dim=160, classes=10, patches=3**2, layers=5, activation="ReLU"),
+    dict(dim=160, classes=10, patches=3**2, layers=5, activation="GELU"),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(dim=64, classes=10, patches=6**2, layers=4, activation="ReLU"),
-        dict(dim=64, classes=10, patches=6**2, layers=4, activation="GELU"),
-        dict(dim=160, classes=10, patches=3**2, layers=5, activation="ReLU"),
-        dict(dim=160, classes=10, patches=3**2, layers=5, activation="GELU"),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

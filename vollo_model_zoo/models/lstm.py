@@ -47,13 +47,11 @@ class LSTM(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     num_layers: int,
     hidden_size: int,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     # Time dimension is 1 because batch_first=True
     input = torch.randn(1, 5, hidden_size)
 
@@ -63,10 +61,9 @@ def _vm(
         hidden_size=hidden_size,
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=1,
         meta=dict(
             layers=num_layers,
@@ -75,19 +72,24 @@ def _vm(
     )
 
 
+SIZES = [
+    # Tiny
+    dict(num_layers=1, hidden_size=128),
+    # ~1M parameters baseline: 4 * (H + H) * H = 8 * H^2. 8 * 354^2 approx 1M
+    dict(num_layers=1, hidden_size=354),
+    dict(num_layers=2, hidden_size=250),
+    dict(num_layers=4, hidden_size=177),
+    # Bigger
+    dict(num_layers=3, hidden_size=768),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        # Tiny
-        dict(num_layers=1, hidden_size=128),
-        # ~1M parameters baseline: 4 * (H + H) * H = 8 * H^2. 8 * 354^2 approx 1M
-        dict(num_layers=1, hidden_size=354),
-        dict(num_layers=2, hidden_size=250),
-        dict(num_layers=4, hidden_size=177),
-        # Bigger
-        dict(num_layers=3, hidden_size=768),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

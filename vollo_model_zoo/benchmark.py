@@ -7,11 +7,10 @@ from pathlib import Path
 from beartype import beartype
 from tqdm import tqdm
 
+from vollo_model_zoo import catalog
 from vollo_model_zoo.version import benchmark_version, describe_version
 from vollo_model_zoo.vm import (
     CONFIGS,
-    EXPERIMENTAL_CONFIG_MODEL_COMBOS,
-    get_models,
     get_results,
     to_dict,
 )
@@ -43,10 +42,10 @@ def main() -> int:
 
 @beartype
 def run_benchmark(json_output: Path, version: str) -> int:
-    # Exclude experimental configs from benchmarking. Every model, including
-    # experimental, is still benchmarked
-    models = get_models()
-    configs = [name for name in CONFIGS if name not in EXPERIMENTAL_CONFIG_MODEL_COMBOS]
+    # Every model, including experimental, is benchmarked; experimental sizes
+    # are not (see `vm.sweep`)
+    models = catalog.models()
+    configs = list(CONFIGS)
     results = defaultdict(dict)
 
     if json_output.exists():

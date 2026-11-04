@@ -54,13 +54,11 @@ class MLP(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     num_layers: int,
     hidden_features: int,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     input = torch.randn(1, 5, hidden_features)
 
     model = MLP(
@@ -70,10 +68,9 @@ def _vm(
         hidden_features=hidden_features,
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=1,
         meta=dict(
             layers=num_layers,
@@ -83,15 +80,20 @@ def _vm(
     )
 
 
+SIZES = [
+    dict(num_layers=2, hidden_features=512),
+    dict(num_layers=7, hidden_features=384),
+    dict(num_layers=4, hidden_features=512),
+    dict(num_layers=3, hidden_features=1024),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(num_layers=2, hidden_features=512),
-        dict(num_layers=7, hidden_features=384),
-        dict(num_layers=4, hidden_features=512),
-        dict(num_layers=3, hidden_features=1024),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

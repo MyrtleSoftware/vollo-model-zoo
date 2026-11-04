@@ -97,15 +97,13 @@ ACTIVATIONS = {
 
 
 @beartype
-def _vm(
+def instance(
     num_layers: int,
     dim: int,
     hidden_dim: int,
     activation: str,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     input = torch.randn(1, 5, dim)
 
     model = MLPResRMS(
@@ -115,10 +113,9 @@ def _vm(
         activation=activation,
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=1,
         meta=dict(
             dim=dim,
@@ -128,14 +125,20 @@ def _vm(
     )
 
 
+SIZES = [
+    # The same two sizes, with each activation function
+    dict(num_layers=2, dim=dim, hidden_dim=hidden, activation=activation)
+    for dim, hidden in [(320, 768), (512, 1024)]
+    for activation in ["relu", "sigmoid", "tanh", "softplus", "silu", "elu"]
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for dim, hidden in [(320, 768), (512, 1024)]:
-        # Use the same size but vary the activation function
-        size_params = dict(num_layers=2, dim=dim, hidden_dim=hidden)
+    from vollo_model_zoo.vm import sweep, vollo_info
 
-        for activation in ACTIVATIONS.keys():
-            yield _vm(**size_params, activation=activation, config=config)
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

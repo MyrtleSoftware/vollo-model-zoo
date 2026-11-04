@@ -63,17 +63,14 @@ class LlamaSwiGLU(nn.Module):
 
 
 @beartype
-def _vm(dim: int, hidden_dim: int, fuse: bool, config: str):
-    from vollo_model_zoo.vm import vollo_info
-
+def instance(dim: int, hidden_dim: int, fuse: bool, config: str) -> dict:
     input = torch.randn(1, 5, dim)
 
     model = LlamaSwiGLU(dim=dim, hidden_dim=hidden_dim, fuse=fuse)
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=1,
         meta=dict(
             dim=dim,
@@ -84,17 +81,22 @@ def _vm(dim: int, hidden_dim: int, fuse: bool, config: str):
     )
 
 
+SIZES = [
+    dict(dim=32 * 6, hidden_dim=32 * 6 * 4, fuse=True),
+    dict(dim=32 * 6, hidden_dim=32 * 6 * 4, fuse=False),
+    dict(dim=48 * 6, hidden_dim=48 * 6 * 4, fuse=True),
+    dict(dim=48 * 6, hidden_dim=48 * 6 * 4, fuse=False),
+    dict(dim=64 * 6, hidden_dim=64 * 6 * 4, fuse=True),
+    dict(dim=64 * 6, hidden_dim=64 * 6 * 4, fuse=False),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(dim=32 * 6, hidden_dim=32 * 6 * 4, fuse=True),
-        dict(dim=32 * 6, hidden_dim=32 * 6 * 4, fuse=False),
-        dict(dim=48 * 6, hidden_dim=48 * 6 * 4, fuse=True),
-        dict(dim=48 * 6, hidden_dim=48 * 6 * 4, fuse=False),
-        dict(dim=64 * 6, hidden_dim=64 * 6 * 4, fuse=True),
-        dict(dim=64 * 6, hidden_dim=64 * 6 * 4, fuse=False),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

@@ -92,14 +92,12 @@ class _CNNBlock(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     num_layers: int,
     channels: int,
     kernel_size: int,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     input = torch.randn(1, channels, 1000)
 
     model = CNN(
@@ -108,10 +106,9 @@ def _vm(
         kernel_size=kernel_size,
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=2,
         meta=dict(
             layers=num_layers,
@@ -121,15 +118,20 @@ def _vm(
     )
 
 
+SIZES = [
+    dict(num_layers=4, channels=64, kernel_size=8),
+    dict(num_layers=4, channels=64, kernel_size=32),
+    dict(num_layers=4, channels=64, kernel_size=64),
+    dict(num_layers=4, channels=256, kernel_size=32),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(num_layers=4, channels=64, kernel_size=8),
-        dict(num_layers=4, channels=64, kernel_size=32),
-        dict(num_layers=4, channels=64, kernel_size=64),
-        dict(num_layers=4, channels=256, kernel_size=32),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

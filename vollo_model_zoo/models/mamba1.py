@@ -220,14 +220,12 @@ class _MambaStep(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     dim: int,
     state: int,
     layers: int,
     config: str,
-):
-    from vollo_model_zoo.vm import vollo_info
-
+) -> dict:
     input = torch.randn(1, dim)
 
     model = torch.nn.Sequential().extend(
@@ -238,10 +236,9 @@ def _vm(
         for _ in range(layers)
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=0,
         quick_compile=True,
         meta=dict(
@@ -252,15 +249,20 @@ def _vm(
     )
 
 
+SIZES = [
+    dict(dim=32 * 6, state=6, layers=1),
+    dict(dim=32 * 12, state=6 * 2, layers=1),
+    dict(dim=32 * 12, state=6 * 2, layers=2),
+    dict(dim=32 * 32, state=6 * 4, layers=1),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(dim=32 * 6, state=6, layers=1),
-        dict(dim=32 * 12, state=6 * 2, layers=1),
-        dict(dim=32 * 12, state=6 * 2, layers=2),
-        dict(dim=32 * 32, state=6 * 4, layers=1),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

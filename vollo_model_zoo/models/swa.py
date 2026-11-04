@@ -312,7 +312,7 @@ class SlidingWindowBlock(nn.Module):
 
 
 @beartype
-def _vm(
+def instance(
     dim: int,
     window_size: int,
     layers: int,
@@ -320,8 +320,8 @@ def _vm(
     mask: bool,
     expand: float,
     heads: int = 6,
-):
-    from vollo_model_zoo.vm import CONFIGS, vollo_info
+) -> dict:
+    from vollo_model_zoo.vm import CONFIGS
 
     input = torch.randn(2, dim)
 
@@ -344,10 +344,9 @@ def _vm(
         for _ in range(layers)
     )
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=0,
         allow_dynamic_weights=True,
         quick_compile=True,
@@ -361,19 +360,24 @@ def _vm(
     )
 
 
+SIZES = [
+    dict(dim=32 * 6, window_size=16, layers=1, mask=True, expand=2.0),
+    dict(dim=32 * 6, window_size=32, layers=1, mask=True, expand=2.0),
+    dict(dim=32 * 6, window_size=64, layers=1, mask=True, expand=2.0),
+    # ~1M parameter baseline
+    dict(dim=32 * 7, window_size=32, layers=2, mask=True, expand=2.0),
+    dict(dim=32 * 7, window_size=32, layers=2, mask=False, expand=2.0),
+    # big
+    dict(dim=32 * 12, window_size=32, layers=6, mask=True, expand=2.0),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(dim=32 * 6, window_size=16, layers=1, mask=True, expand=2.0),
-        dict(dim=32 * 6, window_size=32, layers=1, mask=True, expand=2.0),
-        dict(dim=32 * 6, window_size=64, layers=1, mask=True, expand=2.0),
-        # ~1M parameter baseline
-        dict(dim=32 * 7, window_size=32, layers=2, mask=True, expand=2.0),
-        dict(dim=32 * 7, window_size=32, layers=2, mask=False, expand=2.0),
-        # big
-        dict(dim=32 * 12, window_size=32, layers=6, mask=True, expand=2.0),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":

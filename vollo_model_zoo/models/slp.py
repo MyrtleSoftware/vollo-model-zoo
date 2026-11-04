@@ -45,17 +45,14 @@ class SLP(nn.Module):
 
 
 @beartype
-def _vm(in_features: int, out_features: int, config: str):
-    from vollo_model_zoo.vm import vollo_info
-
+def instance(in_features: int, out_features: int, config: str) -> dict:
     input = torch.randn(1, 5, in_features)
 
     model = SLP(in_features=in_features, out_features=out_features)
 
-    return vollo_info(
-        model,
-        input,
-        config=config,
+    return dict(
+        model=model,
+        x=input,
         time_axis=1,
         meta=dict(
             input=in_features,
@@ -65,14 +62,19 @@ def _vm(in_features: int, out_features: int, config: str):
     )
 
 
+SIZES = [
+    dict(in_features=128, out_features=128),
+    dict(in_features=256, out_features=1024),
+    dict(in_features=1024, out_features=1024),
+]
+
+
 @beartype
 def main(config: str = "V80") -> Generator:
-    for x in [
-        dict(in_features=128, out_features=128),
-        dict(in_features=256, out_features=1024),
-        dict(in_features=1024, out_features=1024),
-    ]:
-        yield _vm(**x, config=config)
+    from vollo_model_zoo.vm import sweep, vollo_info
+
+    for size in sweep(SIZES, config):
+        yield vollo_info(**instance(**size, config=config), config=config)
 
 
 if __name__ == "__main__":
