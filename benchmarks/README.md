@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (Vollo SDK 29.0.0, model zoo 0.5.0)
+# Vollo Model Zoo Benchmarks (Vollo SDK 29.0.0, model zoo 0.6.0)
 
 Compute latency for an approximately 1-million parameter model.
 
@@ -16,6 +16,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | slp | 0.87 | 0.87 | input=1024, output=1024, activation=ReLU |
 | rnnt | 0.69 | 0.70 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 6.72 | 6.72 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 0.97 | 1.03 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 3.11 | 5.15 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
 | moe | 0.90 | 0.91 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 9.37 | 9.37 | width_mult=0.42 |
@@ -40,6 +41,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | slp | 0.96 | 0.96 | input=1024, output=1024, activation=ReLU |
 | rnnt | 0.76 | 0.77 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 7.39 | 7.40 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 1.07 | 1.13 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 3.42 | 5.66 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
 | moe | 0.99 | 1.00 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.31 | 10.31 | width_mult=0.42 |
@@ -64,6 +66,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | slp | 0.91 | 0.92 | input=1024, output=1024, activation=ReLU |
 | rnnt | 0.77 | 0.77 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 16.01 | 16.01 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 1.11 | 1.35 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 3.53 | 5.62 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
 | moe | 1.20 | 1.20 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.98 | 11.03 | width_mult=0.42 |
@@ -88,6 +91,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | slp | 0.57 | 0.57 | input=1024, output=1024, activation=ReLU |
 | rnnt | 0.68 | 0.68 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 5.01 | 5.02 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 0.90 | 0.90 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 3.27 | 5.41 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=3, ffn_fp8=False |
 | moe | 0.71 | 0.71 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.13 | 10.24 | width_mult=0.42 |
@@ -112,6 +116,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | slp | 0.91 | 0.92 | input=1024, output=1024, activation=ReLU |
 | rnnt | 0.77 | 0.77 | prog=predictor, hidden=192, joint_hidden=288 |
 | resmlp | 16.01 | 16.01 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 1.11 | 1.35 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 3.53 | 5.62 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
 | moe | 1.20 | 1.20 | dim=192, hidden=640, n_experts=4 |
 | mobilenet | 10.98 | 11.03 | width_mult=0.42 |
@@ -510,6 +515,41 @@ Click to expand each plot:
 <summary>nano_llm_V80</summary>
 
 ![nano_llm_V80](../plots/nano_llm_V80.svg)
+
+</details>
+
+<details>
+<summary>qec_lstm_IA_420f</summary>
+
+![qec_lstm_IA_420f](../plots/qec_lstm_IA_420f.svg)
+
+</details>
+
+<details>
+<summary>qec_lstm_IA_840f</summary>
+
+![qec_lstm_IA_840f](../plots/qec_lstm_IA_840f.svg)
+
+</details>
+
+<details>
+<summary>qec_lstm_NT400D11</summary>
+
+![qec_lstm_NT400D11](../plots/qec_lstm_NT400D11.svg)
+
+</details>
+
+<details>
+<summary>qec_lstm_V80LL</summary>
+
+![qec_lstm_V80LL](../plots/qec_lstm_V80LL.svg)
+
+</details>
+
+<details>
+<summary>qec_lstm_V80</summary>
+
+![qec_lstm_V80](../plots/qec_lstm_V80.svg)
 
 </details>
 
