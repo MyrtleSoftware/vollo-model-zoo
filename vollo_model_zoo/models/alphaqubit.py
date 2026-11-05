@@ -74,8 +74,9 @@ def _rope_rotation(distance: int, dim_head: int) -> torch.Tensor:
     The paper's spatial RoPE as one matrix per stabiliser, [N, dh, dh], so that
     `t @ R[n] = t * cos + rot(t) * sin` for stabiliser n. A head's first half of
     channels rotates with x, the second with y; each half is `[a | b]`, and `rot`
-    maps it to `[-b | a]`. One matmul rather than the sum of three terms:
-    without, d=3 +4.8% cycles on V80, d=5 +3.2% on IA-420f (SDK 29.0.0).
+    maps it to `[-b | a]`. One matmul rather than the elementwise form with
+    `rot` as slices: without, d=3 +17% cycles on V80, d=5 +13% on IA-420f
+    (+4.8% and +3.2% against `rot` as a matmul; SDK 29.1.0).
     """
     q = dim_head // 4
     freq = 20 * 10.0 ** (-2 * torch.arange(q) / q)
@@ -171,7 +172,7 @@ class _Attention(nn.Module):
                 with _pin(cores[p : p + 1]):
                     # Keys and values first, as the other groups wait for them.
                     # The order is the program's: moving these lines moved
-                    # IA-420f by up to 4.5% (SDK 29.0.0).
+                    # IA-420f by up to 4.5% (SDK 29.1.0).
                     k = self.k[p](rows_of(context, rows))
                     values.append(split(self.v[p](rows_of(context, rows))))
                     q = self.q[p](rows_of(x, rows))
@@ -183,7 +184,7 @@ class _Attention(nn.Module):
                     e = torch.exp2((q * scale) @ k.transpose(1, 2))  # [h n M!]
                     # Normalised after the value matmul, so the sum runs
                     # alongside it. Without: d=3 +3.5% cycles on V80, +4.1% on
-                    # IA-420f; d=5 +0.3% and +3.3% (SDK 29.0.0).
+                    # IA-420f; d=5 +0.3% and +3.3% (SDK 29.1.0).
                     a = (e @ v) / e.sum(-1, keepdim=True)  # [h n dh!]
                     out.append(a.transpose(0, 1).reshape(-1, h * dh))
         ys = []
@@ -259,7 +260,7 @@ class _RGLRU(nn.Module):
         r, i = torch.sigmoid(self.proj_r(u)), torch.sigmoid(self.proj_i(u))
         # exp(y) as exp2(y / ln 2): Vollo folds a constant scale into an exp2,
         # not an exp. Here and in attention's softmax, without: d=3 +2.5% cycles
-        # on V80 and +2.4% on IA-420f, d=5 +1.3% and +1.5% (SDK 29.0.0).
+        # on V80 and +2.4% on IA-420f, d=5 +1.3% and +1.5% (SDK 29.1.0).
         c = -8 / math.log(2)
         a = torch.exp2(c * torch.nn.functional.softplus(self.decay) * r)
         state = a * state + torch.sqrt(1 - a * a) * (i * u)
@@ -448,7 +449,7 @@ def instance(
     # cores. Otherwise only the four heads are spread, a group per core. Without
     # the split, d=5 takes +11% cycles on V80 and +25% on IA-420f; without its
     # second condition, IA-420f d=3 +3.8% and ~1M +17%; without the head groups,
-    # V80 d=3 +4.4% (SDK 29.0.0).
+    # V80 d=3 +4.4% (SDK 29.1.0).
     weights = sum(p.numel() for p in build().parameters())
     if (
         n >= 2 * conf.num_cores
