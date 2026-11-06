@@ -25,6 +25,7 @@ Models in the zoo include:
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
 |                   | [Nano LLM](#nano-llm)                                 | [`nano-llm.py`](./vollo_model_zoo/models/nano-llm.py)                                                                                                 |
 | **Attention**     | [Sliding window attention](#sliding-window-attention) | [`swa.py`](./vollo_model_zoo/models/swa.py)                                                                                                           |
+|                   | [AlphaQubit](#alphaqubit)                             | [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)                                                                                             |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM
 and calculate the compute-latency for any of these models. Alternatively, have
@@ -501,6 +502,43 @@ holds its K/V window in the accelerator's tensor RAM: the KV cache stays on the
 card between inferences, and the host sends a single timestep rather than a
 growing context. `window_size` fixes how much of it there is, so the state and
 the work per inference are constant in the sequence length.
+
+### AlphaQubit
+
+Code/model: [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)
+
+A quantum computer protects its qubits by measuring a set of parity checks,
+the _stabilisers_, over and over; a decoder reads that stream of outcomes and
+works out which errors happened, and has to keep up with it in real time. This
+is the real-time decoder of AlphaQubit 2 (AQ2-RT) for the surface code,
+[Senior et al.](https://arxiv.org/abs/2512.07737), successor to
+[AlphaQubit](https://arxiv.org/abs/2310.05900). It is a recurrent transformer
+in which each of the d²−1 stabilisers is a token. Each step takes a group of six
+measurement cycles: attention mixes information across the chip, and a
+recurrent state per stabiliser (Griffin's RG-LRU, before and after the
+transformer layers) carries the history from step to step. At the end of the
+experiment, the final cycle (recomputed from measuring the data qubits) takes
+one more step of the same cost, and a readout network, measured as a size of
+its own, predicts whether the logical qubit flipped.
+
+The step streams with `Scan`, one group of cycles per inference, with both
+recurrent states held on the card. A superconducting cycle is about 1.1 µs on
+[Google Willow](https://arxiv.org/abs/2408.13687), so a six-cycle step has
+6.6 µs, and one step at a time Vollo takes longer than that (8.8 µs at d=3,
+17.3 µs at d=5 on V80, compute only): the decoder falls behind, and its backlog
+grows with the experiment. The paper keeps pace on TPUs by processing blocks of
+24–96 cycles at once. A step costs the same for any group size whose inputs fit
+one block, so the G=16 sizes (beyond the paper's six; they need retraining)
+keep pace at d=3, and at d=5 on V80 (17.3 µs against 17.6 µs of cycles) but
+not on IA-420f, whose cycles the Agilex IP core shares (21.4 µs). They wait up
+to 16 cycles longer before the final step. Trapped-ion and neutral-atom machines, with millisecond
+cycles, leave ample time.
+
+The file is plain PyTorch with no core placement: it shows `Scan` with two
+states, `allow_dynamic_weights` for attention, and three exact rewrites that
+the compiler rewards, each commented with what it buys: RoPE as one matmul per
+stabiliser against a constant matrix, a softmax normalised after its value
+matmul, and `exp` as `exp2` with its constant folded.
 
 ## Other utilities
 
