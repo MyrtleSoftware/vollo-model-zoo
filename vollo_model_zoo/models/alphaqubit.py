@@ -40,11 +40,6 @@ def _rope_rotation(distance: int, dim_head: int) -> torch.Tensor:
     `t * cos + rot(t) * sin` for stabiliser n. Within a head, the first half of
     the channels is rotated by the stabiliser's x coordinate and the second half
     by its y. Each half is laid out as `[a | b]`, which `rot` maps to `[-b | a]`.
-
-    On Vollo one matmul against a constant matrix is faster than the elementwise
-    form with `rot` written as slices. That form takes 13-16% more cycles on V80
-    and 6-12% more on IA-420f, and no longer fits d=5 or the readout on IA-840f
-    (SDK 29.1.0).
     """
     q = dim_head // 4
     freq = 20 * 10.0 ** (-2 * torch.arange(q) / q)
@@ -57,12 +52,6 @@ def _rope_rotation(distance: int, dim_head: int) -> torch.Tensor:
 
 
 class _Attention(nn.Module):
-    """
-    Multi-head attention of `x` over `context` (self-attention if `context` is
-    None). If `rotation` is given, the paper's spatial RoPE is applied to the
-    queries and keys.
-    """
-
     @beartype
     def __init__(self, dim: int, heads: int, rotation: Optional[torch.Tensor] = None):
         super().__init__()
