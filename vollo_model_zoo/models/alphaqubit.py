@@ -15,7 +15,10 @@ def _norm(dim: int) -> nn.RMSNorm:
 
 @beartype
 def _stabiliser_coordinates(distance: int) -> torch.Tensor:
-    """[N, 2] (x, y) of a rotated surface code's d^2 - 1 stabilisers, edges at -0.5 / 0.5."""
+    """
+    The (x, y) positions of the d^2 - 1 stabilisers of a rotated surface code,
+    scaled so that the code spans [-0.5, 0.5]. Returns [N, 2].
+    """
     d = distance
     sites = [
         (x, y)
@@ -31,12 +34,17 @@ def _stabiliser_coordinates(distance: int) -> torch.Tensor:
 @beartype
 def _rope_rotation(distance: int, dim_head: int) -> torch.Tensor:
     """
-    The paper's spatial RoPE as one matrix per stabiliser, [N, dh, dh], so that
-    `t @ R[n] = t * cos + rot(t) * sin` for stabiliser n. A head's first half of
-    channels rotates with x, the second with y; each half is `[a | b]`, and `rot`
-    maps it to `[-b | a]`. One matmul rather than the elementwise form with
-    `rot` as slices: without, d=3 +13% cycles on V80 and +6% on IA-420f, d=5
-    +16% and +12%, and IA-840f no longer fits d=5 or the readout (SDK 29.1.0).
+    The paper's spatial RoPE, precomputed as one rotation matrix per stabiliser.
+
+    Returns R: [N, dh, dh], where `t @ R[n]` equals the usual elementwise form
+    `t * cos + rot(t) * sin` for stabiliser n. Within a head, the first half of
+    the channels is rotated by the stabiliser's x coordinate and the second half
+    by its y. Each half is laid out as `[a | b]`, which `rot` maps to `[-b | a]`.
+
+    On Vollo one matmul against a constant matrix is faster than the elementwise
+    form with `rot` written as slices. That form takes 13-16% more cycles on V80
+    and 6-12% more on IA-420f, and no longer fits d=5 or the readout on IA-840f
+    (SDK 29.1.0).
     """
     q = dim_head // 4
     freq = 20 * 10.0 ** (-2 * torch.arange(q) / q)
@@ -50,8 +58,9 @@ def _rope_rotation(distance: int, dim_head: int) -> torch.Tensor:
 
 class _Attention(nn.Module):
     """
-    Multi-head attention of `x` over `context` (default: itself), with the
-    paper's spatial RoPE on q and k when given `rotation`.
+    Multi-head attention of `x` over `context` (self-attention if `context` is
+    None). If `rotation` is given, the paper's spatial RoPE is applied to the
+    queries and keys.
     """
 
     @beartype
@@ -73,27 +82,37 @@ class _Attention(nn.Module):
             return t.view(-1, h, dh).transpose(0, 1)
 
         q, k, v = split(self.q(x)), split(self.k(context)), split(self.v(context))
-        if self.rotation is not None:  # RoPE, one matmul: [h n 1 dh!] @ [n dh dh]
+        if self.rotation is not None:
+            # RoPE as a matmul with each stabiliser's matrix:
+            # [h n 1 dh!] @ [n dh dh]
             q = (q.unsqueeze(-2) @ self.rotation).squeeze(-2)
             k = (k.unsqueeze(-2) @ self.rotation).squeeze(-2)
-        # exp(s) as exp2(s / ln 2), the 1 / ln 2 joining q's 1 / sqrt(dh) (see
-        # `_RGLRU`). Vollo has no max reduction, so the softmax is unshifted: in
-        # PyTorch fp32, exp overflows for scores above ~88.
+        # The softmax is written out by hand, for three reasons.
+        #
+        # 1. exp(s) is computed as exp2(s / ln 2), which is cheaper on Vollo
+        #    (see `_RGLRU`). The 1 / ln 2 is merged into the usual 1 / sqrt(dh)
+        #    scale on q.
+        # 2. Vollo has no max reduction, so the scores are not shifted by their
+        #    maximum first. The result is the same, but in fp32 PyTorch exp
+        #    overflows for scores above ~88.
         e = torch.exp2((q * (dh**-0.5 / math.log(2))) @ k.transpose(1, 2))  # [h n M!]
-        # Normalised after the value matmul, so the sum runs alongside it.
-        # Against `torch.softmax(s) @ v`, both with exp: d=3 +2.5% cycles on
-        # V80 and +17% on IA-420f, d=5 +5.3% and +0.1% (SDK 29.1.0).
+        # 3. The division by the sum comes after the value matmul, so the sum
+        #    can run alongside the matmul. `torch.softmax(s) @ v` takes 2.5-5%
+        #    more cycles on V80 and up to 17% more on IA-420f (SDK 29.1.0).
         a = (e @ v) / e.sum(-1, keepdim=True)  # [h n dh!]
         return self.proj_o(a.transpose(0, 1).reshape(-1, h * dh))
 
 
 class _Layer(nn.Module):
     """
-    The paper's transformer layer (Fig. S1a), serial and pre-norm: attention,
-    then a gated dense block, each behind its own RMSNorm and residual,
-    `x = x + Attn(RMSNorm(x))`, then `x = x + down(gelu(up(h)) * gate(h))` with
-    `h = RMSNorm(x)`. For cross-attention the context goes through the first
-    norm.
+    The paper's transformer layer (Fig. S1a): attention, then a gated dense
+    block. Each is pre-norm with a residual connection:
+
+        x = x + attn(norm_attn(x))
+        h = norm_dense(x)
+        x = x + down(gelu(up(h)) * gate(h))
+
+    For cross-attention, `context` is normalised with `norm_attn` too.
     """
 
     @beartype
@@ -123,14 +142,25 @@ class _Layer(nn.Module):
 
 class _RGLRU(nn.Module):
     """
-    Griffin's recurrent block (https://arxiv.org/abs/2402.19427) in its residual
-    block, per stabiliser, as in the paper's Fig. S3 (no Conv1D, no MLP):
-    `x + out(RG-LRU(inp(h)) * gelu(gate(h)))`, `h = RMSNorm(x)`. The RG-LRU is
-    element-wise, `a = exp(-8 softplus(L) r)`, `state = a state + sqrt(1 - a^2) i u`,
-    so unlike a GRU there is no matrix product inside the recurrence.
+    Griffin's recurrent block (https://arxiv.org/abs/2402.19427), applied to
+    each stabiliser independently. It follows the paper's Fig. S3, which has
+    neither Griffin's Conv1D nor its MLP:
 
-    In bf16, `1 - a^2` rounds to 0 when `8 softplus(L) r` is below about 1e-3,
-    so the slowest channels drop their input.
+        h = norm(x)
+        u = inp(h)
+        y = x + out(state * gelu(gate(h)))
+
+    `state` is updated by the RG-LRU, which is element-wise. With r and i the
+    sigmoid recurrence and input gates:
+
+        a = exp(-8 * softplus(decay) * r)
+        state = a * state + sqrt(1 - a^2) * (i * u)
+
+    Unlike a GRU, there is no matrix product inside the recurrence.
+
+    Precision caveat: in bf16, `1 - a^2` rounds to 0 when
+    `8 * softplus(decay) * r` is below about 1e-3, so the channels that decay
+    most slowly ignore new input.
     """
 
     @beartype
@@ -146,10 +176,11 @@ class _RGLRU(nn.Module):
         h = self.norm(x)
         u = self.inp(h)
         r, i = torch.sigmoid(self.proj_r(u)), torch.sigmoid(self.proj_i(u))
-        # exp(y) as exp2(y / ln 2): Vollo folds a constant scale into an exp2,
-        # not an exp. Here and in attention's softmax, without: d=5 +1.6% cycles
-        # on V80 and +1.9% on IA-420f, d=3 +0.9% and -0.9%. Use exp2 in both or
-        # in neither: exp here, exp2 there costs IA-420f d=3 7% (SDK 29.1.0).
+        # exp(y) is written as exp2(y / ln 2), because Vollo can fold a constant
+        # scale into an exp2 but not into an exp. Doing this here and in
+        # attention's softmax saves 1.6-1.9% of the cycles at d=5; d=3 changes
+        # by less than 1% either way. Use exp2 in both places or in neither:
+        # exp here with exp2 there costs 7% at d=3 on IA-420f (SDK 29.1.0).
         c = -8 / math.log(2)
         a = torch.exp2(c * torch.nn.functional.softplus(self.decay) * r)
         state = a * state + torch.sqrt(1 - a * a) * (i * u)
@@ -157,7 +188,10 @@ class _RGLRU(nn.Module):
 
 
 class _Step(nn.Module):
-    """One group of `cycles` syndrome cycles: embed, RG-LRU, transformers, RG-LRU."""
+    """
+    One step: embed a group of `cycles` syndrome cycles, then apply an RG-LRU
+    block, the transformer layers and a second RG-LRU block.
+    """
 
     @beartype
     def __init__(
@@ -170,11 +204,14 @@ class _Step(nn.Module):
         expand: int,
     ):
         super().__init__()
-        # The paper embeds each cycle's bits and "concatenates and projects" the
-        # group: two Linears with nothing between, i.e. one Linear on the 2G bits.
+        # The paper embeds each cycle's bits, then concatenates the group's
+        # embeddings and projects them. With no nonlinearity in between, that
+        # is the same as a single Linear on all 2G bits.
         self.embed = nn.Linear(2 * cycles, dim)
-        # The paper's Linear(2, C) of the stabilisers' (x, y), evaluated once since
-        # a Linear of a constant does not compile; saved in the state dict.
+        # The paper's position embedding is a Linear(2, C) of each stabiliser's
+        # (x, y). Vollo can't compile a Linear whose input is a constant, so it
+        # is evaluated once here and kept as a buffer, which is saved in the
+        # state dict.
         self.position = nn.Buffer(
             nn.Linear(2, dim)(_stabiliser_coordinates(distance)).detach()
         )
@@ -193,30 +230,41 @@ class _Step(nn.Module):
 
 class AlphaQubit(nn.Module):
     """
-    The real-time AlphaQubit 2 decoder (AQ2-RT) for the surface code, after
-    Senior et al. (https://arxiv.org/abs/2512.07737), Fig. 1b and §A.1.5; its
-    predecessor is AlphaQubit (https://arxiv.org/abs/2310.05900). Each of the
-    N = d^2 - 1 stabilisers carries a `dim`-vector. A step consumes a group of
-    `cycles` syndrome cycles (a measurement and a detection event each), embeds
-    them with the stabiliser's position, and applies a Griffin RG-LRU block,
-    `layers` transformer layers across the stabilisers (spatial RoPE, gated
-    dense) and a second RG-LRU block. Only the two RG-LRU states carry history;
-    there are no convolutions.
+    The real-time AlphaQubit 2 decoder (AQ2-RT) for the surface code, from
+    Senior et al. (https://arxiv.org/abs/2512.07737), Fig. 1b and §A.1.5. Its
+    predecessor is AlphaQubit (https://arxiv.org/abs/2310.05900).
 
-    The paper reads out once per experiment, not per step (`AlphaQubitReadout`),
-    so this streamed model emits the stabilisers' representations. At the end
-    of an experiment the paper also embeds the final cycle, recomputed from the
-    data-qubit measurements, by itself and runs it through this same stack: one
-    more step of the same cost before the readout, not modelled here.
+    Each of the N = d^2 - 1 stabilisers has a representation of `dim` channels.
+    One step takes a group of `cycles` syndrome cycles (a measurement and a
+    detection event per stabiliser per cycle) and:
 
-    Where the paper is silent, this file chooses (for AQ2-RT it gives C=128,
-    G=6 and the layer counts, but not the heads or the dense block):
-    - heads of 32 (four at C=128) and a dense widening of 4, as in the paper's
+    1. embeds them and adds the stabiliser's position embedding;
+    2. applies a Griffin RG-LRU block;
+    3. applies `layers` transformer layers across the stabilisers, with spatial
+       RoPE and a gated dense block;
+    4. applies a second RG-LRU block.
+
+    The two RG-LRU states are the only memory between steps. There are no
+    convolutions.
+
+    The paper makes its prediction once, at the end of an experiment (see
+    `AlphaQubitReadout`), so this streaming model outputs the stabilisers'
+    representations at every step.
+
+    Not modelled: at the end of an experiment the paper recomputes a final
+    cycle from the data-qubit measurements, embeds it on its own and runs it
+    through this same stack. That is one more step of the same cost, before
+    the readout.
+
+    For AQ2-RT the paper gives C=128, G=6 and the layer counts, but not the
+    heads or the dense block. This file chooses:
+
+    - 4 heads of 32 channels and a dense expansion of 4, as in the paper's
       larger models (Table S1);
-    - the dense block's gated form, `down(gelu(up(h)) * gate(h))`, Griffin's MLP;
-    - RoPE frequencies: a geometric ladder from 20 down to about 0.36 per half
-      head, over coordinates in [-0.5, 0.5];
-    - RMSNorm's eps of 1e-5.
+    - a gated dense block, `down(gelu(up(h)) * gate(h))`, as in Griffin's MLP;
+    - RoPE frequencies spaced geometrically from 20 down to about 0.36 in each
+      half of a head, with coordinates in [-0.5, 0.5];
+    - eps = 1e-5 in RMSNorm.
     """
 
     @beartype
@@ -245,10 +293,14 @@ class AlphaQubit(nn.Module):
 
 class AlphaQubitReadout(nn.Module):
     """
-    AQ2-RT's end-of-experiment readout: two spatial transformer layers, then a
-    query (the mean over stabilisers plus a learned observable embedding) goes
-    through two cross-attention layers over the stabilisers, two residual dense
-    layers and a projection to the logical-flip logit.
+    AQ2-RT's readout, which runs once at the end of an experiment:
+
+    1. two transformer layers across the stabilisers;
+    2. a query is formed from the mean over the stabilisers plus a learned
+       observable embedding;
+    3. the query goes through two cross-attention layers over the stabilisers,
+       then two residual dense layers;
+    4. a Linear gives the logit for whether the logical qubit flipped.
     """
 
     @beartype
@@ -259,6 +311,7 @@ class AlphaQubitReadout(nn.Module):
         self.mix = nn.Sequential(
             *[_Layer(dim, heads, expand, rotation) for _ in range(2)]
         )
+        # The mean over the stabilisers, as a matmul with a constant row of 1 / N
         self.mean = nn.Buffer(torch.full((1, n), 1 / n), persistent=False)
         self.observable = nn.Parameter(torch.randn(1, dim) * 0.02)
         self.cross = nn.ModuleList(_Layer(dim, heads, expand) for _ in range(2))
@@ -304,7 +357,7 @@ def instance(
         model=model,
         x=x,
         time_axis=time_axis,
-        allow_dynamic_weights=True,  # attention's matmuls
+        allow_dynamic_weights=True,  # needed for attention's matmuls
         quick_compile=True,
         meta=dict(
             part=part,
@@ -314,28 +367,33 @@ def instance(
     )
 
 
-# Ordered by parameter count, which is monotonic on every config
+# Ordered by parameter count
 SIZES = [
-    # AQ2-RT for the surface code (C=128; 1 RG-LRU + 2 transformer + 1 RG-LRU),
-    # one step of G=6 syndrome cycles
+    # The paper's AQ2-RT for the surface code: C=128, two transformer layers
+    # between the RG-LRU blocks, and G=6 syndrome cycles per step
     dict(part="step", distance=3, cycles=6, layers=2),
     dict(part="step", distance=5, cycles=6, layers=2),
-    # BEYOND THE PAPER (it uses G=6; needs retraining): G=16 cycles per step. A
-    # step costs the same, so per-cycle throughput rises, but the final step
-    # waits up to 16 cycles longer before the decision.
+    # Not in the paper, which uses G=6, so these would need retraining: G=16
+    # cycles per step. A step costs the same as at G=6, so more cycles are
+    # decoded per second, but the final decision can come up to 16 cycles later.
     dict(part="step", distance=3, cycles=16, layers=2),
     dict(part="step", distance=5, cycles=16, layers=2),
-    # ~1M parameter baseline, not a paper size; d=3 so that it fits every board.
-    # AQ2-RT's C=128, heads and widening, with the three transformer layers of
-    # the paper's Willow model (whose C is 256). Per layer: two norms 2 * 128 +
-    # attention (q, k, v and output projections: 4 * (128 * 128 + 128)) =
-    # 66,048 + dense (up, gate, down: 2 * (128 * 512 + 512) + 512 * 128 + 128)
-    # = 197,760 -> 264,064. Three layers 792,192; each RG-LRU block norm 128 +
-    # 5 * (128 * 128 + 128) + decay 128 = 82,816, two 165,632; embed 12 * 128
-    # + 128 = 1,664: 959,488.
+    # ~1M parameter baseline. Not a paper size: it is AQ2-RT with three
+    # transformer layers, as in the paper's Willow model (whose C is 256), at
+    # d=3 so that it fits every board. Parameters:
+    #
+    #   one transformer layer                                    264,064
+    #     norms       2 * 128                                  =     256
+    #     attention   4 * (128 * 128 + 128)                    =  66,048
+    #     dense       2 * (128 * 512 + 512) + 512 * 128 + 128  = 197,760
+    #   one RG-LRU block
+    #     norm 128 + 5 * (128 * 128 + 128) + decay 128         =  82,816
+    #   embed         12 * 128 + 128                           =   1,664
+    #
+    #   total         3 * 264,064 + 2 * 82,816 + 1,664         = 959,488
     dict(part="step", distance=3, cycles=6, layers=3),
-    # AQ2-RT reads out once per experiment, not per step: the entries above are
-    # the per-step cost, this is the one-off cost after the last step
+    # The readout. The sizes above cost their latency at every step; this one
+    # is paid once per experiment, after the last step.
     dict(part="readout", distance=5),
 ]
 

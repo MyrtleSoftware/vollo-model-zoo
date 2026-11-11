@@ -1,8 +1,10 @@
 """
-AQ2-RT's step and readout against the paper's network, written out here from
-the paper and Griffin independently of the model's code: it reads only the
-state dict, in fp64 with every parameter randomised. Also: the compiled
-programs run in Vollo's VM match PyTorch.
+Checks AQ2-RT's step and readout against a reference implementation of the
+paper's network. The reference is written here from the paper and Griffin, and
+takes nothing from the model's code except its state dict. The comparison is in
+fp64, with every parameter randomised.
+
+Also checks that the compiled programs, run in Vollo's VM, match PyTorch.
 """
 
 import numpy as np
@@ -26,9 +28,10 @@ def rot(t: torch.Tensor) -> torch.Tensor:
 
 def rope_cos_sin(distance: int) -> tuple[torch.Tensor, torch.Tensor]:
     """
-    cos and sin of the RoPE angles, [N, 1, dh]: the stabiliser's x for each
-    head's first half of channels, y for the second, at frequencies 20 *
-    10^(-2i/8). In fp32, as the model builds its table, then fp64.
+    cos and sin of the RoPE angles, [N, 1, dh]. In each head, the first half of
+    the channels uses the stabiliser's x and the second half its y, at
+    frequencies 20 * 10^(-2i/8). Computed in fp32, as the model's table is,
+    then converted to fp64.
     """
     coords = alphaqubit._stabiliser_coordinates(distance)
     freq = 20 * 10.0 ** (-2 * torch.arange(8) / 8)
@@ -58,7 +61,7 @@ def ref_rglru(sd, p, x, state):
 
 
 def ref_attention(sd, p, x, context, rope):
-    """Multi-head attention, heads of 32, torch.softmax, explicit spatial RoPE"""
+    """Multi-head attention with heads of 32, torch.softmax and elementwise RoPE"""
     q, k, v = (
         ref_linear(sd, f"{p}.{name}", t).unflatten(-1, (-1, DIM_HEAD))  # [n h dh]
         for name, t in (("q", x), ("k", context), ("v", context))
@@ -72,7 +75,7 @@ def ref_attention(sd, p, x, context, rope):
 
 
 def ref_layer(sd, p, x, context=None, rope=None):
-    """The paper's serial pre-norm layer (Fig. S1a): attention, then gated dense"""
+    """The paper's pre-norm layer (Fig. S1a): attention, then a gated dense block"""
     h = ref_norm(x, sd[f"{p}.norm_attn.weight"])
     c = h if context is None else ref_norm(context, sd[f"{p}.norm_attn.weight"])
     x = x + ref_attention(sd, f"{p}.attn", h, c, rope)
@@ -106,7 +109,7 @@ def ref_readout(sd, x, rope):
 
 @beartype
 def randomise(model: torch.nn.Module, dtype=torch.float64) -> torch.nn.Module:
-    """Every parameter and the position table non-trivial"""
+    """Give every parameter, and the position table, a non-trivial value"""
     model.to(dtype)
     gen = torch.Generator().manual_seed(1)
     with torch.no_grad():
@@ -115,7 +118,7 @@ def randomise(model: torch.nn.Module, dtype=torch.float64) -> torch.nn.Module:
                 t.copy_(torch.rand(t.shape, generator=gen) + 0.5)  # RMSNorm gains
             elif name.endswith(("bias", "decay", "observable", "position")):
                 t.copy_(torch.randn(t.shape, generator=gen, dtype=t.dtype))
-            elif name == "mean":  # the readout's 1 / N, built in fp32
+            elif name == "mean":  # the readout's 1 / N, recomputed in `dtype`
                 t.fill_(1 / t.shape[-1])
     return model.eval()
 
@@ -162,10 +165,11 @@ def test_readout_matches_paper_reference():
 @beartype
 def test_vm_matches_pytorch(config: str, size: dict):
     """
-    The program `main()` compiles for the config, in the VM: the step streamed
-    one group of cycles per inference, the readout once. Without `bit_accurate`
-    the VM computes in fp32, so this checks the compilation (the streaming of
-    both RG-LRU states, attention's matmuls), not bf16.
+    Compiles the program that `main()` compiles for the config and runs it in
+    the VM: the step is streamed one group of cycles per inference, and the
+    readout runs once. With `bit_accurate=False` the VM computes in fp32, so
+    this tests the compilation (the streaming of both RG-LRU states,
+    attention's matmuls) and not bf16 accuracy.
     """
     torch.manual_seed(0)
     args = alphaqubit.instance(**size, config=config)
@@ -199,6 +203,7 @@ def test_stabiliser_coordinates():
         assert coords.shape == (d**2 - 1, 2)
         assert len({tuple(c) for c in coords.tolist()}) == d**2 - 1
         assert coords.min() == -0.5 and coords.max() == 0.5
-        # (d - 1)^2 weight-4 plaquettes inside, 2 (d - 1) weight-2 on the edges
+        # (d - 1)^2 weight-4 plaquettes inside; the other 2 (d - 1) stabilisers
+        # are weight-2, on the edges
         inside = ((coords > -0.5) & (coords < 0.5)).all(-1)
         assert inside.sum() == (d - 1) ** 2

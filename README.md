@@ -507,38 +507,48 @@ the work per inference are constant in the sequence length.
 
 Code/model: [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)
 
-A quantum computer protects its qubits by measuring a set of parity checks,
-the _stabilisers_, over and over; a decoder reads that stream of outcomes and
-works out which errors happened, and has to keep up with it in real time. This
-is the real-time decoder of AlphaQubit 2 (AQ2-RT) for the surface code,
-[Senior et al.](https://arxiv.org/abs/2512.07737), successor to
-[AlphaQubit](https://arxiv.org/abs/2310.05900). It is a recurrent transformer
-in which each of the d²−1 stabilisers is a token. Each step takes a group of six
-measurement cycles: attention mixes information across the chip, and a
-recurrent state per stabiliser (Griffin's RG-LRU, before and after the
-transformer layers) carries the history from step to step. At the end of the
-experiment, the final cycle (recomputed from measuring the data qubits) takes
-one more step of the same cost, and a readout network, measured as a size of
-its own, predicts whether the logical qubit flipped.
+A quantum computer protects its qubits by repeatedly measuring a set of parity
+checks called _stabilisers_. A decoder reads that stream of measurements and
+works out which errors occurred, and it has to keep up in real time. This model
+is the real-time decoder of AlphaQubit 2 (AQ2-RT) for the surface code, from
+[Senior et al.](https://arxiv.org/abs/2512.07737), the successor to
+[AlphaQubit](https://arxiv.org/abs/2310.05900).
 
-The step streams with `Scan`, one group of cycles per inference, with both
-recurrent states held on the card. A superconducting cycle is about 1.1 µs on
-[Google Willow](https://arxiv.org/abs/2408.13687), so a six-cycle step has
-6.6 µs, and one step at a time Vollo takes longer than that (8.8 µs at d=3,
-17.3 µs at d=5 on V80, compute only): the decoder falls behind, and its backlog
-grows with the experiment. The paper keeps pace on TPUs by processing blocks of
-24–96 cycles at once. A step costs the same for any group size whose inputs fit
-one block, so the G=16 sizes (beyond the paper's six; they need retraining)
-keep pace at d=3, and at d=5 on V80 (17.3 µs against 17.6 µs of cycles) but
-not on IA-420f, whose cycles the Agilex IP core shares (21.4 µs). They wait up
-to 16 cycles longer before the final step. Trapped-ion and neutral-atom machines, with millisecond
-cycles, leave ample time.
+It is a recurrent transformer in which each of the d²−1 stabilisers is a token.
+Each step takes a group of six measurement cycles. Attention shares information
+between the stabilisers, and a recurrent state per stabiliser (Griffin's
+RG-LRU, applied before and after the transformer layers) carries history from
+one step to the next. At the end of an experiment there is one more step of the
+same cost, for a final cycle recomputed from the data-qubit measurements. A
+readout network then predicts whether the logical qubit flipped; it is
+benchmarked as a size of its own.
 
-The file is plain PyTorch with no core placement: it shows `Scan` with two
-states, `allow_dynamic_weights` for attention, and three exact rewrites that
-the compiler rewards, each commented with what it buys: RoPE as one matmul per
-stabiliser against a constant matrix, a softmax normalised after its value
-matmul, and `exp` as `exp2` with its constant folded.
+The step is streamed with `Scan`: each inference consumes one group of cycles,
+and both recurrent states stay on the card.
+
+Whether that keeps pace depends on the hardware and the group size. A
+superconducting cycle takes about 1.1 µs on
+[Google Willow](https://arxiv.org/abs/2408.13687), so a six-cycle step has to
+finish in 6.6 µs. Taking one step at a time, Vollo needs 8.8 µs at d=3 and
+17.3 µs at d=5 on V80 (compute only), so the decoder falls behind and its
+backlog grows over the experiment. The paper keeps pace on TPUs by processing
+blocks of 24–96 cycles at once.
+
+On Vollo, a step costs the same for any group size whose inputs fit in one
+block, so a larger group buys more time per step. The G=16 sizes have 17.6 µs,
+which is enough at d=3, and at d=5 on V80 (17.3 µs) but not on IA-420f
+(21.4 µs). These sizes go beyond the paper's G=6, so they need retraining, and
+they wait up to 16 cycles longer before the final step. Trapped-ion and
+neutral-atom machines have millisecond cycles, which leaves ample time.
+
+The file is plain PyTorch, with no core placement. It shows `Scan` with two
+states, `allow_dynamic_weights` for attention, and three rewrites that compute
+exactly the same function but compile to faster programs. Each is commented in
+the code with what it saves:
+
+- RoPE as one matmul per stabiliser against a constant matrix;
+- a softmax normalised after its value matmul;
+- `exp` written as `exp2`, with its constant folded in.
 
 ## Other utilities
 
