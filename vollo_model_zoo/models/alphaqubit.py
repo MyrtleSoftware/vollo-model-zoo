@@ -58,12 +58,16 @@ class _Attention(nn.Module):
         self.heads, self.dim_head = heads, dim // heads
         self.q, self.k, self.v = (nn.Linear(dim, dim) for _ in range(3))
         self.proj_o = nn.Linear(dim, dim)
-        self.register_buffer("rotation", rotation, persistent=False)
+        self.rotation = (
+            None if rotation is None else nn.Buffer(rotation, persistent=False)
+        )
 
     def forward(
         self, x: torch.Tensor, context: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
-        """x: [N, C!], context: [M, C!] -> [N, C!]"""
+        """
+        x: [N, C!], context: [M, C!] -> [N, C!]
+        """
         context = x if context is None else context
         h, dh = self.heads, self.dim_head
 
@@ -76,19 +80,16 @@ class _Attention(nn.Module):
             # [h n 1 dh!] @ [n dh dh]
             q = (q.unsqueeze(-2) @ self.rotation).squeeze(-2)
             k = (k.unsqueeze(-2) @ self.rotation).squeeze(-2)
-        # The softmax is written out by hand, for three reasons.
+
+        # The softmax is written out by hand:
         #
-        # 1. exp(s) is computed as exp2(s / ln 2), which is cheaper on Vollo
-        #    (see `_RGLRU`). The 1 / ln 2 is merged into the usual 1 / sqrt(dh)
-        #    scale on q.
-        # 2. Vollo has no max reduction, so the scores are not shifted by their
-        #    maximum first. The result is the same, but in fp32 PyTorch exp
-        #    overflows for scores above ~88.
+        # 1. exp(s) is computed as exp2(s / ln 2) and the 1 / ln 2 is merged
+        #    into the usual 1 / sqrt(dh) scale on q.
         e = torch.exp2((q * (dh**-0.5 / math.log(2))) @ k.transpose(1, 2))  # [h n M!]
-        # 3. The division by the sum comes after the value matmul, so the sum
-        #    can run alongside the matmul. `torch.softmax(s) @ v` takes 2.5-5%
-        #    more cycles on V80 and up to 17% more on IA-420f (SDK 29.1.0).
+        # 2. The division by the sum comes after the value matmul, so the sum
+        #    can run alongside the matmul.
         a = (e @ v) / e.sum(-1, keepdim=True)  # [h n dh!]
+
         return self.proj_o(a.transpose(0, 1).reshape(-1, h * dh))
 
 
@@ -122,7 +123,9 @@ class _Layer(nn.Module):
     def forward(
         self, x: torch.Tensor, context: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
-        """x: [N, C!], context (for cross-attention): [M, C!] -> [N, C!]"""
+        """
+        x: [N, C!], context (for cross-attention): [M, C!] -> [N, C!]
+        """
         h = self.norm_attn(x)
         x = x + self.attn(h, None if context is None else self.norm_attn(context))
         h = self.norm_dense(x)
@@ -146,10 +149,6 @@ class _RGLRU(nn.Module):
         state = a * state + sqrt(1 - a^2) * (i * u)
 
     Unlike a GRU, there is no matrix product inside the recurrence.
-
-    Precision caveat: in bf16, `1 - a^2` rounds to 0 when
-    `8 * softplus(decay) * r` is below about 1e-3, so the channels that decay
-    most slowly ignore new input.
     """
 
     @beartype
@@ -161,15 +160,12 @@ class _RGLRU(nn.Module):
         self.decay = nn.Parameter(torch.zeros(dim))
 
     def forward(self, x: torch.Tensor, state: torch.Tensor):
-        """x: [N, C!], state: [N, C!] -> y [N, C!], new state [N, C!]"""
+        """
+        x: [N, C!], state: [N, C!] -> y [N, C!], new state [N, C!]
+        """
         h = self.norm(x)
         u = self.inp(h)
         r, i = torch.sigmoid(self.proj_r(u)), torch.sigmoid(self.proj_i(u))
-        # exp(y) is written as exp2(y / ln 2), because Vollo can fold a constant
-        # scale into an exp2 but not into an exp. Doing this here and in
-        # attention's softmax saves 1.6-1.9% of the cycles at d=5; d=3 changes
-        # by less than 1% either way. Use exp2 in both places or in neither:
-        # exp here with exp2 there costs 7% at d=3 on IA-420f (SDK 29.1.0).
         c = -8 / math.log(2)
         a = torch.exp2(c * torch.nn.functional.softplus(self.decay) * r)
         state = a * state + torch.sqrt(1 - a * a) * (i * u)
@@ -198,9 +194,8 @@ class _Step(nn.Module):
         # is the same as a single Linear on all 2G bits.
         self.embed = nn.Linear(2 * cycles, dim)
         # The paper's position embedding is a Linear(2, C) of each stabiliser's
-        # (x, y). Vollo can't compile a Linear whose input is a constant, so it
-        # is evaluated once here and kept as a buffer, which is saved in the
-        # state dict.
+        # (x, y). Evaluated once here and kept as a buffer, which is saved in
+        # the state dict.
         self.position = nn.Buffer(
             nn.Linear(2, dim)(_stabiliser_coordinates(distance)).detach()
         )
@@ -211,7 +206,9 @@ class _Step(nn.Module):
         )
 
     def forward(self, syndromes: torch.Tensor, state: list[torch.Tensor]):
-        """syndromes: [N, 2G!], state: two [N, C!] -> [N, C!], new state"""
+        """
+        syndromes: [N, 2G!], state: two [N, C!] -> [N, C!], new state
+        """
         x, rnn_in = self.rnn_in(self.embed(syndromes) + self.position, state[0])
         x, rnn_out = self.rnn_out(self.layers(x), state[1])
         return x, [rnn_in, rnn_out]
@@ -233,27 +230,9 @@ class AlphaQubit(nn.Module):
        RoPE and a gated dense block;
     4. applies a second RG-LRU block.
 
-    The two RG-LRU states are the only memory between steps. There are no
-    convolutions.
-
     The paper makes its prediction once, at the end of an experiment (see
     `AlphaQubitReadout`), so this streaming model outputs the stabilisers'
     representations at every step.
-
-    Not modelled: at the end of an experiment the paper recomputes a final
-    cycle from the data-qubit measurements, embeds it on its own and runs it
-    through this same stack. That is one more step of the same cost, before
-    the readout.
-
-    For AQ2-RT the paper gives C=128, G=6 and the layer counts, but not the
-    heads or the dense block. This file chooses:
-
-    - 4 heads of 32 channels and a dense expansion of 4, as in the paper's
-      larger models (Table S1);
-    - a gated dense block, `down(gelu(up(h)) * gate(h))`, as in Griffin's MLP;
-    - RoPE frequencies spaced geometrically from 20 down to about 0.36 in each
-      half of a head, with coordinates in [-0.5, 0.5];
-    - eps = 1e-5 in RMSNorm.
     """
 
     @beartype
@@ -275,7 +254,9 @@ class AlphaQubit(nn.Module):
         self.rnn_out_0 = nn.Buffer(torch.zeros(n, dim), persistent=False)
 
     def forward(self, syndromes: torch.Tensor) -> torch.Tensor:
-        """syndromes: [T, N, 2G!] -> stabiliser representations [T, N, C!]"""
+        """
+        syndromes: [T, N, 2G!] -> stabiliser representations [T, N, C!]
+        """
         state = [self.rnn_in_0, self.rnn_out_0]
         return self.scan(syndromes, state, input_axis=0, output_axis=0)
 
@@ -356,7 +337,6 @@ def instance(
     )
 
 
-# Ordered by parameter count
 SIZES = [
     # The paper's AQ2-RT for the surface code: C=128, two transformer layers
     # between the RG-LRU blocks, and G=6 syndrome cycles per step
@@ -367,19 +347,7 @@ SIZES = [
     # decoded per second, but the final decision can come up to 16 cycles later.
     dict(part="step", distance=3, cycles=16, layers=2),
     dict(part="step", distance=5, cycles=16, layers=2),
-    # ~1M parameter baseline. Not a paper size: it is AQ2-RT with three
-    # transformer layers, as in the paper's Willow model (whose C is 256), at
-    # d=3 so that it fits every board. Parameters:
-    #
-    #   one transformer layer                                    264,064
-    #     norms       2 * 128                                  =     256
-    #     attention   4 * (128 * 128 + 128)                    =  66,048
-    #     dense       2 * (128 * 512 + 512) + 512 * 128 + 128  = 197,760
-    #   one RG-LRU block
-    #     norm 128 + 5 * (128 * 128 + 128) + decay 128         =  82,816
-    #   embed         12 * 128 + 128                           =   1,664
-    #
-    #   total         3 * 264,064 + 2 * 82,816 + 1,664         = 959,488
+    # ~1M parameter baseline. Not a paper size
     dict(part="step", distance=3, cycles=6, layers=3),
     # The readout. The sizes above cost their latency at every step; this one
     # is paid once per experiment, after the last step.
