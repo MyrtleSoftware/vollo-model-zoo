@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (Vollo SDK 29.1.0, model zoo 0.6.0)
+# Vollo Model Zoo Benchmarks (Vollo SDK 30.1.0, model zoo 0.6.0)
 
 Compute latency for an approximately 1-million parameter model.
 
@@ -8,126 +8,126 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 2.56 | 2.69 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.14 | 1.50 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| swa | 3.66 | 4.02 | masked=True, partitions=6, dim=224, window=32, layers=2 |
-| stateless-rnnt | 1.07 | 1.08 | prog=predictor, hidden=192, joint_hidden=288 |
-| ssm | 0.71 | 0.71 | dim=576, hidden=448 |
-| slp | 0.87 | 0.87 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.69 | 0.70 | prog=predictor, hidden=192, joint_hidden=288 |
-| resmlp | 6.72 | 6.72 | dim=160, patches=9, layers=5, activation=ReLU |
-| qec-lstm | 0.97 | 1.03 | distance=11, hidden_size=256, soft=False |
-| nano-llm | 3.11 | 5.15 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
-| moe | 0.90 | 0.91 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 9.37 | 9.37 | width_mult=0.42 |
-| mlp-res-rms | 1.64 | 1.64 | dim=320, hidden=768, activation=relu |
-| mlp | 1.33 | 1.33 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 1.67 | 3.53 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 2.84 | 3.25 | dim=384, state=12, layers=1 |
-| lstm | 0.76 | 0.97 | layers=2, hidden_size=250 |
-| gru | 0.84 | 1.11 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.32 | 1.32 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn | 1.44 | 4.39 | layers=4, channels=64, kernel_size=64 |
+| wavenet | 2.42 | 2.57 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.05 | 1.45 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 3.33 | 3.76 | masked=True, partitions=6, dim=224, window=32, layers=2 |
+| stateless-rnnt | 1.04 | 1.04 | prog=predictor, hidden=192, joint_hidden=288 |
+| ssm | 0.72 | 0.72 | dim=576, hidden=448 |
+| slp | 0.88 | 0.89 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.68 | 0.68 | prog=predictor, hidden=192, joint_hidden=288 |
+| resmlp | 6.63 | 6.63 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 0.95 | 1.03 | distance=11, hidden_size=256, soft=False |
+| nano-llm | 2.78 | 4.80 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
+| moe | 0.88 | 0.88 | dim=192, hidden=640, n_experts=4 |
+| mobilenet | 8.27 | 8.27 | width_mult=0.42 |
+| mlp-res-rms | 1.53 | 1.53 | dim=320, hidden=768, activation=relu |
+| mlp | 1.27 | 1.27 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 1.56 | 3.44 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 2.83 | 3.30 | dim=384, state=12, layers=1 |
+| lstm | 0.77 | 1.00 | layers=2, hidden_size=250 |
+| gru | 0.77 | 1.03 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.25 | 1.26 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| cnn | 1.25 | 4.23 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: V80
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 2.82 | 2.96 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.25 | 1.65 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| swa | 4.03 | 4.42 | masked=True, partitions=6, dim=224, window=32, layers=2 |
-| stateless-rnnt | 1.18 | 1.18 | prog=predictor, hidden=192, joint_hidden=288 |
-| ssm | 0.78 | 0.78 | dim=576, hidden=448 |
-| slp | 0.96 | 0.96 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.76 | 0.77 | prog=predictor, hidden=192, joint_hidden=288 |
-| resmlp | 7.39 | 7.40 | dim=160, patches=9, layers=5, activation=ReLU |
-| qec-lstm | 1.07 | 1.13 | distance=11, hidden_size=256, soft=False |
-| nano-llm | 3.42 | 5.66 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
-| moe | 0.99 | 1.00 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.31 | 10.31 | width_mult=0.42 |
-| mlp-res-rms | 1.80 | 1.81 | dim=320, hidden=768, activation=relu |
-| mlp | 1.46 | 1.47 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 1.83 | 3.88 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 3.13 | 3.57 | dim=384, state=12, layers=1 |
-| lstm | 0.83 | 1.07 | layers=2, hidden_size=250 |
-| gru | 0.93 | 1.22 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.45 | 1.46 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn | 1.58 | 4.83 | layers=4, channels=64, kernel_size=64 |
+| wavenet | 2.66 | 2.83 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.16 | 1.60 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 3.66 | 4.13 | masked=True, partitions=6, dim=224, window=32, layers=2 |
+| stateless-rnnt | 1.14 | 1.14 | prog=predictor, hidden=192, joint_hidden=288 |
+| ssm | 0.79 | 0.79 | dim=576, hidden=448 |
+| slp | 0.97 | 0.98 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.75 | 0.75 | prog=predictor, hidden=192, joint_hidden=288 |
+| resmlp | 7.29 | 7.30 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 1.04 | 1.14 | distance=11, hidden_size=256, soft=False |
+| nano-llm | 3.06 | 5.28 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
+| moe | 0.97 | 0.97 | dim=192, hidden=640, n_experts=4 |
+| mobilenet | 9.09 | 9.10 | width_mult=0.42 |
+| mlp-res-rms | 1.68 | 1.68 | dim=320, hidden=768, activation=relu |
+| mlp | 1.39 | 1.40 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 1.72 | 3.79 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 3.12 | 3.63 | dim=384, state=12, layers=1 |
+| lstm | 0.85 | 1.10 | layers=2, hidden_size=250 |
+| gru | 0.85 | 1.14 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.38 | 1.38 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| cnn | 1.38 | 4.66 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: NT400D11
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 2.98 | 3.08 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.27 | 1.66 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| swa | 4.29 | 4.66 | masked=True, partitions=6, dim=224, window=32, layers=2 |
-| stateless-rnnt | 1.20 | 1.20 | prog=predictor, hidden=192, joint_hidden=288 |
-| ssm | 0.75 | 0.75 | dim=576, hidden=448 |
-| slp | 0.91 | 0.92 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.77 | 0.77 | prog=predictor, hidden=192, joint_hidden=288 |
-| resmlp | 16.01 | 16.01 | dim=160, patches=9, layers=5, activation=ReLU |
-| qec-lstm | 1.11 | 1.35 | distance=11, hidden_size=256, soft=False |
-| nano-llm | 3.53 | 5.62 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
-| moe | 1.20 | 1.20 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.98 | 11.03 | width_mult=0.42 |
-| mlp-res-rms | 1.85 | 1.85 | dim=320, hidden=768, activation=relu |
-| mlp | 1.50 | 1.50 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 1.88 | 3.79 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 3.06 | 3.55 | dim=384, state=12, layers=1 |
-| lstm | 0.82 | 1.03 | layers=2, hidden_size=250 |
-| gru | 0.89 | 1.18 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.48 | 1.48 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn | 1.64 | 3.08 | layers=4, channels=64, kernel_size=64 |
+| wavenet | 2.93 | 3.07 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.22 | 1.65 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 4.08 | 4.44 | masked=True, partitions=6, dim=224, window=32, layers=2 |
+| stateless-rnnt | 1.17 | 1.18 | prog=predictor, hidden=192, joint_hidden=288 |
+| ssm | 0.75 | 0.76 | dim=576, hidden=448 |
+| slp | 0.94 | 0.94 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.75 | 0.76 | prog=predictor, hidden=192, joint_hidden=288 |
+| resmlp | 15.93 | 15.93 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 1.11 | 1.20 | distance=11, hidden_size=256, soft=False |
+| nano-llm | 3.32 | 5.40 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
+| moe | 1.17 | 1.18 | dim=192, hidden=640, n_experts=4 |
+| mobilenet | 10.25 | 10.30 | width_mult=0.42 |
+| mlp-res-rms | 1.79 | 1.79 | dim=320, hidden=768, activation=relu |
+| mlp | 1.48 | 1.48 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 2.05 | 3.77 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 3.12 | 3.54 | dim=384, state=12, layers=1 |
+| lstm | 0.85 | 1.09 | layers=2, hidden_size=250 |
+| gru | 0.87 | 1.16 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.43 | 1.43 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| cnn | 1.52 | 3.00 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: IA-840f
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 2.57 | 2.58 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.04 | 1.59 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| swa | 4.18 | 4.93 | masked=True, partitions=3, dim=224, window=32, layers=2 |
-| stateless-rnnt | 0.92 | 0.92 | prog=predictor, hidden=192, joint_hidden=288 |
-| ssm | 0.53 | 0.54 | dim=576, hidden=448 |
-| slp | 0.57 | 0.57 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.68 | 0.68 | prog=predictor, hidden=192, joint_hidden=288 |
-| resmlp | 5.01 | 5.02 | dim=160, patches=9, layers=5, activation=ReLU |
-| qec-lstm | 0.90 | 0.90 | distance=11, hidden_size=256, soft=False |
-| nano-llm | 3.27 | 5.41 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=3, ffn_fp8=False |
-| moe | 0.71 | 0.71 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.13 | 10.24 | width_mult=0.42 |
-| mlp-res-rms | 1.56 | 1.56 | dim=320, hidden=768, activation=relu |
-| mlp | 1.30 | 1.30 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 1.59 | 3.73 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 2.35 | 2.79 | dim=384, state=12, layers=1 |
-| lstm | 0.60 | 0.62 | layers=2, hidden_size=250 |
-| gru | 0.69 | 0.89 | fp32=False, input=512, hidden=384, layers=1 |
+| wavenet | 2.48 | 2.54 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.02 | 1.62 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 3.99 | 4.73 | masked=True, partitions=3, dim=224, window=32, layers=2 |
+| stateless-rnnt | 0.96 | 0.96 | prog=predictor, hidden=192, joint_hidden=288 |
+| ssm | 0.57 | 0.57 | dim=576, hidden=448 |
+| slp | 0.63 | 0.63 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.69 | 0.69 | prog=predictor, hidden=192, joint_hidden=288 |
+| resmlp | 5.07 | 5.08 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 0.93 | 0.93 | distance=11, hidden_size=256, soft=False |
+| nano-llm | 3.14 | 5.27 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=3, ffn_fp8=False |
+| moe | 0.69 | 0.70 | dim=192, hidden=640, n_experts=4 |
+| mobilenet | 9.68 | 9.77 | width_mult=0.42 |
+| mlp-res-rms | 1.54 | 1.54 | dim=320, hidden=768, activation=relu |
+| mlp | 1.35 | 1.35 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 1.59 | 3.70 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 2.36 | 2.79 | dim=384, state=12, layers=1 |
+| lstm | 0.62 | 0.69 | layers=2, hidden_size=250 |
+| gru | 0.66 | 0.87 | fp32=False, input=512, hidden=384, layers=1 |
 | ffn-swiglu | 1.18 | 1.18 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn | 1.62 | 3.07 | layers=4, channels=64, kernel_size=64 |
+| cnn | 1.53 | 3.02 | layers=4, channels=64, kernel_size=64 |
 
 ## Configuration: IA-420f
 
 | Model | Latency (us) | Latency contiguous (us)  | Metadata |
 | ----- | ------------ | ------------------------ | -------- |
-| wavenet | 2.98 | 3.08 | layers=4, blocks=1, hidden=198 |
-| tcn | 1.27 | 1.66 | inputs=1, kernel=3, channels=[256, 256, 256] |
-| swa | 4.29 | 4.66 | masked=True, partitions=6, dim=224, window=32, layers=2 |
-| stateless-rnnt | 1.20 | 1.20 | prog=predictor, hidden=192, joint_hidden=288 |
-| ssm | 0.75 | 0.75 | dim=576, hidden=448 |
-| slp | 0.91 | 0.92 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.77 | 0.77 | prog=predictor, hidden=192, joint_hidden=288 |
-| resmlp | 16.01 | 16.01 | dim=160, patches=9, layers=5, activation=ReLU |
-| qec-lstm | 1.11 | 1.35 | distance=11, hidden_size=256, soft=False |
-| nano-llm | 3.53 | 5.62 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
-| moe | 1.20 | 1.20 | dim=192, hidden=640, n_experts=4 |
-| mobilenet | 10.98 | 11.03 | width_mult=0.42 |
-| mlp-res-rms | 1.85 | 1.85 | dim=320, hidden=768, activation=relu |
-| mlp | 1.50 | 1.50 | layers=7, n_features=384, activation=ReLU |
-| mamba2 | 1.88 | 3.79 | fp32=False, dim=400, state=32, layers=1 |
-| mamba1 | 3.06 | 3.55 | dim=384, state=12, layers=1 |
-| lstm | 0.82 | 1.03 | layers=2, hidden_size=250 |
-| gru | 0.89 | 1.18 | fp32=False, input=512, hidden=384, layers=1 |
-| ffn-swiglu | 1.48 | 1.48 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
-| cnn | 1.64 | 3.08 | layers=4, channels=64, kernel_size=64 |
+| wavenet | 2.93 | 3.07 | layers=4, blocks=1, hidden=198 |
+| tcn | 1.22 | 1.65 | inputs=1, kernel=3, channels=[256, 256, 256] |
+| swa | 4.08 | 4.44 | masked=True, partitions=6, dim=224, window=32, layers=2 |
+| stateless-rnnt | 1.17 | 1.18 | prog=predictor, hidden=192, joint_hidden=288 |
+| ssm | 0.75 | 0.76 | dim=576, hidden=448 |
+| slp | 0.94 | 0.94 | input=1024, output=1024, activation=ReLU |
+| rnnt | 0.75 | 0.76 | prog=predictor, hidden=192, joint_hidden=288 |
+| resmlp | 15.93 | 15.93 | dim=160, patches=9, layers=5, activation=ReLU |
+| qec-lstm | 1.11 | 1.20 | distance=11, hidden_size=256, soft=False |
+| nano-llm | 3.32 | 5.40 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
+| moe | 1.17 | 1.18 | dim=192, hidden=640, n_experts=4 |
+| mobilenet | 10.25 | 10.30 | width_mult=0.42 |
+| mlp-res-rms | 1.79 | 1.79 | dim=320, hidden=768, activation=relu |
+| mlp | 1.48 | 1.48 | layers=7, n_features=384, activation=ReLU |
+| mamba2 | 2.05 | 3.77 | fp32=False, dim=400, state=32, layers=1 |
+| mamba1 | 3.12 | 3.54 | dim=384, state=12, layers=1 |
+| lstm | 0.85 | 1.09 | layers=2, hidden_size=250 |
+| gru | 0.87 | 1.16 | fp32=False, input=512, hidden=384, layers=1 |
+| ffn-swiglu | 1.43 | 1.43 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
+| cnn | 1.52 | 3.00 | layers=4, channels=64, kernel_size=64 |
 
 ## Performance over time
 
