@@ -25,6 +25,7 @@ Models in the zoo include:
 |                   | [Mamba-2](#mamba-2)                                   | [`mamba2.py`](./vollo_model_zoo/models/mamba2.py)                                                                                                     |
 |                   | [Nano LLM](#nano-llm)                                 | [`nano-llm.py`](./vollo_model_zoo/models/nano-llm.py)                                                                                                 |
 | **Attention**     | [Sliding window attention](#sliding-window-attention) | [`swa.py`](./vollo_model_zoo/models/swa.py)                                                                                                           |
+|                   | [AlphaQubit](#alphaqubit)                             | [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)                                                                                             |
 
 See the [quick-start](#-quick-start) section to find out how to run the VM
 and calculate the compute-latency for any of these models. Alternatively, have
@@ -501,6 +502,23 @@ holds its K/V window in the accelerator's tensor RAM: the KV cache stays on the
 card between inferences, and the host sends a single timestep rather than a
 growing context. `window_size` fixes how much of it there is, so the state and
 the work per inference are constant in the sequence length.
+
+### AlphaQubit
+
+Code/model: [`alphaqubit.py`](./vollo_model_zoo/models/alphaqubit.py)
+
+A quantum computer protects its qubits by repeatedly measuring a set of parity
+checks called _stabilisers_. A decoder reads that stream of measurements and
+works out which errors occurred, and it has to keep up in real time. This model
+is the real-time decoder of AlphaQubit 2 (AQ2-RT) for the surface code, from
+[Senior et al.](https://arxiv.org/abs/2512.07737), the successor to
+[AlphaQubit](https://arxiv.org/abs/2310.05900).
+
+AQ2-RT is a recurrent transformer in which each stabiliser is a token: every
+step takes a group of six measurement cycles, attention shares information
+between the stabilisers, and a recurrent state per stabiliser (Griffin's
+RG-LRU) carries history from one step to the next. At the end of an experiment
+a separate readout network predicts whether the logical qubit flipped.
 
 ## Other utilities
 

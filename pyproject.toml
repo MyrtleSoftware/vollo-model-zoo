@@ -1,7 +1,7 @@
 [project]
 name = "vollo-model-zoo"
 # Bump on any change that moves the benchmarks; see AGENTS.md.
-version = "0.6.0"
+version = "0.7.0"
 description = "Exemplar models for the Vollo SDK "
 readme = "README.md"
 requires-python = ">=3.13"
@@ -41,7 +41,15 @@ dev = [
   "flash-linear-attention>=0.4.1",
   "pre-commit>=4.5.1",
   "pytest>=9.0.2",
+  "ruff>=0.17.4",
   # Unpickles the nanochat tokenizer that `test_nano_llm.py`'s checkpoint tests
   # decode with. Only reachable when the internal checkpoint mount is present.
   "tiktoken>=0.12.0",
+  "ty>=0.0.101",
+]
+
+[tool.ruff.lint]
+ignore = [
+  "C408",  # dict(...) calls: the zoo writes SIZES and meta with them
+  "UP045", # Optional[X]: the zoo's style, not X | None
 ]
