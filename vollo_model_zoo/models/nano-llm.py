@@ -1,14 +1,23 @@
-from collections.abc import Generator
+# /// script
+# requires-python = ">=3.13"
+# dependencies = ["beartype", "torch", "vollo-compiler", "vollo-torch"]
+# ///
+
 from contextlib import nullcontext
 from math import ceil
-from pathlib import Path
 
 import torch
+import vollo_compiler
 import vollo_torch
 from beartype import beartype
 from torch import nn
 
-from vollo_model_zoo.models.mamba2 import Mamba2
+# The one model built on another: run standalone, this file needs the zoo's
+# `mamba2.py` beside it.
+if __package__:
+    from .mamba2 import Mamba2
+else:
+    from mamba2 import Mamba2
 
 
 def _norm(dim: int) -> nn.RMSNorm:
@@ -170,19 +179,16 @@ def instance(
     mlp_dim: int,
     n_layers: int,
     vocab_size: int,
-    config: str,
+    config: vollo_compiler.Config,
     distributed_norm: bool = False,
     ssm_fp32: bool = True,
     ffn_fp8: bool = True,
     boards: int = 1,
 ) -> dict:
-    # Defer import
-    from vollo_model_zoo.vm import CONFIGS
-
     # Split the model's heads across the cores of whichever config we compile
     # for, over all of its boards.
     n_heads = int(expand * d_model) // d_head
-    head_partitions = head_partitions_for(n_heads, CONFIGS[config].num_cores * boards)
+    head_partitions = head_partitions_for(n_heads, config.num_cores * boards)
 
     input = torch.randn(5, d_model)
 
@@ -271,15 +277,33 @@ SIZES = [
 ]
 
 
-@beartype
-def main(config: str = "V80") -> Generator:
-    from vollo_model_zoo.vm import sweep, vollo_info
-
-    for size in sweep(SIZES, config):
-        yield vollo_info(**instance(**size, config=config), config=config)
-
-
 if __name__ == "__main__":
-    print(f"Model '{Path(__file__).stem}':")
-    for result in main():
-        print(f"\t{result}")
+    # Standalone: `uv run <this file>` prints each size's VM latency on a V80.
+    import vollo_torch as vt
+
+    config = vollo_compiler.Config.amd_v80_c6b32()
+    print(f"VM estimates on {config.name}:")
+    for size in SIZES:
+        features = size.get("_features", [])
+        if "_experimental" in size or not set(features) <= set(config.features):
+            continue
+        kwargs = {k: v for k, v in size.items() if not k.startswith("_")}
+        args = instance(**kwargs, config=config)
+        model, _ = vt.fx.prepare_shape(args["model"], args["x"])
+        nnir = vt.fx.nnir.to_nnir(model)
+        if args["time_axis"] is not None:
+            nnir, _ = nnir.streaming_transform(args["time_axis"])
+        try:
+            program = nnir.to_program(
+                config,
+                allow_dynamic_weights=args.get("allow_dynamic_weights", False),
+                quick_compile=args.get("quick_compile", False),
+            )
+            program.pack()
+        except (vollo_compiler.AllocationError, vollo_compiler.SaveError) as e:
+            print(f"\t{kwargs}: too big for {config.name} ({type(e).__name__})")
+            continue
+        params = sum(p.numel() for p in args["model"].parameters())
+        cycles = program.cycle_count_per_inference()
+        latency = program.compute_duration_per_inference_us(spaced=True)
+        print(f"\t{kwargs}: {params} params, {cycles} cycles, {latency:.3f}us")

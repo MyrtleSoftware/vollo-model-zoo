@@ -55,6 +55,19 @@ To see all available models (as well as other options), run:
 uv run zoo --help
 ```
 
+Each model file also runs on its own, without this repo: `uv run` reads the
+dependencies from the file's header and prints the VM estimate of each size.
+
+```fish
+uv run vollo_model_zoo/models/wavenet.py   # or a copy of it, anywhere
+```
+
+The one exception is `nano-llm.py`, which builds on `mamba2.py` and needs a copy
+of it in the same directory.
+
+Unlike `uv run zoo`, this resolves the latest Vollo SDK on PyPI rather than the
+one in `uv.lock`.
+
 ## 🐘 Models
 
 ### Basic multilayer perceptrons (MLP)

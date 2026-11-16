@@ -1,5 +1,4 @@
 from itertools import pairwise
-from typing import Optional
 
 import pytest
 from beartype import beartype
@@ -13,23 +12,16 @@ def is_sorted(xs, *, key):
     return all(a <= b for a, b in pairwise(map(key, xs)))
 
 
-def idfn(config):
-    if config is None:
-        return "default"
-    return config
-
-
 # Every model, including experimental, is tested on every config
 _MODELS = catalog.models()
 
 
-@pytest.mark.parametrize("config", [None, *CONFIGS], ids=idfn)
+@pytest.mark.parametrize("config", [*CONFIGS])
 @pytest.mark.parametrize("model_name", _MODELS)
 @beartype
-def test_models(model_name: str, config: Optional[str], monkeypatch):
-    # Experimental sizes too, on every config that can run them. The default
-    # config is V80 again, so it leaves them out.
-    monkeypatch.setattr(vm, "sweep_experimental", config is not None)
+def test_models(model_name: str, config: str, monkeypatch):
+    # Experimental sizes too, on every config that can run them.
+    monkeypatch.setattr(vm, "sweep_experimental", True)
     results: list[Ok] = []
 
     for r in get_results(model_name, config=config):
@@ -37,10 +29,10 @@ def test_models(model_name: str, config: Optional[str], monkeypatch):
             case Ok():
                 results.append(r)
             case AllocationError():
-                if config in (None, "V80", "V80LL"):
+                if config in ("V80", "V80LL"):
                     raise r
             case SaveError():
-                if config in (None, "V80", "V80LL"):
+                if config in ("V80", "V80LL"):
                     raise r
             case _:
                 raise ValueError(f"Unexpected result type: {type(r)}")

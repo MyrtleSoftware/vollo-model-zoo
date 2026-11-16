@@ -1,3 +1,4 @@
+import ast
 import importlib
 import importlib.util
 import inspect
@@ -29,55 +30,82 @@ def test_sizes_match_import(model_name: str):
     assert catalog.experimental(model_name) == getattr(module, "EXPERIMENTAL", None)
 
 
-@pytest.mark.parametrize("experimental", [False, True])
-@pytest.mark.parametrize("config", [*CONFIGS])
+def test_sweep(monkeypatch):
+    """
+    `sweep` yields a size's arguments without its `_` keys, in order, leaving
+    out the sizes the config lacks the features for, and the experimental ones
+    unless asked.
+    """
+    sizes = [dict(a=1), dict(a=2, _features=["fp8"]), dict(a=3, _experimental="x")]
+    assert [*vm.sweep(sizes, "V80")] == [dict(a=1), dict(a=2)]
+    assert [*vm.sweep(sizes, "IA-420f")] == [dict(a=1)]
+    monkeypatch.setattr(vm, "sweep_experimental", True)
+    assert [*vm.sweep(sizes, "V80")] == [dict(a=1), dict(a=2), dict(a=3)]
+
+
 @pytest.mark.parametrize("model_name", _MODELS)
 @beartype
-def test_main_sweeps_sizes(
-    model_name: str, config: str, experimental: bool, monkeypatch
-):
+def test_imports_nothing_from_the_zoo(model_name: str):
     """
-    `main()` builds exactly the sizes `config` can run, in `SIZES` order, and
-    the experimental ones only when asked. Nothing is built or compiled:
-    `instance` and the compile functions are replaced with recorders.
+    A model file stands alone: it imports nothing from `vollo_model_zoo`, so
+    `uv run <file>` runs it with only the PyPI packages its header lists.
+    `nano-llm` builds on `mamba2`, so standalone it needs that file beside it.
     """
-    module = importlib.import_module(f"vollo_model_zoo.models.{model_name}")
-    monkeypatch.setattr(vm, "sweep_experimental", experimental)
-    calls = []
-    monkeypatch.setattr(module, "instance", lambda **kw: calls.append(kw) or {})
-    monkeypatch.setattr(vm, "vollo_info", lambda **kw: None)
-    monkeypatch.setattr(vm, "vollo_multi_model_info", lambda **kw: iter(()))
+    with open(os.path.join(catalog.MODELS_DIR, f"{model_name}.py")) as f:
+        source = f.read()
+    assert "# /// script\n" in source
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            modules = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            modules = ["." * node.level + (node.module or "")]
+        else:
+            continue
+        for module in modules:
+            if model_name == "nano-llm" and module in (".mamba2", "mamba2"):
+                continue
+            assert not module.startswith(("vollo_model_zoo", ".")), module
 
-    list(module.main(config=config))
 
-    assert calls == [
-        {**catalog.split(size)[0], "config": config}
-        for size in catalog.sizes(model_name)
-        if vm.runs_on(size, config)
-        and (experimental or not catalog.split(size)[1].get("_experimental"))
-    ]
+def _main_block(model_name: str) -> str:
+    with open(os.path.join(catalog.MODELS_DIR, f"{model_name}.py")) as f:
+        source = f.read()
+    for node in ast.parse(source).body:
+        if (
+            isinstance(node, ast.If)
+            and ast.unparse(node.test) == "__name__ == '__main__'"
+        ):
+            return ast.get_source_segment(source, node)
+    raise AssertionError(f"{model_name} has no __main__ block")
 
 
-def test_copied_file_sweeps_its_own_sizes(tmp_path, monkeypatch):
+@pytest.mark.parametrize("model_name", _MODELS)
+@beartype
+def test_main_block_is_shared(model_name: str):
     """
-    A model file copied out of the zoo, renamed and with its `SIZES` edited,
-    sweeps the sizes it lists.
+    Every model file's `__main__` block is a verbatim copy of `mlp.py`'s, or
+    `rnnt.py`'s for a multi-model file, so `test_runs_standalone` covers them all
+    and a fix to one is made to every copy.
     """
-    source = os.path.join(catalog.MODELS_DIR, "mlp.py")
-    with open(source) as f:
-        text = f.read()
-    copy = tmp_path / "my_mlp.py"
-    copy.write_text(text + "\nSIZES = SIZES[:1]\n")
-    spec = importlib.util.spec_from_file_location("my_mlp", copy)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    assert _main_block(model_name) in (_main_block("mlp"), _main_block("rnnt"))
 
-    calls = []
-    monkeypatch.setattr(module, "instance", lambda **kw: calls.append(kw) or {})
-    monkeypatch.setattr(vm, "vollo_info", lambda **kw: None)
-    list(module.main(config="V80"))
 
-    assert calls == [{**catalog.split(catalog.sizes("mlp")[0])[0], "config": "V80"}]
+@pytest.mark.parametrize("model_name", ["mlp", "rnnt"])
+@beartype
+def test_runs_standalone(model_name: str):
+    """
+    A model file runs as `python -c <source>`, as the Vollo sandbox runs it,
+    with `vollo_model_zoo` unimportable: so no `__file__`, and nothing beside
+    it to import. One single-model and one multi-model file; the others share
+    their `__main__` (see `test_main_block_is_shared`).
+    """
+    with open(os.path.join(catalog.MODELS_DIR, f"{model_name}.py")) as f:
+        source = f.read()
+    script = "import sys; sys.modules['vollo_model_zoo'] = None\n" + source
+    out = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, check=True
+    )
+    assert "us\n" in out.stdout
 
 
 @pytest.mark.parametrize("model_name", _MODELS)
