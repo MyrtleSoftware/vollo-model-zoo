@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (Vollo SDK 30.1.0, model zoo 0.6.0)
+# Vollo Model Zoo Benchmarks (Vollo SDK 30.1.0, model zoo 0.7.0)
 
 Compute latency for an approximately 1-million parameter model.
 
@@ -28,6 +28,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | gru | 0.77 | 1.03 | fp32=False, input=512, hidden=384, layers=1 |
 | ffn-swiglu | 1.25 | 1.26 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.25 | 4.23 | layers=4, channels=64, kernel_size=64 |
+| alphaqubit | 9.85 | 9.86 | part=step, d=3, cycles=6, layers=3 |
 
 ## Configuration: V80
 
@@ -53,6 +54,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | gru | 0.85 | 1.14 | fp32=False, input=512, hidden=384, layers=1 |
 | ffn-swiglu | 1.38 | 1.38 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.38 | 4.66 | layers=4, channels=64, kernel_size=64 |
+| alphaqubit | 10.84 | 10.84 | part=step, d=3, cycles=6, layers=3 |
 
 ## Configuration: NT400D11
 
@@ -78,6 +80,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | gru | 0.87 | 1.16 | fp32=False, input=512, hidden=384, layers=1 |
 | ffn-swiglu | 1.43 | 1.43 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.52 | 3.00 | layers=4, channels=64, kernel_size=64 |
+| alphaqubit | 14.48 | 14.48 | part=step, d=3, cycles=6, layers=3 |
 
 ## Configuration: IA-840f
 
@@ -103,6 +106,7 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | gru | 0.66 | 0.87 | fp32=False, input=512, hidden=384, layers=1 |
 | ffn-swiglu | 1.18 | 1.18 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.53 | 3.02 | layers=4, channels=64, kernel_size=64 |
+| alphaqubit | 10.07 | 10.08 | part=step, d=3, cycles=6, layers=3 |
 
 ## Configuration: IA-420f
 
@@ -128,10 +132,46 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | gru | 0.87 | 1.16 | fp32=False, input=512, hidden=384, layers=1 |
 | ffn-swiglu | 1.43 | 1.43 | dim=288, hidden=1152, activation=SwiGLU, fused=True |
 | cnn | 1.52 | 3.00 | layers=4, channels=64, kernel_size=64 |
+| alphaqubit | 14.48 | 14.48 | part=step, d=3, cycles=6, layers=3 |
 
 ## Performance over time
 
 Click to expand each plot:
+
+<details>
+<summary>alphaqubit_IA_420f</summary>
+
+![alphaqubit_IA_420f](../plots/alphaqubit_IA_420f.svg)
+
+</details>
+
+<details>
+<summary>alphaqubit_IA_840f</summary>
+
+![alphaqubit_IA_840f](../plots/alphaqubit_IA_840f.svg)
+
+</details>
+
+<details>
+<summary>alphaqubit_NT400D11</summary>
+
+![alphaqubit_NT400D11](../plots/alphaqubit_NT400D11.svg)
+
+</details>
+
+<details>
+<summary>alphaqubit_V80LL</summary>
+
+![alphaqubit_V80LL](../plots/alphaqubit_V80LL.svg)
+
+</details>
+
+<details>
+<summary>alphaqubit_V80</summary>
+
+![alphaqubit_V80](../plots/alphaqubit_V80.svg)
+
+</details>
 
 <details>
 <summary>cnn_IA_420f</summary>
