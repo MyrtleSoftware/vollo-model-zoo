@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.13"
-# dependencies = ["beartype", "torch", "vollo-compiler", "vollo-torch"]
+# dependencies = ["beartype", "tabulate", "torch", "vollo-compiler", "vollo-torch"]
 # ///
 """
 Stateful, two-entrypoint RNN-T model for the Vollo model zoo.
@@ -17,6 +17,7 @@ import torch
 import vollo_compiler
 import vollo_torch
 from beartype import beartype
+from tabulate import tabulate
 from torch import Tensor, nn
 
 
@@ -394,11 +395,10 @@ SIZES = [
 
 
 if __name__ == "__main__":
-    # Standalone: `uv run <this file>` prints each size's VM latency on a V80.
-    import vollo_torch as vt
-
+    # Standalone: `uv run <this file>` prints each size's VM compute latency on a V80.
     config = vollo_compiler.Config.amd_v80_c6b32()
     print(f"VM estimates on {config.name}:")
+    rows = []
     for size in SIZES:
         features = size.get("_features", [])
         if "_experimental" in size or not set(features) <= set(config.features):
@@ -408,20 +408,29 @@ if __name__ == "__main__":
         builder = vollo_compiler.ProgramBuilder(config, remember_allocations=True)
         try:
             for entry in args["entries"]:
-                model, _ = vt.fx.prepare_shape(entry["model"], *entry["inputs"])
-                nnir = vt.fx.nnir.to_nnir(model)
+                model, _ = vollo_torch.fx.prepare_shape(
+                    entry["model"], *entry["inputs"]
+                )
+                nnir = vollo_torch.fx.nnir.to_nnir(model)
                 if entry.get("streaming_axis") is not None:
                     nnir, _ = nnir.streaming_transform(entry["streaming_axis"])
                 builder.add_nnir(nnir, entry["name"])
             program = builder.to_program()
             program.pack()
         except (vollo_compiler.AllocationError, vollo_compiler.SaveError) as e:
-            print(f"\t{kwargs}: too big for {config.name} ({type(e).__name__})")
+            rows.append({**kwargs, "cycles": f"too big ({type(e).__name__})"})
             continue
-        print(f"\t{kwargs}:")
         for i, entry in enumerate(args["entries"]):
-            cycles = program.cycle_count_per_inference(model_index=i)
-            latency = program.compute_duration_per_inference_us(
-                model_index=i, spaced=True
+            params = sum(p.numel() for p in entry["model"].parameters())
+            rows.append(
+                {
+                    **kwargs,
+                    "model": entry["name"],
+                    "params (M)": params / 1e6,
+                    "cycles": program.cycle_count_per_inference(model_index=i),
+                    "compute latency (us)": program.compute_duration_per_inference_us(
+                        model_index=i, spaced=True
+                    ),
+                }
             )
-            print(f"\t\t{entry['name']}: {cycles} cycles, {latency:.3f}us")
+    print(tabulate(rows, headers="keys", floatfmt=".2f"))

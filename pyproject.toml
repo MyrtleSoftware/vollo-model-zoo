@@ -15,6 +15,7 @@ dependencies = [
   "tqdm",
   "packaging",
   "numpy",
+  "tabulate",
 ]
 
 [project.scripts]

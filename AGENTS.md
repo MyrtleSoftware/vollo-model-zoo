@@ -182,7 +182,7 @@ building on its sibling `mamba2.py`. `mlp.py` is the minimal example,
 ```python
 # /// script                     # PEP 723: what `uv run <file>` installs
 # requires-python = ">=3.13"
-# dependencies = ["beartype", "torch", "vollo-compiler", "vollo-torch"]
+# dependencies = ["beartype", "tabulate", "torch", "vollo-compiler", "vollo-torch"]
 # ///
 
 class MyModel(nn.Module):        # public, plain PyTorch, @beartype'd __init__

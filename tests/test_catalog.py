@@ -105,7 +105,7 @@ def test_runs_standalone(model_name: str):
     out = subprocess.run(
         [sys.executable, "-c", script], capture_output=True, text=True, check=True
     )
-    assert "us\n" in out.stdout
+    assert "compute latency (us)" in out.stdout and "too big" not in out.stdout
 
 
 @pytest.mark.parametrize("model_name", _MODELS)
