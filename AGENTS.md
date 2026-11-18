@@ -489,6 +489,8 @@ Two levels further out:
 - `test_catalog.py` — `SIZES` reads the same from source as on import, every
   size has its own name and builds, listing the sizes needs only the standard
   library, and a model file imports nothing from the zoo and runs as a script.
+- `test_zoo.py` — `zoo <model>` prints a markdown table, since its output gets
+  pasted into issues and PRs.
 - `test_gru.py` — numerical equivalence against `torch.nn.GRU`, including the
   **state-dict conversion** from PyTorch layout to the zoo's split-linear layout.
 - `test_mamba1.py` / `test_mamba2.py` — equivalence against

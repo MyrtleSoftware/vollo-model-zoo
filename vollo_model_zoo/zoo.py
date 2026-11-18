@@ -2,6 +2,7 @@ import argparse
 import json
 
 from beartype import beartype
+from tabulate import tabulate
 
 from vollo_model_zoo import catalog, vm
 from vollo_model_zoo.vm import (
@@ -11,11 +12,6 @@ from vollo_model_zoo.vm import (
     get_results,
     to_dict,
 )
-
-
-@beartype
-def print_table_row(row: list[str]) -> None:
-    print("| " + " | ".join(row) + " |")
 
 
 @beartype
@@ -110,37 +106,23 @@ def run_model(model: str, config: str, use_json: bool) -> int:
 
     print(f"VM results for model '{model}' with {config} config:\n")
 
-    headers = [
-        "Parameters (M)",
-        "Cycles",
-        "Latency (us)",
-        "Latency contiguous (us)",
-        " ".join("" for _ in range(50)) + "Metadata",
-    ]
-
-    # This generates a markdown table
-    print_table_row(headers)
-    print_table_row([f"{'':-<{len(h) - 1}}:" for h in headers])
-
+    rows = []
     for r in results:
         if not isinstance(r, Ok):
             continue
+        meta = {k: v for k, v in (r.meta or {}).items() if not k.startswith("_")}
+        rows.append(
+            {
+                "params (M)": r.param_count / 1e6,
+                "compute cycles": r.cycle_count,
+                "compute latency (us)": r.latency_spaced.microseconds,
+                "contiguous latency (us)": r.latency_contiguous.microseconds,
+                **meta,
+            }
+        )
 
-        # Metadata is optional
-        meta = {} if r.meta is None else r.meta
-
-        row = [
-            f"{r.param_count / 1e6:4.1f}",
-            f"{r.cycle_count}",
-            f"{r.latency_spaced.microseconds:4.1f}",
-            f"{r.latency_contiguous.microseconds:4.1f}",
-            ",".join(f"{k}={v}" for k, v in meta.items() if not k.startswith("_")),
-        ]
-
-        # Pad each cell to the width of the header
-        row = [x.rjust(len(h)) for x, h in zip(row, headers)]
-
-        print_table_row(row)
+    # A markdown table, so it pastes into an issue or PR as it is.
+    print(tabulate(rows, headers="keys", tablefmt="pipe", floatfmt=".2f"))
 
     print(
         "\nNote: These latencies are from a (near cycle-accurate) software model but without IO (non-negligible for some models)"
