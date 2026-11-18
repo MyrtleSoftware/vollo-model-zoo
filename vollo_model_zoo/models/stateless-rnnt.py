@@ -338,11 +338,25 @@ def instance(
 
 
 SIZES = [
-    # 1M baseline used by the model-zoo test suite: the encoder's 0.98M
-    # parameters (the predictor has 0.43M).
+    # 1M parameters with the predictor and encoder counted together (0.43M +
+    # 0.65M, sharing the joint): kept so its benchmark history carries on.
     dict(
         n_classes=256,
         pred_n_hid=192,
+        pred_rnn_layers=1,
+        in_feats=40,
+        enc_n_hid=176,
+        enc_pre_rnn_layers=1,
+        enc_post_rnn_layers=1,
+        joint_n_hid=288,
+        fp8_weights=False,
+    ),
+    # 1M baseline used by the model-zoo test suite: the encoder's 0.98M
+    # parameters. The predictor is wider than above too, so neither entry's
+    # metadata, which names its plot line, repeats the size above's.
+    dict(
+        n_classes=256,
+        pred_n_hid=224,
         pred_rnn_layers=1,
         in_feats=40,
         enc_n_hid=224,
