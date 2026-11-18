@@ -338,13 +338,25 @@ def instance(
 
 
 SIZES = [
-    # 1M baseline used by the model-zoo test suite.
+    # ~1M parameters with the predictor and encoder together
     dict(
         n_classes=256,
         pred_n_hid=192,
         pred_rnn_layers=1,
         in_feats=40,
         enc_n_hid=176,
+        enc_pre_rnn_layers=1,
+        enc_post_rnn_layers=1,
+        joint_n_hid=288,
+        fp8_weights=False,
+    ),
+    # ~1M parameter baseline: the encoder
+    dict(
+        n_classes=256,
+        pred_n_hid=224,
+        pred_rnn_layers=1,
+        in_feats=40,
+        enc_n_hid=224,
         enc_pre_rnn_layers=1,
         enc_post_rnn_layers=1,
         joint_n_hid=288,

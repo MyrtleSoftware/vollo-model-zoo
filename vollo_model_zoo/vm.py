@@ -235,20 +235,13 @@ def vollo_multi_model_info(
     except (AllocationError, SaveError, ValueError) as error:
         return [error]
 
-    # Shared modules, are counted once.
-    parameters = {
-        id(parameter): parameter
-        for entry in entries
-        for parameter in entry.model.parameters()
-    }
-    parameter_count = sum(parameter.numel() for parameter in parameters.values())
-
     results = []
     for model_index, entry in enumerate(entries):
         results.append(
             Ok(
                 config=config,
-                param_count=parameter_count,
+                # Each entry's own, so a module shared between entries counts in each.
+                param_count=sum(p.numel() for p in entry.model.parameters()),
                 cycle_count=program.cycle_count_per_inference(model_index=model_index),
                 latency_spaced=Microseconds(
                     program.compute_duration_per_inference_us(
