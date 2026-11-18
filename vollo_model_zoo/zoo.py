@@ -61,6 +61,12 @@ def main() -> int:
     )
 
     parser.add_argument(
+        "--markdown",
+        action="store_true",
+        help="Print the table as markdown, to paste into an issue or PR",
+    )
+
+    parser.add_argument(
         "--experimental",
         action="store_true",
         help="Allow running experimental models, and sweep experimental sizes",
@@ -73,7 +79,7 @@ def main() -> int:
         return 1
     vm.sweep_experimental = args.experimental
 
-    return run_model(args.model, config, args.json)
+    return run_model(args.model, config, args.json, args.markdown)
 
 
 @beartype
@@ -96,7 +102,7 @@ def check_experimental(model: str, experimental: bool) -> bool:
 
 
 @beartype
-def run_model(model: str, config: str, use_json: bool) -> int:
+def run_model(model: str, config: str, use_json: bool, markdown: bool = False) -> int:
     # This is a generator
     results = get_results(model, config)
 
@@ -121,15 +127,15 @@ def run_model(model: str, config: str, use_json: bool) -> int:
             }
         )
 
-    # A markdown table, so it pastes into an issue or PR as it is.
-    print(tabulate(rows, headers="keys", tablefmt="pipe", floatfmt=".2f"))
+    tablefmt = "pipe" if markdown else "simple"
+    print(tabulate(rows, headers="keys", tablefmt=tablefmt, floatfmt=".2f"))
 
     print(
         "\nNote: These latencies are from a (near cycle-accurate) software model but without IO (non-negligible for some models)"
     )
 
     print(
-        "\nTip: this is human readable output; use -j/--json for machine-readable output."
+        "\nTip: use --markdown for a markdown table, or -j/--json for machine-readable output."
     )
 
     return 0
