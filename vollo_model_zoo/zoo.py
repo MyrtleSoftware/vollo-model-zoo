@@ -53,14 +53,16 @@ def main() -> int:
         help=f"Hardware configuration (FPGA) to simulate (default: {DEFAULT_CONFIG})",
     )
 
-    parser.add_argument(
+    output = parser.add_mutually_exclusive_group()
+
+    output.add_argument(
         "-j",
         "--json",
         action="store_true",
         help="Output results in JSON format",
     )
 
-    parser.add_argument(
+    output.add_argument(
         "--markdown",
         action="store_true",
         help="Print the table as markdown, to paste into an issue or PR",

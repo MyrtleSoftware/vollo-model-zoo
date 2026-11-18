@@ -1,6 +1,8 @@
 import re
 import sys
 
+import pytest
+
 from vollo_model_zoo import zoo
 
 
@@ -28,3 +30,9 @@ def test_plain_by_default(monkeypatch, capsys):
     out = _zoo(monkeypatch, capsys, "mlp")
     assert "compute latency (us)" in out
     assert "|" not in out
+
+
+def test_markdown_or_json(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["zoo", "mlp", "--markdown", "-j"])
+    with pytest.raises(SystemExit):
+        zoo.main()
