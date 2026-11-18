@@ -1,7 +1,7 @@
 """
 The zoo's models and their sizes, as data.
 
-Each model file lists the sizes its `main()` sweeps in a top-level `SIZES`, and
+Each model file lists the sizes the zoo sweeps in a top-level `SIZES`, and
 builds any one of them with `instance(**size, config=...)`. A file may also set
 a top-level `EXPERIMENTAL` to why the whole model is experimental. This module
 reads both from the file's source rather than importing it, so the models can
@@ -179,10 +179,12 @@ def build(model: str, name: str, config: str, *, seed: int = 0) -> dict[str, Any
 
     Torch's CPU RNG is seeded with `seed` first, so the weights and inputs don't
     depend on what was built before, and restored after, so the caller's RNG is
-    left as it was. `main()` doesn't reseed between sizes, so its sweep
-    compiles different weights.
+    left as it was. `vm.get_results` doesn't reseed between sizes, so its
+    sweep compiles different weights.
     """
     import torch
+
+    from vollo_model_zoo import vm
 
     named = named_sizes(model)
     if name not in named:
@@ -194,7 +196,7 @@ def build(model: str, name: str, config: str, *, seed: int = 0) -> dict[str, Any
         # Not `torch.manual_seed`, which would also reseed every GPU, whose
         # RNGs `fork_rng(devices=[])` doesn't restore.
         torch.default_generator.manual_seed(seed)
-        return module.instance(**arguments, config=config)
+        return module.instance(**arguments, config=vm._config(config))
 
 
 def listing() -> dict[str, dict[str, Any]]:

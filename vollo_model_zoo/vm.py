@@ -204,17 +204,20 @@ def vollo_info(
 
 @beartype
 def vollo_multi_model_info(
-    entries: Sequence[MultiModelEntry],
+    entries: Sequence[dict],
     *,
     config: str,
     quick_compile: bool = False,
 ) -> list[Result]:
     """
-    Compile several PyTorch entry points into one Vollo program.
+    Compile several PyTorch entry points into one Vollo program. Each entry is
+    a plain dict of `MultiModelEntry`'s fields, which is what model files
+    return so they need not import the zoo.
     """
 
     if not entries:
         raise ValueError("Expected at least one multi-model entry")
+    entries = [MultiModelEntry(**entry) for entry in entries]
 
     try:
         builder = vc.ProgramBuilder(_config(config), remember_allocations=True)
@@ -388,22 +391,16 @@ def sweep(sizes: Sequence[dict], config: str) -> Generator[dict, None, None]:
 
 
 @beartype
-def get_results(
-    model_name: str, config: Optional[str]
-) -> Generator[Result, None, None]:
+def get_results(model_name: str, config: str) -> Generator[Result, None, None]:
     """
-    Import the specified model module and call its main() function, this is
-    expected to be a generator that yields Result objects.
+    Compile each size of the zoo model `model_name`'s `SIZES` that `config` can
+    run (see `sweep`), as built by its `instance`, and yield the results in
+    order.
     """
-    model_module_path = f"vollo_model_zoo.models.{model_name}"
-    model_module = importlib.import_module(model_module_path)
-
-    if not hasattr(model_module, "main"):
-        raise ImportError(
-            f"Model module '{model_module_path}' does not have a callable main() function."
-        )
-
-    if config is None:
-        return model_module.main()
-    else:
-        return model_module.main(config=config)
+    module = importlib.import_module(f"vollo_model_zoo.models.{model_name}")
+    for size in sweep(module.SIZES, config):
+        built = module.instance(**size, config=_config(config))
+        if "entries" in built:
+            yield from vollo_multi_model_info(**built, config=config)
+        else:
+            yield vollo_info(**built, config=config)

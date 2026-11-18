@@ -165,14 +165,14 @@ def test_readout_matches_paper_reference():
 @beartype
 def test_vm_matches_pytorch(config: str, size: dict):
     """
-    Compiles the program that `main()` compiles for the config and runs it in
+    Compiles the program that the zoo compiles for the config and runs it in
     the VM: the step is streamed one group of cycles per inference, and the
     readout runs once. With `bit_accurate=False` the VM computes in fp32, so
     this tests the compilation (the streaming of both RG-LRU states,
     attention's matmuls) and not bf16 accuracy.
     """
     torch.manual_seed(0)
-    args = alphaqubit.instance(**size, config=config)
+    args = alphaqubit.instance(**size, config=CONFIGS[config])
     model = randomise(args["model"], dtype=torch.float32)
     if size["part"] == "step":
         x = syndromes(size["distance"], steps=4).float()

@@ -1,18 +1,23 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = ["beartype", "tabulate", "torch", "vollo-compiler", "vollo-torch"]
+# ///
 """
 Stateful, two-entrypoint RNN-T model for the Vollo model zoo.
 
 The encoder/joint and prediction/joint entry points share the final joint
-network.  :func:`main` compiles both entry points into one program, matching
+network.  The zoo compiles both entry points into one program, matching
 the layout used by the ASR runtime.
 """
 
-from collections.abc import Generator, Sequence
+from collections.abc import Sequence
 from contextlib import nullcontext
-from pathlib import Path
 
 import torch
+import vollo_compiler
 import vollo_torch
 from beartype import beartype
+from tabulate import tabulate
 from torch import Tensor, nn
 
 
@@ -266,8 +271,6 @@ def multi_model_entries(
     """
     Construct the two entry points with one shared joint network.
     """
-    from vollo_model_zoo.vm import MultiModelEntry
-
     joint_network = nn.Sequential(
         nn.ReLU(),
         nn.Linear(joint_n_hid, n_classes),
@@ -291,7 +294,7 @@ def multi_model_entries(
 
     time, batch = 3, 1
     return [
-        MultiModelEntry(
+        dict(
             name="predictor",
             model=prediction,
             inputs=(
@@ -304,7 +307,7 @@ def multi_model_entries(
                 "joint_hidden": joint_n_hid,
             },
         ),
-        MultiModelEntry(
+        dict(
             name="encoder",
             model=encoder,
             inputs=(
@@ -333,7 +336,7 @@ def instance(
     enc_post_rnn_layers: int,
     joint_n_hid: int,
     fp8_weights: bool,
-    config: str,
+    config: vollo_compiler.Config,
 ) -> dict:
     return dict(
         entries=multi_model_entries(
@@ -391,17 +394,48 @@ SIZES = [
 ]
 
 
-@beartype
-def main(config: str = "V80") -> Generator:
-    from vollo_model_zoo.vm import sweep, vollo_multi_model_info
-
-    for size in sweep(SIZES, config):
-        yield from vollo_multi_model_info(
-            **instance(**size, config=config), config=config
-        )
-
-
 if __name__ == "__main__":
-    print(f"Model '{Path(__file__).stem}':")
-    for result in main():
-        print(f"\t{result}")
+    # Standalone: `uv run <this file>` prints each size's VM compute latency on a V80.
+    config = vollo_compiler.Config.amd_v80_c6b32()
+    print(f"VM estimates on {config.name}:")
+    rows = []
+    for size in SIZES:
+        features = size.get("_features", [])
+        if "_experimental" in size or not set(features) <= set(config.features):
+            continue
+        kwargs = {k: v for k, v in size.items() if not k.startswith("_")}
+        args = instance(**kwargs, config=config)
+        builder = vollo_compiler.ProgramBuilder(config, remember_allocations=True)
+        try:
+            for entry in args["entries"]:
+                model, _ = vollo_torch.fx.prepare_shape(
+                    entry["model"], *entry["inputs"]
+                )
+                nnir = vollo_torch.fx.nnir.to_nnir(model)
+                if entry.get("streaming_axis") is not None:
+                    nnir, _ = nnir.streaming_transform(entry["streaming_axis"])
+                builder.add_nnir(
+                    nnir, entry["name"], quick_compile=args.get("quick_compile", False)
+                )
+            program = builder.to_program()
+            program.pack()
+        except (vollo_compiler.AllocationError, vollo_compiler.SaveError) as e:
+            program = None
+            cycles, latency = f"too big ({type(e).__name__})", None
+        for i, entry in enumerate(args["entries"]):
+            params = sum(p.numel() for p in entry["model"].parameters())
+            if program is not None:
+                cycles = program.cycle_count_per_inference(model_index=i)
+                latency = program.compute_duration_per_inference_us(
+                    model_index=i, spaced=True
+                )
+            rows.append(
+                {
+                    "model": entry["name"],
+                    "params (M)": params / 1e6,
+                    "compute cycles": cycles,
+                    "compute latency (us)": latency,
+                    **kwargs,
+                }
+            )
+    print(tabulate(rows, headers="keys", floatfmt=".2f"))

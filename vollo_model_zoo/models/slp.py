@@ -1,8 +1,14 @@
-from collections.abc import Generator
-from pathlib import Path
+# /// script
+# requires-python = ">=3.13"
+# dependencies = ["beartype", "tabulate", "torch", "vollo-compiler", "vollo-torch"]
+# ///
+
 
 import torch
+import vollo_compiler
+import vollo_torch
 from beartype import beartype
+from tabulate import tabulate
 from torch import nn
 
 
@@ -45,7 +51,9 @@ class SLP(nn.Module):
 
 
 @beartype
-def instance(in_features: int, out_features: int, config: str) -> dict:
+def instance(
+    in_features: int, out_features: int, config: vollo_compiler.Config
+) -> dict:
     input = torch.randn(1, 5, in_features)
 
     model = SLP(in_features=in_features, out_features=out_features)
@@ -69,15 +77,40 @@ SIZES = [
 ]
 
 
-@beartype
-def main(config: str = "V80") -> Generator:
-    from vollo_model_zoo.vm import sweep, vollo_info
-
-    for size in sweep(SIZES, config):
-        yield vollo_info(**instance(**size, config=config), config=config)
-
-
 if __name__ == "__main__":
-    print(f"Model '{Path(__file__).stem}':")
-    for result in main():
-        print(f"\t{result}")
+    # Standalone: `uv run <this file>` prints each size's VM compute latency on a V80.
+    config = vollo_compiler.Config.amd_v80_c6b32()
+    print(f"VM estimates on {config.name}:")
+    rows = []
+    for size in SIZES:
+        features = size.get("_features", [])
+        if "_experimental" in size or not set(features) <= set(config.features):
+            continue
+        kwargs = {k: v for k, v in size.items() if not k.startswith("_")}
+        args = instance(**kwargs, config=config)
+        model, _ = vollo_torch.fx.prepare_shape(args["model"], args["x"])
+        nnir = vollo_torch.fx.nnir.to_nnir(model)
+        if args["time_axis"] is not None:
+            nnir, _ = nnir.streaming_transform(args["time_axis"])
+        try:
+            program = nnir.to_program(
+                config,
+                allow_dynamic_weights=args.get("allow_dynamic_weights", False),
+                quick_compile=args.get("quick_compile", False),
+            )
+            program.pack()
+        except (vollo_compiler.AllocationError, vollo_compiler.SaveError) as e:
+            cycles, latency = f"too big ({type(e).__name__})", None
+        else:
+            cycles = program.cycle_count_per_inference()
+            latency = program.compute_duration_per_inference_us(spaced=True)
+        params = sum(p.numel() for p in args["model"].parameters())
+        rows.append(
+            {
+                "params (M)": params / 1e6,
+                "compute cycles": cycles,
+                "compute latency (us)": latency,
+                **kwargs,
+            }
+        )
+    print(tabulate(rows, headers="keys", floatfmt=".2f"))

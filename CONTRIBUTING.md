@@ -6,11 +6,12 @@ We follow the Hugging Face model, each example model should be self-contained
 in a single file. This enables the easiest copy-paste reproducibility for users
 and (more importantly) makes it easier to understand a model without jumping
 between files in an editor. Hence, each model file should not directly import
-any `vollo_model_zoo` components.
+any `vollo_model_zoo` components: it runs by itself with `uv run <file>.py`,
+which installs just the PyPI packages listed in its header.
 
 ## Model sizes
 
-Each model file lists the sizes its `main()` sweeps in a top-level `SIZES`, one
+Each model file lists the sizes the zoo sweeps in a top-level `SIZES`, one
 `dict` of `instance` arguments per size:
 
 ```python

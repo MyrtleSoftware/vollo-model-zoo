@@ -37,8 +37,12 @@ uv run pre-commit install          # once; hooks = isort, black, codespell
 uv run pre-commit run --all-files  # lint
 ```
 
-A model file also runs directly (`uv run python vollo_model_zoo/models/mlp.py`)
-via its `__main__` block.
+A model file also runs by itself, outside the repo too: `uv run <file>.py`
+installs only the PyPI packages in its
+[inline script metadata](https://docs.astral.sh/uv/guides/scripts/) header, and
+its `__main__` block prints each size's VM estimate on a V80. That env is
+resolved fresh rather than from `uv.lock`; `uv run python <file>.py` uses the
+project's instead.
 
 `ci.yml` runs `uv lock --check`, `pre-commit run --all-files`, then `pytest -x`.
 
@@ -170,15 +174,22 @@ scripts/          backtest_github_versions.sh — benchmark older SDK releases
 
 **We follow the Hugging Face single-file model style** (see `CONTRIBUTING.md`).
 Each file must be self-contained, copy-pasteable, and must not import
-`vollo_model_zoo` at module level. Hard rule — it is what makes the zoo useful
-to customers. `mlp.py` is the minimal example, `mamba2.py` the involved one:
+`vollo_model_zoo` at all. Hard rule — it is what makes the zoo useful to
+customers, and `test_catalog.py` checks it. `nano-llm.py` is the one exception,
+building on its sibling `mamba2.py`. `mlp.py` is the minimal example,
+`mamba2.py` the involved one:
 
 ```python
+# /// script                     # PEP 723: what `uv run <file>` installs
+# requires-python = ">=3.13"
+# dependencies = ["beartype", "tabulate", "torch", "vollo-compiler", "vollo-torch"]
+# ///
+
 class MyModel(nn.Module):        # public, plain PyTorch, @beartype'd __init__
     ...                          # helper submodules are _private
 
 @beartype
-def instance(<hyperparams>, config: str) -> dict:  # one size, as vollo_info's arguments
+def instance(<hyperparams>, config: vollo_compiler.Config) -> dict:  # one size, as vollo_info's arguments
     input = torch.randn(...)                    # a representative single-batch input
     model = MyModel(...)
     return dict(
@@ -189,25 +200,19 @@ def instance(<hyperparams>, config: str) -> dict:  # one size, as vollo_info's a
 
 SIZES = [dict(...), dict(...)]                 # size sweep, smallest first; plain data
 
-@beartype
-def main(config: str = "V80") -> Generator:    # discovered and called by vm.get_results
-    # Deferred import: keeps the file standalone
-    from vollo_model_zoo.vm import sweep, vollo_info
-    for size in sweep(SIZES, config):
-        yield vollo_info(**instance(**size, config=config), config=config)
-
-if __name__ == "__main__":
-    print(f"Model '{Path(__file__).stem}':")
-    for result in main():
-        print(f"\t{result}")
+if __name__ == "__main__":       # standalone only; the zoo never runs this
+    ...                          # mlp.py's (rnnt.py's for multi-model), verbatim; tested
 ```
 
 Discovery is by filename: `catalog.models()` lists `models/*.py` not starting
-with `__`, and `vm.get_results()` `importlib`-imports it and calls
-`main(config=...)`. Hence:
+with `__`, and `vm.get_results()` `importlib`-imports it and compiles each size
+`vm.sweep(SIZES, config)` allows, as built by `instance`. Hence:
 
 - The **filename is the CLI model name** (`mlp-res-rms.py` → `uv run zoo mlp-res-rms`).
-- `main` must be a generator, taking `config` as a keyword argument.
+- `instance` gets the config as a `vollo_compiler.Config`, so a file can read
+  e.g. `config.num_cores` (`mamba2.py`, `swa.py`) without the zoo's `CONFIGS`.
+- The `__main__` block is a copy of the zoo's compile path, not a call into it:
+  keep it to the plain compiler API, and in step with `vm.vollo_info`'s options.
 - Hyphenated files are importable only via `importlib.import_module`, which tests
   must use for them.
 
@@ -227,9 +232,8 @@ at a time with `catalog.build(model, name, config)`. So:
 - What a size needs is part of its data, as `_`-prefixed keys that `sweep`
   drops from `instance`'s arguments: `_features=["fp8"]` (`rnnt.py`) for what
   the config must provide, and `_experimental="why"` (`nano-llm.py`) for a size
-  swept only on request. `main()` sweeps with `sweep(SIZES, config)` and must
-  not filter sizes any other way, or the catalog lists sizes `main()` never
-  runs.
+  swept only on request. The zoo filters sizes on nothing else, so the catalog
+  lists exactly what it runs.
 - A model that isn't yet supported says why in a top-level
   `EXPERIMENTAL = "..."` (`moe.py`), also plain data, and `zoo` runs it only
   with `--experimental`. See `catalog.py` for how that differs from an
@@ -238,7 +242,8 @@ at a time with `catalog.build(model, name, config)`. So:
   `python -m vollo_model_zoo.catalog` prints) and `catalog.build`; keep those
   stable. The rest of `catalog.py` is the zoo's own.
 - A multi-model file's `instance` returns `dict(entries=[...])`, the arguments
-  of `vollo_multi_model_info`, which its `main()` calls instead (`rnnt.py`).
+  of `vollo_multi_model_info`, which the zoo calls instead (`rnnt.py`); each
+  entry is a plain dict of `vm.MultiModelEntry`'s fields.
 
 `tests/test_models.py` enforces on every model:
 
@@ -247,7 +252,7 @@ at a time with `catalog.build(model, name, config)`. So:
   accordingly.
 - At least one configuration in **0.95M–1.05M parameters**, the "baseline" size
   models are compared at. Show the arithmetic in a comment, as `lstm.py` does.
-- No `AllocationError`/`SaveError` on the default, `V80` or `V80LL` configs. Not
+- No `AllocationError`/`SaveError` on the `V80` or `V80LL` configs. Not
   fitting the smaller boards (`IA-420f`, etc.) is tolerated and omitted.
 - **A `ValueError` fails on _every_ config**, small boards included (the `case _`
   arm re-raises). `vollo_info` returns it as a value like the allocation errors,
@@ -323,7 +328,7 @@ What that means here:
 
 - `vollo_torch.Fp32Activations()` keeps recurrent state accurate over long
   sequences (`gru.py`'s `fp32`, `mamba2.py`'s `ssm_fp32`). Zoo convention: expose
-  it as a constructor flag and sweep both settings in `main()`, so the latency
+  it as a constructor flag and sweep both settings in `SIZES`, so the latency
   cost is visible in the table.
 - `vollo_torch.Fp8Weights()` halves weight storage on the Versal boards.
 - Inputs/outputs are bf16 unless `to_nnir` gets `inputs_precisions` /
@@ -476,11 +481,11 @@ Two levels further out:
 
 ## Tests
 
-- `test_models.py` — the bulk test: every model × (default + all 5 configs),
+- `test_models.py` — the bulk test: every model × all 5 configs,
   asserting the invariants above. Slow; scope with `-k`.
 - `test_catalog.py` — `SIZES` reads the same from source as on import, every
-  size has its own name and builds, and listing the sizes needs only the
-  standard library.
+  size has its own name and builds, listing the sizes needs only the standard
+  library, and a model file imports nothing from the zoo and runs as a script.
 - `test_gru.py` — numerical equivalence against `torch.nn.GRU`, including the
   **state-dict conversion** from PyTorch layout to the zoo's split-linear layout.
 - `test_mamba1.py` / `test_mamba2.py` — equivalence against
@@ -513,8 +518,8 @@ reference implementation.
     models are benchmarked and tested normally (`moe` is in `benchmarks/`).
   - An experimental **size** is left out of `sweep` unless
     `vm.sweep_experimental` is set, which `zoo --experimental` does, so
-    benchmarks never report it. `test_models.py` sets it for the default
-    config only, so the size is still compiled. `nano-llm`'s trained 140M size
+    benchmarks never report it. `test_models.py` sets it on every config,
+    so the size is still compiled. `nano-llm`'s trained 140M size
     is the current case: it needs four V80s' worth of weight store, so its
     `instance` passes `boards=4` to `vollo_info`, which compiles for that many
     boards' worth of the config's cores, as one program, tracking multi-board
@@ -523,8 +528,9 @@ reference implementation.
 
 ## Checklist: adding a model
 
-1. `vollo_model_zoo/models/<name>.py` following the contract above; no
-   `vollo_model_zoo` imports at module level.
+1. `vollo_model_zoo/models/<name>.py` following the contract above: the
+   `# /// script` header, no `vollo_model_zoo` imports anywhere, and `mlp.py`'s
+   `__main__` block (`rnnt.py`'s for multi-model) copied verbatim.
 2. A `SIZES` sweep: monotonic in params or latency, including one
    ~1M-parameter size; expose Vollo trade-offs (fp32 vs bf16, fused vs unfused)
    as paired entries.
