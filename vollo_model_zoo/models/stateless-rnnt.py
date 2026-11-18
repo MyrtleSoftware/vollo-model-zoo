@@ -398,19 +398,23 @@ if __name__ == "__main__":
                 nnir = vollo_torch.fx.nnir.to_nnir(model)
                 if entry.get("streaming_axis") is not None:
                     nnir, _ = nnir.streaming_transform(entry["streaming_axis"])
-                builder.add_nnir(nnir, entry["name"])
+                builder.add_nnir(
+                    nnir, entry["name"], quick_compile=args.get("quick_compile", False)
+                )
             program = builder.to_program()
             program.pack()
         except (vollo_compiler.AllocationError, vollo_compiler.SaveError) as e:
             program = None
             cycles, latency = f"too big ({type(e).__name__})", None
+        # Counted as the zoo does: parameters shared between entries once.
+        models = nn.ModuleList(entry["model"] for entry in args["entries"])
+        params = sum(p.numel() for p in models.parameters())
         for i, entry in enumerate(args["entries"]):
             if program is not None:
                 cycles = program.cycle_count_per_inference(model_index=i)
                 latency = program.compute_duration_per_inference_us(
                     model_index=i, spaced=True
                 )
-            params = sum(p.numel() for p in entry["model"].parameters())
             rows.append(
                 {
                     "model": entry["name"],

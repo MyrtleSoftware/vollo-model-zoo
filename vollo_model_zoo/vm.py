@@ -204,23 +204,20 @@ def vollo_info(
 
 @beartype
 def vollo_multi_model_info(
-    entries: Sequence[Union[MultiModelEntry, dict]],
+    entries: Sequence[dict],
     *,
     config: str,
     quick_compile: bool = False,
 ) -> list[Result]:
     """
     Compile several PyTorch entry points into one Vollo program. Each entry is
-    a `MultiModelEntry`, or its fields as a plain dict, which is what model
-    files return so they need not import the zoo.
+    a plain dict of `MultiModelEntry`'s fields, which is what model files
+    return so they need not import the zoo.
     """
 
     if not entries:
         raise ValueError("Expected at least one multi-model entry")
-    entries = [
-        entry if isinstance(entry, MultiModelEntry) else MultiModelEntry(**entry)
-        for entry in entries
-    ]
+    entries = [MultiModelEntry(**entry) for entry in entries]
 
     try:
         builder = vc.ProgramBuilder(_config(config), remember_allocations=True)
