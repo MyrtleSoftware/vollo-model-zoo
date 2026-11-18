@@ -1,3 +1,4 @@
+from collections import defaultdict
 from itertools import pairwise
 
 import pytest
@@ -39,10 +40,14 @@ def test_models(model_name: str, config: str, monkeypatch):
 
     assert len(results) > 0, f"Model {model_name} returned no results"
 
-    param_sorted = is_sorted(results, key=lambda r: r.param_count)
-    speed_sorted = is_sorted(results, key=lambda r: r.latency_spaced.microseconds)
-
-    assert param_sorted or speed_sorted
+    # Each entry of a multi-model file (its `prog`) is a sweep of its own.
+    sweeps = defaultdict(list)
+    for r in results:
+        sweeps[(r.meta or {}).get("prog")].append(r)
+    for sweep in sweeps.values():
+        param_sorted = is_sorted(sweep, key=lambda r: r.param_count)
+        speed_sorted = is_sorted(sweep, key=lambda r: r.latency_spaced.microseconds)
+        assert param_sorted or speed_sorted
 
     # There should be at least one result close to 1-mill parameters, aka the "baseline"
     assert any(map(lambda r: 0.95e6 < r.param_count < 1.05e6, results))

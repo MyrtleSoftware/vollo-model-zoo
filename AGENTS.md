@@ -249,9 +249,12 @@ at a time with `catalog.build(model, name, config)`. So:
 
 - At least one yielded `Ok` result.
 - A sweep monotonic in `param_count` **or** `latency_spaced` — order `SIZES`
-  accordingly.
+  accordingly. A multi-model file's entries are each checked as a sweep of
+  their own.
 - At least one configuration in **0.95M–1.05M parameters**, the "baseline" size
   models are compared at. Show the arithmetic in a comment, as `lstm.py` does.
+  A multi-model entry's `param_count` is its own model's, shared modules
+  included, so one entry must be in that range (`rnnt.py`'s encoder).
 - No `AllocationError`/`SaveError` on the `V80` or `V80LL` configs. Not
   fitting the smaller boards (`IA-420f`, etc.) is tolerated and omitted.
 - **A `ValueError` fails on _every_ config**, small boards included (the `case _`
