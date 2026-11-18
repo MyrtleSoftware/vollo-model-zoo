@@ -422,10 +422,8 @@ if __name__ == "__main__":
         except (vollo_compiler.AllocationError, vollo_compiler.SaveError) as e:
             program = None
             cycles, latency = f"too big ({type(e).__name__})", None
-        # Counted as the zoo does: parameters shared between entries once.
-        models = nn.ModuleList(entry["model"] for entry in args["entries"])
-        params = sum(p.numel() for p in models.parameters())
         for i, entry in enumerate(args["entries"]):
+            params = sum(p.numel() for p in entry["model"].parameters())
             if program is not None:
                 cycles = program.cycle_count_per_inference(model_index=i)
                 latency = program.compute_duration_per_inference_us(
