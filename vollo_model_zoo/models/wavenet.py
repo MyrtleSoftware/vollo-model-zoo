@@ -224,8 +224,6 @@ if __name__ == "__main__":
             continue
         kwargs = {k: v for k, v in size.items() if not k.startswith("_")}
         args = instance(**kwargs, config=config)
-        params = sum(p.numel() for p in args["model"].parameters())
-        row = {**kwargs, "params (M)": params / 1e6}
         model, _ = vollo_torch.fx.prepare_shape(args["model"], args["x"])
         nnir = vollo_torch.fx.nnir.to_nnir(model)
         if args["time_axis"] is not None:
@@ -238,11 +236,17 @@ if __name__ == "__main__":
             )
             program.pack()
         except (vollo_compiler.AllocationError, vollo_compiler.SaveError) as e:
-            row["cycles"] = f"too big ({type(e).__name__})"
+            cycles, latency = f"too big ({type(e).__name__})", None
         else:
-            row["cycles"] = program.cycle_count_per_inference()
-            row["compute latency (us)"] = program.compute_duration_per_inference_us(
-                spaced=True
-            )
-        rows.append(row)
+            cycles = program.cycle_count_per_inference()
+            latency = program.compute_duration_per_inference_us(spaced=True)
+        params = sum(p.numel() for p in args["model"].parameters())
+        rows.append(
+            {
+                "params (M)": params / 1e6,
+                "compute cycles": cycles,
+                "compute latency (us)": latency,
+                **kwargs,
+            }
+        )
     print(tabulate(rows, headers="keys", floatfmt=".2f"))

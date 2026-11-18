@@ -418,19 +418,22 @@ if __name__ == "__main__":
             program = builder.to_program()
             program.pack()
         except (vollo_compiler.AllocationError, vollo_compiler.SaveError) as e:
-            rows.append({**kwargs, "cycles": f"too big ({type(e).__name__})"})
-            continue
+            program = None
+            cycles, latency = f"too big ({type(e).__name__})", None
         for i, entry in enumerate(args["entries"]):
+            if program is not None:
+                cycles = program.cycle_count_per_inference(model_index=i)
+                latency = program.compute_duration_per_inference_us(
+                    model_index=i, spaced=True
+                )
             params = sum(p.numel() for p in entry["model"].parameters())
             rows.append(
                 {
-                    **kwargs,
                     "model": entry["name"],
                     "params (M)": params / 1e6,
-                    "cycles": program.cycle_count_per_inference(model_index=i),
-                    "compute latency (us)": program.compute_duration_per_inference_us(
-                        model_index=i, spaced=True
-                    ),
+                    "compute cycles": cycles,
+                    "compute latency (us)": latency,
+                    **kwargs,
                 }
             )
     print(tabulate(rows, headers="keys", floatfmt=".2f"))
