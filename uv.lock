@@ -1639,10 +1639,10 @@ wheels = [
 
 [[package]]
 name = "vollo-compiler"
-version = "30.1.0"
+version = "30.1.1"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/a9/b4be30bea828192728b2247ea837888100841be0ad6310c04eb29c456d46/vollo_compiler-30.1.0-cp37-abi3-manylinux2014_x86_64.whl", hash = "sha256:27560a75567bd9d6264ebe20f62c07cb3336f797d5b623ac9d7f8985de32c1a6", size = 5609885, upload-time = "2026-11-11T16:09:39.356Z" },
+    { url = "https://files.pythonhosted.org/packages/58/56/4f62139a3a21d2737bdfbcac629e711332ad61947dbe47d42e2d618909ae/vollo_compiler-30.1.1-cp37-abi3-manylinux2014_x86_64.whl", hash = "sha256:a783f85f6fbc7adb00e15c97e6b10b9c1d5e250bd5bb98ddeb1778d1930e9f8b", size = 4580779, upload-time = "2026-11-20T15:39:22.585Z" },
 ]
 
 [[package]]
@@ -1698,7 +1698,7 @@ dev = [
 
 [[package]]
 name = "vollo-torch"
-version = "30.1.0"
+version = "30.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -1706,5 +1706,5 @@ dependencies = [
     { name = "vollo-compiler" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4b/5d/b920e7720d829577c44d1269165d3305730bc0de34ab01c2121a49e8897e/vollo_torch-30.1.0-py3-none-any.whl", hash = "sha256:65f4e802bde37cfb8912f74378e77b6a387fbb30fad1bdc0ec175c7cee75e0be", size = 43763, upload-time = "2026-11-11T16:09:43.112Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/6e/b432339e6b5b053d7855b3ce87ceb8df058aa0896a7023ca5dd1e392c51b/vollo_torch-30.1.1-py3-none-any.whl", hash = "sha256:6b96e973809c7336acc84f25afa53960035f097147105cfafedcf8c39c9d3bb1", size = 43763, upload-time = "2026-11-20T15:39:25.859Z" },
 ]
