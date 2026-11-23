@@ -1,4 +1,4 @@
-# Vollo Model Zoo Benchmarks (Vollo SDK 30.1.0, model zoo 0.7.0)
+# Vollo Model Zoo Benchmarks (Vollo SDK 30.1.1, model zoo 0.8.0)
 
 Compute latency for an approximately 1-million parameter model.
 
@@ -11,10 +11,10 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.42 | 2.57 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.05 | 1.45 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 3.33 | 3.76 | masked=True, partitions=6, dim=224, window=32, layers=2 |
-| stateless-rnnt | 1.04 | 1.04 | prog=predictor, hidden=192, joint_hidden=288 |
+| stateless-rnnt | 2.15 | 2.15 | prog=encoder, hidden=224, joint_hidden=288 |
 | ssm | 0.72 | 0.72 | dim=576, hidden=448 |
 | slp | 0.88 | 0.89 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.68 | 0.68 | prog=predictor, hidden=192, joint_hidden=288 |
+| rnnt | 1.27 | 1.45 | prog=encoder, hidden=224, joint_hidden=288 |
 | resmlp | 6.63 | 6.63 | dim=160, patches=9, layers=5, activation=ReLU |
 | qec-lstm | 0.95 | 1.03 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 2.78 | 4.80 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
@@ -37,10 +37,10 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.66 | 2.83 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.16 | 1.60 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 3.66 | 4.13 | masked=True, partitions=6, dim=224, window=32, layers=2 |
-| stateless-rnnt | 1.14 | 1.14 | prog=predictor, hidden=192, joint_hidden=288 |
+| stateless-rnnt | 2.36 | 2.36 | prog=encoder, hidden=224, joint_hidden=288 |
 | ssm | 0.79 | 0.79 | dim=576, hidden=448 |
 | slp | 0.97 | 0.98 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.75 | 0.75 | prog=predictor, hidden=192, joint_hidden=288 |
+| rnnt | 1.40 | 1.60 | prog=encoder, hidden=224, joint_hidden=288 |
 | resmlp | 7.29 | 7.30 | dim=160, patches=9, layers=5, activation=ReLU |
 | qec-lstm | 1.04 | 1.14 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 3.06 | 5.28 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
@@ -63,10 +63,10 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.93 | 3.07 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.22 | 1.65 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 4.08 | 4.44 | masked=True, partitions=6, dim=224, window=32, layers=2 |
-| stateless-rnnt | 1.17 | 1.18 | prog=predictor, hidden=192, joint_hidden=288 |
+| stateless-rnnt | 2.67 | 2.67 | prog=encoder, hidden=224, joint_hidden=288 |
 | ssm | 0.75 | 0.76 | dim=576, hidden=448 |
 | slp | 0.94 | 0.94 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.75 | 0.76 | prog=predictor, hidden=192, joint_hidden=288 |
+| rnnt | 1.38 | 1.57 | prog=encoder, hidden=224, joint_hidden=288 |
 | resmlp | 15.93 | 15.93 | dim=160, patches=9, layers=5, activation=ReLU |
 | qec-lstm | 1.11 | 1.20 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 3.32 | 5.40 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
@@ -89,10 +89,10 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.48 | 2.54 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.02 | 1.62 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 3.99 | 4.73 | masked=True, partitions=3, dim=224, window=32, layers=2 |
-| stateless-rnnt | 0.96 | 0.96 | prog=predictor, hidden=192, joint_hidden=288 |
+| stateless-rnnt | 2.10 | 2.10 | prog=encoder, hidden=224, joint_hidden=288 |
 | ssm | 0.57 | 0.57 | dim=576, hidden=448 |
 | slp | 0.63 | 0.63 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.69 | 0.69 | prog=predictor, hidden=192, joint_hidden=288 |
+| rnnt | 1.25 | 1.26 | prog=encoder, hidden=224, joint_hidden=288 |
 | resmlp | 5.07 | 5.08 | dim=160, patches=9, layers=5, activation=ReLU |
 | qec-lstm | 0.93 | 0.93 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 3.14 | 5.27 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=3, ffn_fp8=False |
@@ -115,10 +115,10 @@ Note: These latencies are from a (near cycle-accurate) software model but withou
 | wavenet | 2.93 | 3.07 | layers=4, blocks=1, hidden=198 |
 | tcn | 1.22 | 1.65 | inputs=1, kernel=3, channels=[256, 256, 256] |
 | swa | 4.08 | 4.44 | masked=True, partitions=6, dim=224, window=32, layers=2 |
-| stateless-rnnt | 1.17 | 1.18 | prog=predictor, hidden=192, joint_hidden=288 |
+| stateless-rnnt | 2.67 | 2.67 | prog=encoder, hidden=224, joint_hidden=288 |
 | ssm | 0.75 | 0.76 | dim=576, hidden=448 |
 | slp | 0.94 | 0.94 | input=1024, output=1024, activation=ReLU |
-| rnnt | 0.75 | 0.76 | prog=predictor, hidden=192, joint_hidden=288 |
+| rnnt | 1.38 | 1.57 | prog=encoder, hidden=224, joint_hidden=288 |
 | resmlp | 15.93 | 15.93 | dim=160, patches=9, layers=5, activation=ReLU |
 | qec-lstm | 1.11 | 1.20 | distance=11, hidden_size=256, soft=False |
 | nano-llm | 3.32 | 5.40 | d_model=256, d_head=32, expand=1.5, n_layers=1, head_partitions=6, ffn_fp8=False |
