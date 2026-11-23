@@ -542,6 +542,10 @@ this repo. Their dependencies are in the `benchmarks` group, hence the
   both the Vollo SDK it measured and the version of this repo that defined the
   models, since either one moves the numbers.
 
+- To run the zoo on a Vollo card, `source $VOLLO_SDK/setup.sh` and run
+  `scripts/fpga-benchmark.sh`. The SDK is the only input; the card's
+  configuration is detected (see `AGENTS.md`).
+
 - To plot multiple benchmark JSON files run:
 
   ```fish

@@ -20,6 +20,11 @@ zoo = "vollo_model_zoo.zoo:main"
 benchmark = "vollo_model_zoo.benchmark:main"
 plot = "vollo_model_zoo.plot:main"
 report = "vollo_model_zoo.report:main"
+fpga-compile = "vollo_model_zoo.fpga:compile_main"
+fpga-collect = "vollo_model_zoo.fpga:collect_main"
+fpga-config = "vollo_model_zoo.fpga:config_main"
+fpga-hw-config = "vollo_model_zoo.fpga:hw_config_main"
+fpga-check-json = "vollo_model_zoo.fpga:check_json_main"
 
 [tool.uv]
 package = true

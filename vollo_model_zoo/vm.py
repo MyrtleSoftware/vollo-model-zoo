@@ -178,6 +178,68 @@ def vollo_info(
 
 
 @beartype
+def _compile_entries(
+    entries: Sequence[MultiModelEntry], config: vc.Config, quick_compile: bool = False
+) -> vc.Program:
+    """
+    The one program of several entry points, packed (so it raises if it doesn't fit).
+    """
+    builder = vc.ProgramBuilder(config, remember_allocations=True)
+
+    for entry in entries:
+        shaped_model, _ = vt.fx.prepare_shape(entry.model, *entry.inputs)
+        nnir = vt.fx.nnir.to_nnir(shaped_model)
+        if entry.streaming_axis is not None:
+            nnir, _ = nnir.streaming_transform(entry.streaming_axis)
+
+        builder.add_nnir(nnir, entry.name, quick_compile=quick_compile)
+
+    program = builder.to_program()
+    program.pack()
+    return program
+
+
+@beartype
+def compile_instance(zoo: dict, config: vc.Config) -> vc.Program:
+    """
+    The program of a size, as `catalog.build` returns it, for `config`: the
+    compile `vollo_info` / `vollo_multi_model_info` do, but handing back the
+    program and raising what they return, so a caller can e.g. save it
+    (`fpga.py`).
+    """
+    if "entries" in zoo:
+        unsupported = zoo.keys() - {"entries", "quick_compile"}
+        assert not unsupported, f"Unsupported zoo arguments: {sorted(unsupported)}"
+        entries = [MultiModelEntry(**entry) for entry in zoo["entries"]]
+        return _compile_entries(entries, config, zoo.get("quick_compile", False))
+
+    supported = {
+        "model",
+        "x",
+        "time_axis",
+        "meta",
+        "allow_dynamic_weights",
+        "quick_compile",
+        "allow_unserializable",
+        "boards",
+    }
+    unsupported = zoo.keys() - supported
+    assert not unsupported, f"Unsupported zoo arguments: {sorted(unsupported)}"
+    # `config` is one board's; compiling a multi-board size for it would
+    # silently measure something else.
+    assert zoo.get("boards", 1) == 1, f"Can't compile for {zoo['boards']} boards"
+    return _vollo_compile(
+        zoo["model"],
+        zoo["x"],
+        time_axis=zoo["time_axis"],
+        config=config,
+        allow_dynamic_weights=zoo.get("allow_dynamic_weights", False),
+        quick_compile=zoo.get("quick_compile", False),
+        allow_unserializable=zoo.get("allow_unserializable", False),
+    )
+
+
+@beartype
 def vollo_multi_model_info(
     entries: Sequence[dict],
     *,
@@ -195,18 +257,7 @@ def vollo_multi_model_info(
     entries = [MultiModelEntry(**entry) for entry in entries]
 
     try:
-        builder = vc.ProgramBuilder(_config(config), remember_allocations=True)
-
-        for entry in entries:
-            shaped_model, _ = vt.fx.prepare_shape(entry.model, *entry.inputs)
-            nnir = vt.fx.nnir.to_nnir(shaped_model)
-            if entry.streaming_axis is not None:
-                nnir, _ = nnir.streaming_transform(entry.streaming_axis)
-
-            builder.add_nnir(nnir, entry.name, quick_compile=quick_compile)
-
-        program = builder.to_program()
-        program.pack()
+        program = _compile_entries(entries, _config(config), quick_compile)
     except (AllocationError, SaveError, ValueError) as error:
         return [error]
 
