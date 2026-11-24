@@ -202,6 +202,32 @@ def test_compile_leaves_out_experimental_sizes(tmp_path, hw_config):
     assert not experimental & {tuple(line) for line in _listed(out)}
 
 
+def test_compile_includes_experimental_models(tmp_path, hw_config):
+    """As the VM benchmarks: an experimental model is compiled, only its
+    experimental sizes are left out."""
+    listing = catalog.listing()
+    experimental = [m for m, entry in listing.items() if entry["experimental"]]
+    if not experimental:
+        pytest.skip("no model is experimental at the moment")
+    skips = [
+        arg
+        for model in catalog.models()
+        if model not in experimental
+        for arg in ("--skip", model)
+    ]
+    out = tmp_path / "programs"
+    assert fpga.compile_main(_compile_argv(hw_config, out) + skips) == 0
+    listed = {tuple(line) for line in _listed(out)}
+    for model in experimental:
+        named = catalog.named_sizes(model)
+        expected = {
+            (model, size["name"])
+            for size in listing[model]["sizes"]
+            if size["experimental"] is None and vm.runs_on(named[size["name"]], "V80")
+        }
+        assert expected and expected <= listed
+
+
 def test_compile_notes_a_hw_config_that_is_not_the_zoo_config(
     tmp_path, hw_config, capsys
 ):

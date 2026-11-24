@@ -419,15 +419,14 @@ Deliberately not exposed (use the compiler API directly): `program.metrics()`,
 
 ## Running on an FPGA
 
-`source $VOLLO_SDK/setup.sh && scripts/fpga-benchmark.sh` runs every
-non-experimental size on a card. **The SDK is the only input**: the zoo config
+`source $VOLLO_SDK/setup.sh && scripts/fpga-benchmark.sh` runs, as the VM
+benchmarks do, every model (experimental ones included) at every size but the
+`_experimental` ones on a card. **The SDK is the only input**: the zoo config
 (V80, IA-420f, ...) is read off the card's hw config by `fpga-config`, and
 `--out` defaults to `<workdir>/results.json`. It never guesses: a card matching
 no zoo config (or several) is a setup error, resolved with `--config`.
 
-It needs `make`, `timeout`, a C compiler and either `uv` or Python >= 3.13
-(without `uv` it builds a plain venv and `pip install`s, constrained to the
-`uv.lock` versions; the `uv` path is the better tested). It uses public SDK
+It needs `uv`, `make`, `timeout` and a C compiler. It uses public SDK
 features only: the wheels, `vollo-example` built from `$VOLLO_SDK/example`, and
 `vollo-tool read-hw-config`. Options
 (`--config`, `--device`, `--skip <model>|<model>-<size>` (repeatable), `--out`,

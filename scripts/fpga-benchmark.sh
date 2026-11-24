@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Runs the zoo on a Vollo card and writes a results JSON in the shape of
 # benchmarks/*.json. The only input is a sourced SDK (`source $VOLLO_SDK/setup.sh`);
-# the zoo config is read off the card. Tools: `uv` (or Python >= 3.13 with venv),
-# `make`, `timeout` and a C compiler (`cc`). The checkout may be read-only: the
-# project is copied into the work directory and everything is built there.
+# the zoo config is read off the card. Tools: `uv`, `make`, `timeout` and a C
+# compiler (`cc`). The checkout may be read-only: the project is copied into the
+# work directory and everything is built there.
+#
+# As the VM benchmarks, every model runs, experimental ones included, at every
+# size but the experimental ones.
 #
 # Usage: scripts/fpga-benchmark.sh [--out results.json]
 #          [--config <zoo config>]   (default: detected from the card)
@@ -50,7 +53,7 @@ while (($#)); do
 done
 
 [[ -n "${VOLLO_SDK:-}" ]] || die "VOLLO_SDK is not set; run 'source setup.sh' from the SDK"
-for tool in make timeout cc; do
+for tool in uv make timeout cc; do
   command -v "$tool" > /dev/null || die "$tool is not installed"
 done
 
@@ -86,42 +89,12 @@ cd "$WORKDIR/zoo" || die "can't enter $WORKDIR/zoo"
 unset VIRTUAL_ENV UV_PROJECT_ENVIRONMENT
 
 # run CMD...: a command of the project environment (never re-syncs it).
-if command -v uv > /dev/null; then
-  run() { uv run --no-sync "$@"; }
-  uv sync --frozen --no-dev || die "uv sync failed (Python >= 3.13 is provided by uv)"
-  uv pip install --find-links "$VOLLO_SDK/python" \
-    --reinstall-package vollo-compiler --reinstall-package vollo-torch \
-    "vollo-compiler==$VER" "vollo-torch==$VER" \
-    || die "the wheels of SDK $VER don't install; fpga-compile can't run for it"
-else
-  # No uv: a plain venv, which needs a Python >= 3.13 of its own.
-  python3 -c 'import sys; sys.exit(sys.version_info < (3, 13))' \
-    || die "neither uv nor Python >= 3.13 is available"
-  python3 -m venv "$WORKDIR/venv" || die "can't create a venv"
-  run() { PATH="$WORKDIR/venv/bin:$PATH" "$@"; }
-  # Every other dependency at its uv.lock version, as `uv sync` would install it,
-  # rather than whatever PyPI resolves to today.
-  python3 - "$WORKDIR/zoo/uv.lock" > "$WORKDIR/constraints.txt" << 'EOF' \
-    || die "can't read the locked versions from uv.lock"
-import sys, tomllib
-
-with open(sys.argv[1], "rb") as f:
-    lock = tomllib.load(f)
-versions = {}
-for package in lock["package"]:
-    if "registry" in package.get("source", {}):
-        versions.setdefault(package["name"], set()).add(package["version"])
-for name, found in sorted(versions.items()):
-    # The SDK's wheels replace the locked compiler; a name locked at several
-    # versions (one per platform) is left to pip.
-    if name not in ("vollo-compiler", "vollo-torch") and len(found) == 1:
-        print(f"{name}=={found.pop()}")
-EOF
-  "$WORKDIR/venv/bin/pip" install --find-links "$VOLLO_SDK/python" \
-    --constraint "$WORKDIR/constraints.txt" \
-    "vollo-compiler==$VER" "vollo-torch==$VER" . \
-    || die "pip install failed for SDK $VER"
-fi
+run() { uv run --no-sync "$@"; }
+uv sync --frozen --no-dev || die "uv sync failed (Python >= 3.13 is provided by uv)"
+uv pip install --find-links "$VOLLO_SDK/python" \
+  --reinstall-package vollo-compiler --reinstall-package vollo-torch \
+  "vollo-compiler==$VER" "vollo-torch==$VER" \
+  || die "the wheels of SDK $VER don't install; fpga-compile can't run for it"
 for package in vollo-compiler vollo-torch; do
   INSTALLED=$(run python -c \
     "import importlib.metadata as m; print(m.version('$package'))") || die "can't import $package"

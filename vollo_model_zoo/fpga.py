@@ -182,7 +182,8 @@ def compile_main(argv: Optional[Sequence[str]] = None) -> int:
     for model, entry in listing.items():
         named = catalog.named_sizes(model)
         for size in entry["sizes"]:
-            # As the benchmarks: no experimental sizes, none the config can't run.
+            # As the benchmarks: every model, experimental ones included, but
+            # no experimental sizes and none the config can't run.
             if size["experimental"] is not None:
                 continue
             if not vm.runs_on(named[size["name"]], args.config):
