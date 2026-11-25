@@ -24,7 +24,8 @@ Tools outside the zoo may use only these, so they change only for very good
 reason:
 
 - `python -m vollo_model_zoo.catalog`, and `listing()`, which it prints;
-- `build(model, name, config, *, seed=0)`.
+- `build(model, name, config, *, seed=0)`, where `config` is a zoo config's
+  name or a `vollo_compiler.Config` (a card's hw config, say).
 
 The rest of this module is the zoo's own. Which configs provide a size's
 `_features` is `vm.runs_on`: it needs the Vollo SDK to know.
@@ -36,7 +37,12 @@ import json
 import os
 import re
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    # For `build`'s annotation only: never imported at run time, which would
+    # need the Vollo SDK to list the sizes.
+    import vollo_compiler
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 
@@ -169,9 +175,12 @@ def named_sizes(model: str) -> dict[str, dict[str, Any]]:
     return named
 
 
-def build(model: str, name: str, config: str, *, seed: int = 0) -> dict[str, Any]:
+def build(
+    model: str, name: str, config: "str | vollo_compiler.Config", *, seed: int = 0
+) -> dict[str, Any]:
     """
-    The size `name` of `model`, built for `config` by the model's `instance`:
+    The size `name` of `model`, built for `config` (a zoo config's name, or a
+    `vollo_compiler.Config` such as a card's hw config) by the model's `instance`:
     the arguments, other than `config`, of `vollo_info`, or of
     `vollo_multi_model_info` for a multi-model file. It doesn't check that
     `config` provides the size's features (see `vm.runs_on`); compiling one it
@@ -196,7 +205,9 @@ def build(model: str, name: str, config: str, *, seed: int = 0) -> dict[str, Any
         # Not `torch.manual_seed`, which would also reseed every GPU, whose
         # RNGs `fork_rng(devices=[])` doesn't restore.
         torch.default_generator.manual_seed(seed)
-        return module.instance(**arguments, config=vm._config(config))
+        if isinstance(config, str):
+            config = vm._config(config)
+        return module.instance(**arguments, config=config)
 
 
 def listing() -> dict[str, dict[str, Any]]:

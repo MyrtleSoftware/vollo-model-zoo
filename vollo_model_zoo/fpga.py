@@ -1,31 +1,33 @@
 """
-The hardware path of the zoo, driven by `scripts/fpga-benchmark.sh`:
+The hardware path of the zoo, driven by `scripts/fpga-benchmark.sh` as
+`python -m vollo_model_zoo.fpga <command>`:
 
-- `fpga-compile` compiles every size to a `.vollo` program for a hw config read
-  from a card, using the public compiler API only (so it works with released
-  SDKs). This is the one place the zoo saves programs; `vm.py` never does.
-- `fpga-collect` turns the compile outputs and the `vollo-example` runs into a
-  results JSON in the shape of `benchmarks/*.json`.
+- `compile` compiles every size to a `.vollo` program for a hw config read
+  from a card, using the public compiler API.
+- `collect` turns the compile outputs and the `vollo-example` runs into a
+  results JSON in the shape of `benchmarks/*.json`, under the zoo config's
+  name suffixed with `FPGA_SUFFIX`.
+- `config` prints the zoo config a card's hw config is.
 
 Files in the programs directory, per size `<model>-<size>`:
     .vollo + .num-models + .meta.json   compiled
-    .no-fit                             AllocationError / SaveError
-    .compile-error                      any other exception, with traceback
+    .error.json                         didn't compile, as its results entry
 and `sizes.txt` lists `<model> <size>` lines. Files in the runs directory, per
-model index `<model>-<size>.<index>`: `.raw.json`, `.spaced.json` (the
-`vollo-example --json` output), `.raw.run-error` / `.spaced.run-error` (a run
-of that kind failed) or `.skipped` (a message each).
+model index `<model>-<size>.<index>`: `.contiguous.json`, `.spaced.json` (the
+`vollo-example --json` output), `.contiguous.run-error` / `.spaced.run-error`
+(a run of that kind failed) or `.skipped` (not run after an earlier run timed
+out; a message each).
 An index with one run failed is still `Ok`: that run's latency is null and its
 side of `hardware` is `{"RunError": msg}`. Only both failing is a `RunError`.
 Sizes excluded by --skip are left out entirely.
 
-Note: latencies here are measured on the card, so unlike the VM's they include
-host<->accelerator IO.
+Latencies here are measured on the card, so they include host<->accelerator IO.
 """
 
 import argparse
 import copy
 import json
+import math
 import sys
 import traceback
 from pathlib import Path
@@ -35,6 +37,7 @@ from beartype import beartype
 from beartype.typing import Optional, Sequence
 
 from vollo_model_zoo import catalog, vm
+from vollo_model_zoo.parse import FPGA_SUFFIX
 from vollo_model_zoo.version import benchmark_version
 
 
@@ -55,8 +58,8 @@ def detect_config(hw_config: vc.Config) -> str:
     The name of the one zoo config a card's hw config is. Never guesses: no
     match, or several, is a ValueError.
 
-    Configs are first matched on hardware alone, as an older release's name and
-    clock may differ from the zoo's. Some zoo configs are the same hardware
+    Configs are first matched on hardware alone, as a card's name and clock may
+    differ from the zoo's. Some zoo configs are the same hardware
     (`V80` and `V80LL` differ only in clock, `IA-420f` and `NT400D11` only in
     name), so those are told apart by what the card reports: its name, then its
     clock. A tie-break that matches none of them is ignored rather than ruling
@@ -82,33 +85,6 @@ def detect_config(hw_config: vc.Config) -> str:
 
 
 @beartype
-def _model_info(zoo: dict, program: vc.Program) -> list[dict]:
-    """
-    Per model of the program: its parameter count, cycles and meta.
-    """
-
-    def cycles(index: int) -> int:
-        if "entries" in zoo:
-            return program.cycle_count_per_inference(model_index=index)
-        return program.cycle_count_per_inference()
-
-    if "entries" in zoo:
-        # Each entry's own, so a module shared between entries counts in each,
-        # as `vm.vollo_multi_model_info` counts them.
-        return [
-            dict(
-                param_count=sum(p.numel() for p in entry["model"].parameters()),
-                cycle_count=cycles(i),
-                meta={"prog": entry["name"], **(entry.get("meta") or {})},
-            )
-            for i, entry in enumerate(zoo["entries"])
-        ]
-
-    count = sum(p.numel() for p in zoo["model"].parameters())
-    return [dict(param_count=count, cycle_count=cycles(0), meta=zoo.get("meta"))]
-
-
-@beartype
 def _skipped(skips: Sequence[str], model: str, size: str) -> bool:
     return any(skip in (model, f"{model}-{size}") for skip in skips)
 
@@ -118,38 +94,63 @@ def _compile_size(
     model: str, size: str, config: str, hw_config: vc.Config, out: Path
 ) -> None:
     name = f"{model}-{size}"
+    # Outside the `try`: building a size compiles nothing, so whatever it
+    # raises is a zoo bug, not a compile result, and propagates as on the VM
+    # path. Built for the card's hw config rather than the zoo's `config`, as
+    # an `instance` may shape the model by it (e.g. `config.num_cores`).
+    zoo = catalog.build(model, size, hw_config)
     try:
-        zoo = catalog.build(model, size, config)
         program = vm.compile_instance(zoo, hw_config)
-        info = _model_info(zoo, program)
-        program.save(str(out / f"{name}.vollo"))
-        # Old SDKs have single-model programs only.
-        num_models = program.num_models() if hasattr(program, "num_models") else 1
-        (out / f"{name}.num-models").write_text(f"{num_models}\n")
+        info = [
+            dict(param_count=ok.param_count, cycle_count=ok.cycle_count, meta=ok.meta)
+            for ok in vm.program_results(zoo, program, config)
+        ]
+        (out / f"{name}.num-models").write_text(f"{program.num_models()}\n")
         (out / f"{name}.meta.json").write_text(json.dumps(info))
-    except (vc.AllocationError, vc.SaveError) as e:
-        print(f"{name}: doesn't fit: {e}")
-        (out / f"{name}.no-fit").write_text(
-            "SaveError\n" if isinstance(e, vc.SaveError) else "AllocationError\n"
-        )
-    except AssertionError:
-        # `compile_instance` rejecting a zoo argument is a bug in the zoo, not
-        # something an SDK did, so it must not pass for a CompileError.
+        # Last: scripts/fpga-benchmark.sh runs every size with a `.vollo`, so
+        # it is only there once everything else about the size is.
+        program.save(str(out / f"{name}.vollo"))
+    except (vm.ZooArgumentError, MemoryError):
+        # A size the zoo can't compile, or the machine running out of memory:
+        # neither is the SDK's doing, so neither passes for a compile result.
+        _unsave(out, name)
         raise
-    except Exception:
-        # Old SDKs fail in ways the current one doesn't.
+    except (vc.AllocationError, vc.SaveError, ValueError) as e:
+        # The failures `vollo_info` returns as values, recorded as the VM
+        # benchmarks record them. A ValueError from saving the program is
+        # recorded the same way, where the VM path would let it propagate.
+        print(f"{name}: {type(e).__name__}: {e}")
+        _unsave(out, name)
+        (out / f"{name}.error.json").write_text(json.dumps(vm.to_dict(e)))
+    except Exception as e:  # noqa: BLE001 -- one size mustn't sink the run
+        # Any other exception compiling or saving the size: that size's
+        # CompileError, so the rest still compile.
         print(f"{name}: compile error")
-        error = traceback.format_exc()
-        print(error)
-        (out / f"{name}.compile-error").write_text(error)
+        print(traceback.format_exc())
+        _unsave(out, name)
+        message = "".join(traceback.format_exception_only(e)).strip()
+        (out / f"{name}.error.json").write_text(json.dumps({"CompileError": message}))
+
+
+@beartype
+def _unsave(out: Path, name: str) -> None:
+    """
+    Removes whatever of a size that failed was written, a part-saved `.vollo`
+    included: a size with an error is never run, and its error is all
+    `collect` reads.
+    """
+    for suffix in (".vollo", ".num-models", ".meta.json"):
+        (out / f"{name}{suffix}").unlink(missing_ok=True)
 
 
 @beartype
 def compile_main(argv: Optional[Sequence[str]] = None) -> int:
     """
-    Entry point for the 'fpga-compile' command.
+    The `compile` command.
     """
-    parser = argparse.ArgumentParser(description="Compile the zoo for a hw config")
+    parser = argparse.ArgumentParser(
+        prog=f"{_PROG} compile", description="Compile the zoo for a hw config"
+    )
     parser.add_argument("--config", required=True, help="the zoo's config name")
     parser.add_argument("--hw-config", required=True, help="hw config JSON")
     parser.add_argument("--out", required=True, type=Path)
@@ -172,7 +173,7 @@ def compile_main(argv: Optional[Sequence[str]] = None) -> int:
         parser.error(f"--skip names no model or size: {', '.join(unknown)}")
 
     hw_config = vc.Config.load(args.hw_config)
-    # Not an error: an older release's hardware may differ from the zoo's config.
+    # Not an error: a card's hw config may differ from the zoo's config.
     if not _same_hardware(hw_config, args.config):
         print(f"note: the hw config isn't the zoo's {args.config}")
 
@@ -182,15 +183,13 @@ def compile_main(argv: Optional[Sequence[str]] = None) -> int:
     for model, entry in listing.items():
         named = catalog.named_sizes(model)
         for size in entry["sizes"]:
-            # As the benchmarks: every model, experimental ones included, but
-            # no experimental sizes and none the config can't run.
-            if size["experimental"] is not None:
-                continue
-            if not vm.runs_on(named[size["name"]], args.config):
-                continue
-
             name = size["name"]
-            if _skipped(args.skip, model, name):
+            # The sizes the benchmarks sweep, of every model (experimental ones
+            # included), but checked against the card's hw config, which may
+            # lack a feature the zoo's config has.
+            if not vm.in_sweep(named[name], hw_config) or _skipped(
+                args.skip, model, name
+            ):
                 continue
             sizes.append(f"{model} {name}")
             print(f"Compiling {model}-{name}")
@@ -202,30 +201,13 @@ def compile_main(argv: Optional[Sequence[str]] = None) -> int:
 
 
 @beartype
-def hw_config_main(argv: Optional[Sequence[str]] = None) -> int:
-    """
-    Entry point for the 'fpga-hw-config' command: reads the output of
-    `vollo-tool read-hw-config` on stdin and writes the first card's hw config.
-    """
-    parser = argparse.ArgumentParser(description="Extract a card's hw config")
-    parser.add_argument("--out", required=True, type=Path)
-    args = parser.parse_args(argv)
-
-    cards = json.load(sys.stdin)
-    hw_config = cards[0].get("hw_config") if cards else None
-    if hw_config is None:
-        print("error: the device has no hw config", file=sys.stderr)
-        return 1
-    args.out.write_text(json.dumps(hw_config))
-    return 0
-
-
-@beartype
 def config_main(argv: Optional[Sequence[str]] = None) -> int:
     """
-    Entry point for the 'fpga-config' command: prints the zoo config of a card.
+    The `config` command: prints the zoo config of a card.
     """
-    parser = argparse.ArgumentParser(description="Print the zoo config of a card")
+    parser = argparse.ArgumentParser(
+        prog=f"{_PROG} config", description="Print the zoo config of a card"
+    )
     parser.add_argument("--hw-config", required=True, help="hw config JSON")
     args = parser.parse_args(argv)
 
@@ -237,66 +219,92 @@ def config_main(argv: Optional[Sequence[str]] = None) -> int:
     return 0
 
 
-@beartype
-def check_json_main(argv: Optional[Sequence[str]] = None) -> int:
-    """
-    Entry point for the 'fpga-check-json' command: 0 if a file is valid JSON.
-    """
-    parser = argparse.ArgumentParser(description="Check a file is valid JSON")
-    parser.add_argument("file", type=Path)
-    args = parser.parse_args(argv)
-
-    try:
-        json.loads(args.file.read_text())
-    except (OSError, ValueError):
-        return 1
-    return 0
-
-
 def _read_json(path: Path):
     return json.loads(path.read_text())
 
 
 @beartype
 def _run_stats(run: dict) -> dict:
+    # As floats: a C program may print a whole number as `3`, which `parse`'s
+    # `float` annotations would reject.
     latency = run["metrics"]["latency_us"]
+    median = latency.get("median")
     return {
-        "mean": latency["mean"],
-        "median": latency.get("median"),
-        "p99": latency["p99"],
+        "mean": float(latency["mean"]),
+        "median": float(median) if _is_number(median) else None,
+        "p99": float(latency["p99"]),
     }
 
 
+# What `_entry` reads of a run's `vollo-example --json` output. Every one must
+# be a finite number > 0. scripts/fpga-benchmark.sh's `bench` checks the same keys.
+_RUN_KEYS = [("metrics", "latency_us", "mean"), ("metrics", "latency_us", "p99")]
+
+
 @beartype
-def _run_result(runs: Path, run: str, kind: str) -> dict | str:
+def _is_number(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+_MISSING = object()
+
+
+@beartype
+def _get(run: object, path: tuple[str, ...]) -> object:
+    for key in path:
+        if not isinstance(run, dict) or key not in run:
+            return _MISSING
+        run = run[key]
+    return run
+
+
+@beartype
+def _run_result(runs: Path, run: str, kind: str) -> dict:
     """
-    The `vollo-example --json` output of one run, or its error if it failed.
+    The `vollo-example --json` output of one run, or `{"RunError": msg}` if it
+    failed, or its output lacks a number `_entry` reads, or has one that isn't
+    finite and positive: one odd output is that run's error, rather than
+    failing the collection of every run.
     """
     error = runs / f"{run}.{kind}.run-error"
     if error.exists():
-        return error.read_text().strip()
+        return {"RunError": error.read_text().strip()}
     try:
-        return _read_json(runs / f"{run}.{kind}.json")
+        result = _read_json(runs / f"{run}.{kind}.json")
     except (OSError, ValueError):
-        return "no run result"
+        return {"RunError": "no run result"}
+    values = {".".join(path): _get(result, path) for path in _RUN_KEYS}
+    missing = [key for key, value in values.items() if not _is_number(value)]
+    if missing:
+        return {"RunError": f"vollo-example output lacks {', '.join(missing)}"}
+    bad = [
+        f"{key} = {value}"
+        for key, value in values.items()
+        if not (math.isfinite(value) and value > 0)
+    ]
+    if bad:
+        return {"RunError": f"vollo-example output has {', '.join(bad)}"}
+    return result
 
 
 @beartype
-def _entry(
-    name: str, index: int, info: dict, runs: Path, config: str, hw: dict
-) -> dict:
+def _measured(result: dict) -> bool:
+    return "RunError" not in result
+
+
+@beartype
+def _entry(name: str, index: int, info: dict, runs: Path, config: str) -> dict:
     run = f"{name}.{index}"
     if (runs / f"{run}.skipped").exists():
         return {"Skipped": (runs / f"{run}.skipped").read_text().strip()}
 
-    raw = _run_result(runs, run, "raw")
+    contiguous = _run_result(runs, run, "contiguous")
     spaced = _run_result(runs, run, "spaced")
-    # Only a run that failed has a str, its error.
-    if isinstance(raw, str) and isinstance(spaced, str):
-        return {"RunError": raw}
+    if not _measured(contiguous) and not _measured(spaced):
+        return contiguous
 
-    def stats(result) -> dict:
-        return {"RunError": result} if isinstance(result, str) else _run_stats(result)
+    def stats(result: dict) -> dict:
+        return _run_stats(result) if _measured(result) else result
 
     # The latency of a run that failed is null; its error is in `hardware`.
     return {
@@ -305,35 +313,34 @@ def _entry(
             param_count=info["param_count"],
             cycle_count=info["cycle_count"],
             latency_spaced=(
-                None
-                if isinstance(spaced, str)
-                else {"microseconds": spaced["metrics"]["latency_us"]["mean"]}
+                {"microseconds": float(spaced["metrics"]["latency_us"]["mean"])}
+                if _measured(spaced)
+                else None
             ),
+            # The unspaced run's mean latency, as the VM's `spaced=False` is:
+            # one job at a time, so not 1 / its throughput.
             latency_contiguous=(
-                None
-                if isinstance(raw, str)
-                else {"microseconds": 1e6 / raw["metrics"]["throughput"]}
+                {"microseconds": float(contiguous["metrics"]["latency_us"]["mean"])}
+                if _measured(contiguous)
+                else None
             ),
             meta=info["meta"],
             hardware=dict(
                 name=name,
                 model_index=index,
-                raw_buffer=stats(raw),
+                contiguous=stats(contiguous),
                 spaced=stats(spaced),
-                hw_config=hw,
             ),
         )
     }
 
 
 @beartype
-def collect(
-    programs: Path, runs: Path, config: str, hw_config: Path, version: str
-) -> dict:
+def collect(programs: Path, runs: Path, config: str, version: str) -> dict:
     """
-    The results JSON: `{version: {model: {config: [entry, ...]}}}`.
+    The results JSON: `{version: {model: {config + FPGA_SUFFIX: [entry, ...]}}}`.
     """
-    hw = _read_json(hw_config)
+    config += FPGA_SUFFIX
     results: dict = {}
 
     for line in (programs / "sizes.txt").read_text().splitlines():
@@ -341,19 +348,12 @@ def collect(
         name = f"{model}-{size}"
         entries = results.setdefault(model, {config: []})[config]
 
-        if (programs / f"{name}.no-fit").exists():
-            kind = (programs / f"{name}.no-fit").read_text().strip()
-            # As `vm.to_dict` writes them.
-            entries.append(
-                {"SaveError": 1} if kind == "SaveError" else {"AllocationError": 0}
-            )
-        elif (programs / f"{name}.compile-error").exists():
-            error = (programs / f"{name}.compile-error").read_text().strip()
-            entries.append({"CompileError": error.splitlines()[-1] if error else ""})
+        if (programs / f"{name}.error.json").exists():
+            entries.append(_read_json(programs / f"{name}.error.json"))
         else:
             infos = _read_json(programs / f"{name}.meta.json")
             for index, info in enumerate(infos):
-                entries.append(_entry(name, index, info, runs, config, hw))
+                entries.append(_entry(name, index, info, runs, config))
 
     return {version: results}
 
@@ -361,19 +361,41 @@ def collect(
 @beartype
 def collect_main(argv: Optional[Sequence[str]] = None) -> int:
     """
-    Entry point for the 'fpga-collect' command.
+    The `collect` command.
     """
-    parser = argparse.ArgumentParser(description="Assemble the hardware results JSON")
-    parser.add_argument("--config", required=True)
-    parser.add_argument("--hw-config", required=True, type=Path)
+    parser = argparse.ArgumentParser(
+        prog=f"{_PROG} collect", description="Assemble the hardware results JSON"
+    )
+    parser.add_argument("--config", required=True, help="the zoo's config name")
     parser.add_argument("--programs", required=True, type=Path)
     parser.add_argument("--runs", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args(argv)
 
-    data = collect(
-        args.programs, args.runs, args.config, args.hw_config, benchmark_version()
-    )
+    data = collect(args.programs, args.runs, args.config, benchmark_version())
     args.out.write_text(json.dumps(data, indent=2))
 
     return 0
+
+
+_PROG = "python -m vollo_model_zoo.fpga"
+
+_COMMANDS = {"compile": compile_main, "collect": collect_main, "config": config_main}
+
+
+@beartype
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    """
+    `python -m vollo_model_zoo.fpga <command> [args]`, one of `_COMMANDS`.
+    """
+    parser = argparse.ArgumentParser(
+        prog=_PROG, description="The hardware path of scripts/fpga-benchmark.sh"
+    )
+    parser.add_argument("command", choices=list(_COMMANDS))
+    parser.add_argument("args", nargs=argparse.REMAINDER)
+    args = parser.parse_args(argv)
+    return _COMMANDS[args.command](args.args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

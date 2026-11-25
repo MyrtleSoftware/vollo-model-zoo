@@ -6,7 +6,7 @@ from pathlib import Path
 from beartype import beartype
 from beartype.typing import Optional
 
-from vollo_model_zoo.parse import parse_records_from_json
+from vollo_model_zoo.parse import FPGA_SUFFIX, parse_records_from_json
 from vollo_model_zoo.version import describe_version
 
 
@@ -73,10 +73,23 @@ def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> 
         write("")
         write("Compute latency for an approximately 1-million parameter model.")
         write("")
-        write(
-            "Note: These latencies are from a (near cycle-accurate) software "
-            "model but without IO (non-negligible for some models)"
-        )
+        on_card = [x["config"].endswith(FPGA_SUFFIX) for x in records]
+        if all(on_card):
+            write(
+                "Note: These latencies are measured on a card, so they include "
+                "host<->accelerator IO"
+            )
+        else:
+            write(
+                "Note: These latencies are from a (near cycle-accurate) software "
+                "model but without IO (non-negligible for some models)"
+            )
+            if any(on_card):
+                write("")
+                write(
+                    f"Except the `*{FPGA_SUFFIX}` configurations: those latencies "
+                    "are measured on a card, so they include host<->accelerator IO"
+                )
 
         for config, config_group in groupby(records, key=lambda x: x["config"]):
             write("")
@@ -89,11 +102,12 @@ def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> 
                 # The one closest to 1-mil parameters
                 chosen = min(group, key=lambda x: abs(x["param_count"] - 1_000_000))
 
-                l1 = chosen["latency_spaced"]
-                l2 = chosen["latency_contiguous"]
+                # A card result's latency is None where its run failed.
+                l1 = _latency(chosen["latency_spaced"])
+                l2 = _latency(chosen["latency_contiguous"])
                 mt = chosen["meta"]
 
-                print(f"| {model} | {l1:.2f} | {l2:.2f} | {mt} |", file=f)
+                print(f"| {model} | {l1} | {l2} | {mt} |", file=f)
 
         if not plots:
             return 0
@@ -113,6 +127,11 @@ def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> 
             write("</details>")
 
     return 0
+
+
+@beartype
+def _latency(microseconds: Optional[float]) -> str:
+    return "-" if microseconds is None else f"{microseconds:.2f}"
 
 
 if __name__ == "__main__":
