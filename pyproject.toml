@@ -5,8 +5,8 @@ version = "0.8.0"
 description = "Exemplar models for the Vollo SDK "
 readme = "README.md"
 requires-python = ">=3.13"
-# Only what `zoo` needs is here, so `uv run zoo` installs nothing else; the rest
-# is in [dependency-groups].
+
+# Only what `zoo` needs is here.
 dependencies = [
   "vollo-compiler",
   "vollo-torch",
@@ -52,7 +52,7 @@ test = [
   # decode with. Only reachable with NANOLLM_CHECKPOINTS set.
   "tiktoken>=0.12.0",
 ]
-# Lint (pre-commit runs ruff) and editor tooling.
+# Lint and editor tooling.
 dev = [
   "pre-commit>=4.5.1",
   "ruff>=0.17.4",
@@ -60,7 +60,7 @@ dev = [
 ]
 
 [tool.ruff]
-# Markdown code blocks are hand-aligned for reading (AGENTS.md); leave them be.
+# Markdown code blocks are hand-aligned for reading; leave them be.
 extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
@@ -71,5 +71,5 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# A model's filename is its CLI name, hyphens included (`zoo mlp-res-rms`).
+# A model's filename is its CLI name, hyphens included.
 "vollo_model_zoo/models/*.py" = ["N999"]
