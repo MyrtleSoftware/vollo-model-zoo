@@ -42,6 +42,10 @@ See [AGENTS.md](./AGENTS.md) for the details.
 
 ## Development dependencies
 
+You need [`uv`](https://docs.astral.sh/uv/), plus `ninja` and a C++ compiler
+for the tests. With nix, `nix develop` (or direnv, via the `.envrc`) provides
+uv and ninja; the compiler is your system's.
+
 The test, lint and benchmark tooling are dependency groups that `uv run`
 doesn't install by default, so that `uv run zoo` stays lean for users. With
 direnv, the `.envrc` installs every group; otherwise, once:
