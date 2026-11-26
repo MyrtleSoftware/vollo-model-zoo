@@ -56,7 +56,13 @@ class MobileNet1D(nn.Module):
         self.classifier = nn.Linear(scale(1024), num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """ """
+        """
+        Args:
+            x: Tensor of shape (Batch, in_channels, Time)
+
+        Returns:
+            x: Tensor of shape (Batch, Time, num_classes)
+        """
         x = self.features(x)
         x = self.classifier(x.transpose(1, 2))
         return x

@@ -12,12 +12,12 @@ def convert_state_dict(fla_state_dict: dict) -> dict:
     """
     Convert the state dict from an FLA Mamba block to a Vollo Mamba block.
     """
-    #
     vollo_state_dict = {}
 
     # in_proj split: FLA has one Linear, Vollo has two (in_proj_x and in_proj_z)
     weight = fla_state_dict["in_proj.weight"]
-    assert 2 * (D := weight.shape[0] // 2) == weight.shape[0]
+    D = weight.shape[0] // 2
+    assert 2 * D == weight.shape[0]
     vollo_state_dict["in_proj_x.weight"] = weight[:D, :]
     vollo_state_dict["in_proj_z.weight"] = weight[D:, :]
 

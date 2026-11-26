@@ -44,8 +44,8 @@ See [AGENTS.md](./AGENTS.md) for the details.
 
 We use `pre-commit` to ensure code quality and consistency. The hooks include:
 
-- `isort`: Organizes imports.
-- `black`: Formats Python code.
+- `ruff check`: Lints Python code, including import order.
+- `ruff format`: Formats Python code.
 - `codespell`: Catches typos in all text files.
 
 To install the pre-commit hooks, run:

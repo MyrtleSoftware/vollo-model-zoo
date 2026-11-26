@@ -14,16 +14,17 @@ _EXP_SIGN = 9
 
 @cache
 def _round_impl(n: int, trunc: bool):
-    source = """
+    trunc_flag = 1 if trunc else 0
+    source = f"""
       auto round_mantisa(at::Tensor x) -> void {{
 
         constexpr uint32_t o = 1;
-        constexpr uint32_t n = {0};
+        constexpr uint32_t n = {n};
 
-        constexpr uint32_t trunc = {1};
+        constexpr uint32_t trunc = {trunc_flag};
 
-        constexpr uint32_t _MANTISSA = {2};
-        constexpr uint32_t _EXP_SIGN = {3};
+        constexpr uint32_t _MANTISSA = {_MANTISSA};
+        constexpr uint32_t _EXP_SIGN = {_EXP_SIGN};
 
         constexpr uint32_t mask = ((o << (n + _EXP_SIGN)) - o) << (_MANTISSA - n);
         constexpr uint32_t skip = trunc ? 0 : (o << (_MANTISSA - n - o));
@@ -35,12 +36,7 @@ def _round_impl(n: int, trunc: bool):
             data[i] = (data[i] + skip) & mask;
         }}
       }}
-    """.format(
-        n,
-        1 if trunc else 0,
-        _MANTISSA,
-        _EXP_SIGN,
-    )
+    """
 
     cpp = load_inline(
         name="inline_extension",

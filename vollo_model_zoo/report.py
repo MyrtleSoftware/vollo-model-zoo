@@ -1,4 +1,5 @@
 import argparse
+import sys
 from itertools import groupby
 from pathlib import Path
 
@@ -53,9 +54,9 @@ def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> 
 
     versions = [x["version"] for x in records]
 
-    assert all(
-        v == versions[0] for v in versions
-    ), "Multiple versions found in input JSON"
+    assert all(v == versions[0] for v in versions), (
+        "Multiple versions found in input JSON"
+    )
 
     def key_func(x):
         return (x["config"], x["model"])
@@ -115,4 +116,4 @@ def _generate_report(input: Path, output: Path, plots: Optional[list[Path]]) -> 
 
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

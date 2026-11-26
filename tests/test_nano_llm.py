@@ -86,7 +86,6 @@ def _norm() -> nn.RMSNorm:
 
 
 class _RefMLP(nn.Module):
-
     @beartype
     def __init__(self):
         super().__init__()
@@ -98,7 +97,6 @@ class _RefMLP(nn.Module):
 
 
 class _RefAttn(nn.Module):
-
     @beartype
     def __init__(self):
         super().__init__()
@@ -122,7 +120,6 @@ class _RefAttn(nn.Module):
 
 
 class _RefBlock(nn.Module):
-
     @beartype
     def __init__(self):
         super().__init__()

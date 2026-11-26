@@ -1,5 +1,6 @@
 import argparse
 import json
+import sys
 
 from beartype import beartype
 from tabulate import tabulate
@@ -21,8 +22,7 @@ def make_type(choices: list[str]):
         for key, item in enumerate([choice.lower() for choice in choices]):
             if choice.lower() == item:
                 return choices[key]
-        else:
-            return choice
+        return choice
 
     return find_choice
 
@@ -144,4 +144,4 @@ def run_model(model: str, config: str, use_json: bool, markdown: bool = False) -
 
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

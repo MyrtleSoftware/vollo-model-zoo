@@ -365,11 +365,11 @@ def to_dict(r: Result) -> dict:
     elif isinstance(r, ValueError):
         return {"ValueError": str(r)}
     else:
-        raise ValueError(f"Unknown result type: {type(r)}")
+        raise TypeError(f"Unknown result type: {type(r)}")
 
 
 @beartype
-def sweep(sizes: Sequence[dict], config: str) -> Generator[dict, None, None]:
+def sweep(sizes: Sequence[dict], config: str) -> Generator[dict]:
     """
     The sizes in a model's `SIZES` that `config` can run (see `runs_on`), in
     order, as arguments to the model's `instance`. Sizes marked `_experimental`
@@ -384,7 +384,7 @@ def sweep(sizes: Sequence[dict], config: str) -> Generator[dict, None, None]:
 
 
 @beartype
-def get_results(model_name: str, config: str) -> Generator[Result, None, None]:
+def get_results(model_name: str, config: str) -> Generator[Result]:
     """
     Compile each size of the zoo model `model_name`'s `SIZES` that `config` can
     run (see `sweep`), as built by its `instance`, and yield the results in

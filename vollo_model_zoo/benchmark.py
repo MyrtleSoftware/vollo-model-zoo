@@ -1,5 +1,6 @@
 import argparse
 import json
+import sys
 from collections import defaultdict
 from itertools import product
 from pathlib import Path
@@ -61,7 +62,7 @@ def run_benchmark(json_output: Path, version: str) -> int:
     ):
         try:
             results[model][config] = list(map(to_dict, get_results(model, config)))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- one broken model mustn't sink the run
             results[model][config] = [{"Error": str(e)}]
 
     data = {version: results}
@@ -73,4 +74,4 @@ def run_benchmark(json_output: Path, version: str) -> int:
 
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())
