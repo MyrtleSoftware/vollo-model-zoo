@@ -12,13 +12,11 @@ jobs:
     runs-on: self-hosted
 
     strategy:
-      # Both legs report: a failure on one says nothing about the other.
       fail-fast: false
       matrix:
         # locked:  uv.lock, i.e. what `uv run zoo` users get, and what the
         #          weekly benchmark workflow moves to each new Vollo release.
-        # minimum: every direct dependency at the floor pyproject.toml
-        #          declares, so those floors are a tested claim.
+        # minimum: every direct dependency at pyproject.toml's floor
         deps: [locked, minimum]
 
     steps:

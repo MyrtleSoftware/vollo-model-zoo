@@ -6,10 +6,7 @@ description = "Exemplar models for the Vollo SDK "
 readme = "README.md"
 requires-python = ">=3.13"
 
-# Every dependency, groups included, has a floor that CI tests; see "Minimum
-# versions" in AGENTS.md. Raise the Vollo pair together.
-#
-# Only what `zoo` needs is here.
+# Only what `zoo` needs is here, see "Minimum versions" in AGENTS.md
 dependencies = [
   "vollo-compiler>=29.0.0",
   "vollo-torch>=29.0.0",

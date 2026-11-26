@@ -134,11 +134,7 @@ vollo-torch`) and lets a normal `uv sync --group benchmarks` follow.
 
 Every direct dependency in `pyproject.toml`, the Vollo SDK included, has a
 `>=` floor, and `ci.yml`'s `minimum` leg runs the suite with all of them at
-it: `UV_RESOLUTION=lowest-direct` set for the whole job, then `uv lock`, so
-every `uv run` after it agrees with that resolution rather than re-syncing to
-`uv.lock`. Transitive dependencies keep `uv.lock`'s versions where they can.
-Floors name PyPI releases only. Reproduce the leg locally, without touching the
-committed lock, in a scratch copy of the repo:
+it, reproduce locally:
 
 ```fish
 set -x UV_RESOLUTION lowest-direct

@@ -93,8 +93,7 @@ compiler is the expected thing to do.
 
 `pyproject.toml` also gives every dependency, the SDK included, a minimum
 version, and CI runs the tests at those minimums too. If your model needs
-something newer — a compiler feature from a recent SDK, say — raise the floor
-in the same PR; CI fails until you do.
+something newer raise the floor in the same PR.
 
 If you need to compile against a different SDK (an unreleased build, or an
 older release), point uv at a directory of wheels rather than editing the
@@ -106,7 +105,7 @@ The [benchmarks](./benchmarks/README.md) are re-measured by a weekly workflow,
 which identifies each run by the Vollo SDK version _and_ the version of this
 repo, then skips the work if it already has that combination on file:
 
-```
+```text
 benchmarks/vollo_28.1.0+zoo.0.2.0.json
                  ^ SDK       ^ zoo, from `[project] version` in pyproject.toml
 ```
