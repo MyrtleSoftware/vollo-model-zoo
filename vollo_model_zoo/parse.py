@@ -32,7 +32,7 @@ def parse_records_from_json(json_file: str | Path) -> list[dict]:
                     "meta": meta_str,
                 }
             )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- skip a bad file, keep the rest
         print(f"Warning: Failed to process '{json_file}': {e}")
 
     return records

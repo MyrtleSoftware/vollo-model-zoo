@@ -50,4 +50,4 @@ def test_models(model_name: str, config: str, monkeypatch):
         assert param_sorted or speed_sorted
 
     # There should be at least one result close to 1-mill parameters, aka the "baseline"
-    assert any(map(lambda r: 0.95e6 < r.param_count < 1.05e6, results))
+    assert any(0.95e6 < r.param_count < 1.05e6 for r in results)

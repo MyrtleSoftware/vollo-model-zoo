@@ -1,6 +1,6 @@
 import argparse
-import json
 import os
+import sys
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -108,4 +108,4 @@ def _plot_config(model: str, config: str, group: pd.DataFrame, output_dir: str):
 
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

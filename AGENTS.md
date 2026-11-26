@@ -34,7 +34,7 @@ uv run pytest                      # full suite; slow — dominated by model x c
 uv run pytest -k "test_models and mamba2"   # scope it while iterating
 uv run pytest tests/test_gru.py
 
-uv run pre-commit install          # once; hooks = isort, black, codespell
+uv run pre-commit install          # once; hooks = ruff check, ruff format, codespell
 uv run pre-commit run --all-files  # lint
 ```
 
@@ -503,7 +503,8 @@ reference implementation.
   library so the sizes can be listed without the zoo's dependencies.
   `beartype.typing` and `collections.abc` are both used for
   `Generator`/`Optional` — match the file you're in.
-- Formatting is `black` + `isort`; `codespell` runs over all text with `vollo`
+- Linting and formatting are `ruff check` + `ruff format` (config in
+  `pyproject.toml`); `codespell` runs over all text with `vollo`
   allow-listed.
 - Docstrings state tensor shapes on `forward`. Do this; it is how readers
   navigate the streaming and data-dimension rules.
