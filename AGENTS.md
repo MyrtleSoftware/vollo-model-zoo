@@ -159,7 +159,7 @@ rather than replacing them.
 ```text
 vollo_model_zoo/
   models/*.py     one file per model — the actual content of the zoo
-  vm.py           compile + measure harness (vollo_info, CONFIGS, Result types, vollo_fn)
+  vm.py           compile + measure harness (vollo_info, CONFIGS, Result types)
   catalog.py      every model's SIZES as data, without importing torch; builds one size
   zoo.py          `zoo` CLI: run one model, print a table (`--markdown`) or JSON
   benchmark.py \
@@ -336,7 +336,8 @@ What that means here:
   cost is visible in the table.
 - `vollo_torch.Fp8Weights()` halves weight storage on the Versal boards.
 - Inputs/outputs are bf16 unless `to_nnir` gets `inputs_precisions` /
-  `outputs_precisions` — `vm.vollo_fn` is the one place here that does.
+  `outputs_precisions` — `vollo_fn` in `tests/test_approx.py` is the one place
+  here that does.
 - `gru.py` shows an accuracy trick (`sigmoid(-z)` over `1 - sigmoid(z)`);
   `tests/test_approx.py` builds higher-precision primitives (Newton–Raphson
   reciprocal) and measures their bit accuracy. Both repo-grown.

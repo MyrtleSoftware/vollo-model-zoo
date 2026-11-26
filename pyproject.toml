@@ -11,7 +11,6 @@ dependencies = [
   "vollo-compiler",
   "vollo-torch",
   "beartype",
-  "numpy",
   "tabulate",
   "torch",
 ]
@@ -46,6 +45,7 @@ benchmarks = [
 test = [
   # Reference implementations for the mamba1/mamba2/nano-llm equivalence tests.
   "flash-linear-attention>=0.4.1",
+  "numpy",
   "packaging",
   "pytest>=9.0.2",
   # Unpickles the nanochat tokenizer that `test_nano_llm.py`'s checkpoint tests

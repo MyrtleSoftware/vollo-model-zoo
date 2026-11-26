@@ -1652,7 +1652,6 @@ source = { editable = "." }
 default-groups = []
 dependencies = [
     { name = "beartype" },
-    { name = "numpy" },
     { name = "tabulate" },
     { name = "torch" },
     { name = "vollo-compiler" },
@@ -1673,6 +1672,7 @@ dev = [
 ]
 test = [
     { name = "flash-linear-attention" },
+    { name = "numpy" },
     { name = "packaging" },
     { name = "pytest" },
     { name = "tiktoken" },
@@ -1681,7 +1681,6 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "beartype" },
-    { name = "numpy" },
     { name = "tabulate" },
     { name = "torch" },
     { name = "vollo-compiler" },
@@ -1702,6 +1701,7 @@ dev = [
 ]
 test = [
     { name = "flash-linear-attention", specifier = ">=0.4.1" },
+    { name = "numpy" },
     { name = "packaging" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "tiktoken", specifier = ">=0.12.0" },

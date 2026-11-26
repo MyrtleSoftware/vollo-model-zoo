@@ -2,14 +2,12 @@ import copy
 import importlib
 from collections.abc import Generator
 from dataclasses import asdict, dataclass
-from functools import cache, partial
 
-import numpy as np
 import torch
 import vollo_compiler as vc
 import vollo_torch as vt
 from beartype import beartype
-from beartype.typing import Callable, Optional, Sequence, Union
+from beartype.typing import Optional, Sequence, Union
 from vollo_compiler import AllocationError, SaveError
 
 from vollo_model_zoo import catalog
@@ -260,61 +258,6 @@ def vollo_multi_model_info(
         )
 
     return results
-
-
-type Activation = Callable[[torch.Tensor], torch.Tensor]
-
-
-@cache
-@beartype
-def vollo_fn(fn: Activation, config: str) -> Activation:
-    """
-    Convert a torch activation function to a vollo activation function.
-
-    When the resultant functions is used the following conversions occur:
-        1. Torch tensor -> Numpy array
-        2. Array scalar type -> np.float32 (since vollo VM only supports scalar float32)
-        3. Vollo runs the function
-        4. Vollo returns an fp32 which is then cast to a python scalar (fp64)
-        5. These are aggregated back into an fp64 numpy array
-        6. The numpy array is converted back to an fp64 torch tensor
-    """
-
-    # Dummy model for vollo to compile
-    class Model(torch.nn.Module):
-        def forward(self, x):
-            return fn(x)
-
-    # Use scalar effective input
-    program = _vollo_compile(
-        Model(),
-        torch.tensor([1.0]),
-        time_axis=None,
-        config=_config(config),
-        inputs_precisions=[vc.NumberFormat.FP32],
-        outputs_precisions=[vc.NumberFormat.FP32],
-    )
-
-    return partial(
-        _tensor_fn, fn=partial(_scalar_fn, vm=program.to_vm(bit_accurate=True))
-    )
-
-
-@np.vectorize
-@beartype
-def _scalar_fn[T](x: T, vm) -> T:
-    """
-    Run a scalar through the vollo VM.
-    """
-    return vm.run(np.atleast_1d(x).astype(np.float32)).item()
-
-
-@beartype
-def _tensor_fn(x: torch.Tensor, fn: Callable[[np.ndarray], np.ndarray]) -> torch.Tensor:
-    """
-    Performs: x -> .numpy() -> numpy_fn(x) -> from_numpy()
-    """
-    return torch.from_numpy(fn(x.numpy()))
 
 
 @beartype
