@@ -49,7 +49,7 @@ test = [
   "packaging",
   "pytest>=9.0.2",
   # Unpickles the nanochat tokenizer that `test_nano_llm.py`'s checkpoint tests
-  # decode with. Only reachable with NANOLLM_CHECKPOINTS set.
+  # decode with. Only reachable when the internal checkpoint mount is present.
   "tiktoken>=0.12.0",
 ]
 # Lint and editor tooling.
