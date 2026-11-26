@@ -40,6 +40,16 @@ A model that isn't yet supported sets a top-level `EXPERIMENTAL = "why"`, which
 
 See [AGENTS.md](./AGENTS.md) for the details.
 
+## Development dependencies
+
+The test, lint and benchmark tooling are dependency groups that `uv run`
+doesn't install by default, so that `uv run zoo` stays lean for users. With
+direnv, the `.envrc` installs every group; otherwise, once:
+
+```fish
+uv sync --all-groups
+```
+
 ## Pre-commit Hooks
 
 We use `pre-commit` to ensure code quality and consistency. The hooks include:
@@ -63,7 +73,8 @@ uv run pre-commit run --all-files
 
 ## Testing
 
-You can run all the models in the zoo with:
+With the dependency groups installed (see above), run all the models in the zoo
+with:
 
 ```fish
 uv run pytest

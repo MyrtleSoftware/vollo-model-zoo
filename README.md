@@ -536,13 +536,14 @@ a separate readout network predicts whether the logical qubit flipped.
 ## Other utilities
 
 Alongside the primary `zoo` command a few utilities are available to run in
-this repo:
+this repo. Their dependencies are in the `benchmarks` group, hence the
+`--group benchmarks`:
 
 - To generate a JSON file containing all the model/configuration combinations
   in the zoo run:
 
   ```fish
-  uv run benchmark --json_output ./benchmarks/my-benchmark.json
+  uv run --group benchmarks benchmark --json_output ./benchmarks/my-benchmark.json
   ```
 
   Left to itself it writes `./benchmarks/vollo_<sdk>+zoo.<zoo>.json`, naming
@@ -552,13 +553,13 @@ this repo:
 - To plot multiple benchmark JSON files run:
 
   ```fish
-  uv run plot ./benchmarks/*.json
+  uv run --group benchmarks plot ./benchmarks/*.json
   ```
 
 - To generate a markdown report from the benchmarks and (optionally) plots run:
 
   ```fish
-  uv run report ./benchmarks/my-benchmark.json --plots ./plots/*.svg
+  uv run --group benchmarks report ./benchmarks/my-benchmark.json --plots ./plots/*.svg
   ```
 
   This is used to generate the [benchmark README](./benchmarks/README.md).

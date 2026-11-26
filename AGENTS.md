@@ -22,6 +22,13 @@ Two audiences constrain every change:
 Requires [`uv`](https://docs.astral.sh/uv/) and Python 3.13 (`.python-version`).
 `uv run` bootstraps the venv from `uv.lock` — never `pip install` into it by hand.
 
+`[project] dependencies` is only what `zoo` needs, and no dependency group is
+installed by default, so a customer's `uv run zoo` stays lean. Everything else
+is a group: `test` (pytest, FLA), `dev` (pre-commit, ruff, ty) and `benchmarks`
+(what `benchmark`/`plot`/`report` import). `.envrc` syncs all of them
+(`layout uv --all-groups`); without direnv, run `uv sync --all-groups` once. A
+plain `uv run` never uninstalls a group, but a plain `uv sync` does.
+
 ```fish
 uv run zoo <model>                 # latency table for one model (default config: V80)
 uv run zoo <model> --config V80LL  # pick a hardware config
@@ -107,7 +114,7 @@ Two things there are load-bearing:
 
 `update_benchmarks.yml` needs none of that, because released wheels are on PyPI:
 it moves the lock (`uv lock --upgrade-package vollo-compiler --upgrade-package
-vollo-torch`) and lets a normal `uv sync` follow.
+vollo-torch`) and lets a normal `uv sync --group benchmarks` follow.
 
 - The **lock file is part of the PR**, so merging it is what gives `uv run zoo`
   users the new compiler — and `ci.yml` runs the suite against the new SDK on
