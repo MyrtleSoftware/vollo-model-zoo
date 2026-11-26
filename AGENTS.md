@@ -23,12 +23,6 @@ Requires [`uv`](https://docs.astral.sh/uv/) and Python 3.13 (`.python-version`),
 plus `ninja` and a C++ compiler for `tests/test_approx.py`'s extension. `uv run`
 bootstraps the venv from `uv.lock` — never `pip install` into it by hand.
 
-With nix, `flake.nix`'s dev shell (`nix develop`, or direnv's `use flake` in
-`.envrc`) supplies uv, ninja and git. Python itself is uv's, and the C++
-compiler is the host's on purpose: the extension loads next to PyPI torch, so
-it must match the host's libstdc++ (a newer nix gcc fails with
-`CXXABI_1.3.x not found`).
-
 `[project] dependencies` is only what `zoo` needs, and no dependency group is
 installed by default, so a customer's `uv run zoo` stays lean. Everything else
 is a group: `test` (pytest, FLA), `dev` (pre-commit, ruff, ty) and `benchmarks`
