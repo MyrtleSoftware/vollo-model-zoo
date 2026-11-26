@@ -388,10 +388,6 @@ What that means here:
 
 ## `vm.py` API
 
-- `CONFIGS`: `{"V80", "V80LL", "IA-420f", "IA-840f", "NT400D11"}` → `vc.Config`.
-  Nothing probes for SDK features: a config or API newer than the `vollo-compiler`
-  floor means raising the floor (see [Minimum versions](#minimum-versions)),
-  never a `hasattr` fallback.
 - `config_supports(config, feature) -> bool` probes `Config.features`, e.g.
   `"fp8"`, which only the V80 family has. Gate a size needing a feature on it
   with `_features` (`rnnt.py`, `stateless-rnnt.py` do, for their fp8 size): the
