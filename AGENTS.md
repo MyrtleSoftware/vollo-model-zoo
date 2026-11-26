@@ -45,7 +45,10 @@ its `__main__` block prints each size's VM estimate on a V80. That env is
 resolved fresh rather than from `uv.lock`; `uv run python <file>.py` uses the
 project's instead.
 
-`ci.yml` runs `uv lock --check`, `pre-commit run --all-files`, then `pytest -x`.
+`ci.yml` runs `uv lock --check`, `pre-commit run --all-files`, then `pytest -x`
+against `uv.lock`, and `pytest -x` again with every direct dependency at its
+floor (see [Minimum versions](#minimum-versions)), as the checks `ci (locked)`
+and `ci (minimum)`.
 
 - The `-x` means a red CI reports only the _first_ failure — never read
   "everything else passed" into it; re-run locally without `-x`.
@@ -56,10 +59,10 @@ project's instead.
 
 ## Running against a different Vollo SDK
 
-`vollo-compiler` / `vollo-torch` come from PyPI, pinned by `uv.lock` — the single
-source of truth for the version the zoo is written and tested against, since
-`pyproject.toml` declares no version bound. To override it, get a wheel
-directory from a released `.run` bundle
+`vollo-compiler` / `vollo-torch` come from PyPI, pinned by `uv.lock` — the
+version the zoo is written and benchmarked against. `pyproject.toml` gives the
+oldest release it is also tested on (see [Minimum versions](#minimum-versions)).
+To try any other SDK, get a wheel directory from a released `.run` bundle
 ([releases](https://github.com/MyrtleSoftware/vollo-sdk/releases)):
 
 ```fish
@@ -115,11 +118,33 @@ vollo-torch`) and lets a normal `uv sync` follow.
 - A PR appears for either of two independent reasons: a new SDK on PyPI (the
   lock moves) or a zoo version bump (the benchmark file name is new). The
   benchmark run is gated on the file name, so a lock-only PR carries no numbers.
-- Don't add a floor to `pyproject.toml` to record which SDK features a model
-  needs: only the locked version is ever tested, so a floor would be an unchecked
-  support claim about older SDKs. Backwards compatibility would have to be a CI
-  leg (`uv lock --resolution lowest-direct`, needing floors on _every_ direct
-  dependency), not a number in a file.
+- The weekly workflow never touches the floors in `pyproject.toml`: it moves the
+  lock, and the minimum CI leg ignores the lock's direct versions, so a
+  lock-only PR leaves that leg's result as it was.
+
+### Minimum versions
+
+Every direct dependency in `pyproject.toml`, the Vollo SDK included, has a
+`>=` floor, and `ci.yml`'s `minimum` leg runs the suite with all of them at
+it: `UV_RESOLUTION=lowest-direct` set for the whole job, then `uv lock`, so
+every `uv run` after it agrees with that resolution rather than re-syncing to
+`uv.lock`. Transitive dependencies keep `uv.lock`'s versions where they can.
+Floors name PyPI releases only. Reproduce the leg locally, without touching the
+committed lock, in a scratch copy of the repo:
+
+```fish
+set -x UV_RESOLUTION lowest-direct
+uv lock && uv run --all-extras pytest
+```
+
+- **Raise a floor in the PR that needs it** — a model using a compiler feature
+  from a newer SDK, say. The `minimum` leg is what catches a missing raise. Raise
+  `vollo-compiler` and `vollo-torch` together; they are released as a pair.
+- Every dependency needs a floor, not just Vollo's: without one, lowest-direct
+  picks an ancient release that doesn't install on Python 3.13.
+- Floors are a support claim, not a benchmark: the benchmarks only ever measure
+  the locked SDK. Changing a floor alone needs no zoo version bump, but commit
+  its `uv.lock` re-lock.
 
 ## Bump the zoo version when you change what is measured
 
@@ -168,7 +193,7 @@ vollo_model_zoo/
   version.py      what identifies a benchmark run (see above)
 benchmarks/, plots/  generated latency history; do not hand-edit
 scripts/          backtest_github_versions.sh — benchmark older SDK releases
-.github/workflows ci.yml (lock check + lint + tests), update_benchmarks.yml (weekly PR)
+.github/workflows ci.yml (lock check + lint + tests, locked and minimum), update_benchmarks.yml (weekly PR)
 ```
 
 ## The model file contract

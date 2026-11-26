@@ -40,8 +40,10 @@ Pre-requisites:
 
 `uv run` fetches the Vollo SDK version pinned in [`uv.lock`](./uv.lock), which is
 the version every model here is written and measured against — a weekly workflow
-moves it to each new release. If you copy a model file into a project on an older
-SDK, it may use compiler features that release does not have.
+moves it to each new release. The oldest SDK the models are tested on is the
+`vollo-compiler` floor in [`pyproject.toml`](./pyproject.toml); a model file
+copied into a project on an older SDK may use compiler features that release
+does not have.
 
 Then try a model out:
 
