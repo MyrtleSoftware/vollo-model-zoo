@@ -127,7 +127,7 @@ A latency is a function of the compiler _and_ the zoo code, so a run is
 identified by both, as a PEP 440 version `<vollo>+zoo.<zoo>`
 (`vollo_model_zoo/version.py`) — the JSON filename and its top-level key:
 
-```
+```text
 benchmarks/vollo_28.1.0+zoo.0.2.0.json   # {"28.1.0+zoo.0.2.0": {model: {config: [...]}}}
 ```
 
@@ -144,18 +144,12 @@ carries no compatibility promise.
 - **Don't** for the weekly SDK lock bump: the SDK version is already the other
   half of the identity.
 
-Two consequences:
-
-- Only the latest SDK is re-measured, so a new point lands beside the old ones
-  rather than replacing them — hence plot labels naming both versions.
-- To rebuild the whole curve against current models, run
-  `scripts/backtest_github_versions.sh` over the released SDKs by hand. It reuses
-  an already-extracted `build/vollo-sdk-<version>/`, so it also serves for a
-  locally built SDK.
+Only the latest SDK is re-measured, so a new point lands beside the old ones
+rather than replacing them.
 
 ## Layout
 
-```
+```text
 vollo_model_zoo/
   models/*.py     one file per model — the actual content of the zoo
   vm.py           compile + measure harness (vollo_info, CONFIGS, Result types, vollo_fn)
@@ -167,7 +161,6 @@ vollo_model_zoo/
   report.py    /  development.
   version.py      what identifies a benchmark run (see above)
 benchmarks/, plots/  generated latency history; do not hand-edit
-scripts/          backtest_github_versions.sh — benchmark older SDK releases
 .github/workflows ci.yml (lock check + lint + tests), update_benchmarks.yml (weekly PR)
 ```
 
@@ -314,7 +307,7 @@ why a compile failed.
 rule rejects, which is why the scan-based (`gru`, `ssm`, `mamba2`, `swa`) and
 large-linear (`resmlp`) models set it — `swa` is the clearest case, since
 without it both of its attention matmuls fail as "dynamic MatMul detected". The docs call it advanced, with
-"non-obvious performance characteristics" that *potentially* cost latency and
+"non-obvious performance characteristics" that _potentially_ cost latency and
 tensor RAM — so reach for it when a matmul won't compile, not to make one faster.
 
 ### Precision
@@ -428,7 +421,7 @@ program.pack()                             # AllocationError surfaces here, not 
 originating **fx name in parentheses** (your link back to the Python source), the
 NNIR op with its constant shapes and precision, then the output shape:
 
-```
+```text
 Id(1v2) - (linear) Linear(weight: (64, 64), weight_precision: Bf16, bias: 64, input: Id(0)) - [1, 5, 64]
 Id(2v2) - (relu) Clamp(min: 0, max: None, input: Id(1), activation_precision: Bf16) - [1, 5, 64]
 ```
