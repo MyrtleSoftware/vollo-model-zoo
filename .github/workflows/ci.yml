@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # Any base, not just main: in a stack of PRs, each one targets the branch of
+  # the PR below it, and still needs CI.
   pull_request:
-    branches: [main]
 
 jobs:
   ci:
