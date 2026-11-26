@@ -86,11 +86,15 @@ uv run pytest
 
 ## The Vollo SDK version
 
-`uv.lock` pins the `vollo-compiler` / `vollo-torch` the zoo is developed and
-tested against; `pyproject.toml` declares them without a version bound on
-purpose, because no older SDK is tested. A weekly workflow moves the lock to
-each new release and re-measures the benchmarks, so writing a model against the
-current compiler is the expected thing to do.
+`uv.lock` pins the `vollo-compiler` / `vollo-torch` the zoo is developed,
+tested and benchmarked against. A weekly workflow moves the lock to each new
+release and re-measures the benchmarks, so writing a model against the current
+compiler is the expected thing to do.
+
+`pyproject.toml` also gives every dependency, the SDK included, a minimum
+version, and CI runs the tests at those minimums too. If your model needs
+something newer — a compiler feature from a recent SDK, say — raise the floor
+in the same PR; CI fails until you do.
 
 If you need to compile against a different SDK (an unreleased build, or an
 older release), point uv at a directory of wheels rather than editing the

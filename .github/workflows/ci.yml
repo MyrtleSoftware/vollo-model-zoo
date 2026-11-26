@@ -11,6 +11,16 @@ jobs:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: self-hosted
 
+    strategy:
+      # Both legs report: a failure on one says nothing about the other.
+      fail-fast: false
+      matrix:
+        # locked:  uv.lock, i.e. what `uv run zoo` users get, and what the
+        #          weekly benchmark workflow moves to each new Vollo release.
+        # minimum: every direct dependency at the floor pyproject.toml
+        #          declares, so those floors are a tested claim.
+        deps: [locked, minimum]
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,13 +36,28 @@ jobs:
           python-version-file: ".python-version"
 
       - name: Check the lock file is current
+        if: matrix.deps == 'locked'
         run: |
           uv lock --check
+
+      - name: Resolve to the minimum versions
+        if: matrix.deps == 'minimum'
+        run: |
+          # Set for every later step, so each `uv run` agrees with this lock
+          # rather than re-resolving back to uv.lock's. Direct dependencies go
+          # to their floors; transitive ones keep uv.lock's versions where they
+          # can, so this leg moves only when a floor does.
+          echo "UV_RESOLUTION=lowest-direct" >> "$GITHUB_ENV"
+          UV_RESOLUTION=lowest-direct uv lock
 
       - name: Install dependencies
         run: uv sync --all-groups
 
+      - name: Check versions
+        run: uv pip list
+
       - name: Run linting
+        if: matrix.deps == 'locked'
         run: uv run --group dev pre-commit run --all-files
 
       - name: Run tests
