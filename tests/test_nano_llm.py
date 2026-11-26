@@ -13,6 +13,7 @@ skip when the mount isn't present
 import importlib
 import json
 import pickle
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -238,10 +239,19 @@ CONTINUATION = " Paris"
 # (head_partitions, distributed_norm)
 CHECKPOINT_PARTITIONS = [(None, False), (24, True), (24, False)]
 
-requires_checkpoint = pytest.mark.skipif(
-    not (CHECKPOINT.is_dir() and TOKENIZER.is_file()),
-    reason=f"No trained NanoLLM checkpoint at {CHECKPOINT}",
-)
+
+@pytest.fixture(scope="session")
+def requires_checkpoint():
+    # Checked in a child: on a wedged `hard` NFS mount a stat blocks forever
+    # (killably), so this costs a timeout instead of hanging the suite.
+    child = subprocess.Popen(["test", "-d", CHECKPOINT, "-a", "-f", TOKENIZER])
+    try:
+        found = child.wait(timeout=10) == 0
+    except subprocess.TimeoutExpired:
+        child.kill()
+        pytest.skip(f"{CHECKPOINTS} didn't answer within 10s")
+    if not found:
+        pytest.skip(f"No trained NanoLLM checkpoint at {CHECKPOINT}")
 
 
 @beartype
@@ -259,7 +269,7 @@ def _newest(directory: Path, pattern: str) -> Path:
 
 @pytest.fixture(scope="session")
 @beartype
-def checkpoint() -> tuple[dict, dict]:
+def checkpoint(requires_checkpoint) -> tuple[dict, dict]:
     """
     `(model_config, vollo_state_dict)` for the trained NanoLLM.
     """
@@ -272,7 +282,7 @@ def checkpoint() -> tuple[dict, dict]:
 
 @pytest.fixture(scope="session")
 @beartype
-def tokenizer():
+def tokenizer(requires_checkpoint):
     """
     The `tiktoken` encoding the checkpoint was trained against.
 
@@ -330,7 +340,6 @@ def _greedy_decode(model: nn.Module, prompt_ids: list[int], n: int) -> list[int]
     return tokens[len(prompt_ids) :]
 
 
-@requires_checkpoint
 def test_checkpoint_decode(checkpoint, tokenizer):
     """
     Test that the trained model, loaded through `convert_state_dict`
