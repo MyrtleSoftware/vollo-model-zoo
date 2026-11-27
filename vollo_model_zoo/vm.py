@@ -104,15 +104,17 @@ def _config(conf: str, boards: int = 1) -> vc.Config:
 
 
 @beartype
-def config_supports(config: str, feature: str) -> bool:
+def config_supports(config: Union[str, vc.Config], feature: str) -> bool:
     """
     Whether a config's fabric provides a compiler feature, e.g. `"fp8"`.
     """
-    return feature in _config(config).features
+    if isinstance(config, str):
+        config = _config(config)
+    return feature in config.features
 
 
 @beartype
-def runs_on(size: dict, config: str) -> bool:
+def runs_on(size: dict, config: Union[str, vc.Config]) -> bool:
     """
     Whether `config` provides the compiler features a size requires (its
     `_features`, see `catalog.split`).
@@ -122,8 +124,9 @@ def runs_on(size: dict, config: str) -> bool:
 
 
 @beartype
-def _provides(config: str, requirements: dict) -> bool:
-    _config(config)
+def _provides(config: Union[str, vc.Config], requirements: dict) -> bool:
+    if isinstance(config, str):
+        config = _config(config)
     features = requirements.get("_features", [])
     return all(config_supports(config, feature) for feature in features)
 
@@ -164,17 +167,133 @@ def vollo_info(
     except (AllocationError, SaveError, ValueError) as e:
         return e
 
-    latency_fast = p.compute_duration_per_inference_us(spaced=True)
-    latency_slow = p.compute_duration_per_inference_us(spaced=False)
+    return _ok(p, model, config=config, meta=meta)
 
+
+@beartype
+def _ok(
+    program: vc.Program,
+    model: torch.nn.Module,
+    *,
+    config: str,
+    meta: Optional[dict[str, Union[int, float, str]]],
+    model_index: Optional[int] = None,
+) -> Ok:
+    """
+    The result of `model`, compiled into `program`: the whole program, or its
+    model `model_index` for a multi-model program.
+    """
+    # A single-model program is measured whole, as `vollo_info` always has.
+    index = {} if model_index is None else {"model_index": model_index}
     return Ok(
         config=config,
         param_count=sum(p.numel() for p in model.parameters()),
-        cycle_count=p.cycle_count_per_inference(),
-        latency_spaced=Microseconds(latency_fast),
-        latency_contiguous=Microseconds(latency_slow),
+        cycle_count=program.cycle_count_per_inference(**index),
+        latency_spaced=Microseconds(
+            program.compute_duration_per_inference_us(spaced=True, **index)
+        ),
+        latency_contiguous=Microseconds(
+            program.compute_duration_per_inference_us(spaced=False, **index)
+        ),
         meta=meta,
     )
+
+
+@beartype
+def _entries_ok(
+    program: vc.Program, entries: Sequence[MultiModelEntry], config: str
+) -> list[Ok]:
+    """
+    The result of each entry of a multi-model `program`. Each entry's
+    `param_count` is its own, so a module shared between entries counts in each.
+    """
+    return [
+        _ok(
+            program,
+            entry.model,
+            config=config,
+            meta={"prog": entry.name, **(entry.meta or {})},
+            model_index=model_index,
+        )
+        for model_index, entry in enumerate(entries)
+    ]
+
+
+@beartype
+def _entries(entries: Sequence[dict]) -> list[MultiModelEntry]:
+    """
+    A multi-model size's entries, which model files return as plain dicts of
+    `MultiModelEntry`'s fields so they need not import the zoo.
+    """
+    return [MultiModelEntry(**entry) for entry in entries]
+
+
+@beartype
+def program_results(zoo: dict, program: vc.Program, config: str) -> list[Ok]:
+    """
+    The results of a size, as `catalog.build` returns it, compiled into
+    `program` (see `compile_instance`): one per model of the program, as
+    `vollo_info` / `vollo_multi_model_info` report them.
+    """
+    if "entries" in zoo:
+        return _entries_ok(program, _entries(zoo["entries"]), config)
+    return [_ok(program, zoo["model"], config=config, meta=zoo.get("meta"))]
+
+
+@beartype
+def _compile_entries(
+    entries: Sequence[MultiModelEntry], config: vc.Config, quick_compile: bool = False
+) -> vc.Program:
+    """
+    The one program of several entry points, packed (so it raises if it doesn't fit).
+    """
+    builder = vc.ProgramBuilder(config, remember_allocations=True)
+
+    for entry in entries:
+        shaped_model, _ = vt.fx.prepare_shape(entry.model, *entry.inputs)
+        nnir = vt.fx.nnir.to_nnir(shaped_model)
+        if entry.streaming_axis is not None:
+            nnir, _ = nnir.streaming_transform(entry.streaming_axis)
+
+        builder.add_nnir(nnir, entry.name, quick_compile=quick_compile)
+
+    program = builder.to_program()
+    program.pack()
+    return program
+
+
+class ZooArgumentError(Exception):
+    """
+    A size `compile_instance` can't compile (one of several boards): a
+    limitation of the zoo, not anything the SDK did.
+    """
+
+
+@beartype
+def compile_instance(zoo: dict, config: vc.Config) -> vc.Program:
+    """
+    The program of a size, as `catalog.build` returns it, for `config`: the
+    compile `vollo_info` / `vollo_multi_model_info` do, but handing back the
+    program and raising what they return, so a caller can e.g. save it
+    (`fpga.py`). `program_results` gives its results.
+
+    `zoo`'s arguments are those of `vollo_info` / `vollo_multi_model_info`
+    (`test_catalog.py`), which `_vollo_compile` / `_compile_entries` all take
+    but `meta` and `boards`, handled here (`test_fpga.py`).
+    """
+    if "entries" in zoo:
+        arguments = {**zoo, "entries": _entries(zoo["entries"])}
+        return _compile_entries(**arguments, config=config)
+
+    arguments = dict(zoo)
+    # `config` is one board's; compiling a multi-board size for it would
+    # silently measure something else.
+    boards = arguments.pop("boards", 1)
+    if boards != 1:
+        raise ZooArgumentError(f"Can't compile for {boards} boards")
+    # Only reported, not compiled.
+    arguments.pop("meta", None)
+    return _vollo_compile(**arguments, config=config)
 
 
 @beartype
@@ -192,49 +311,14 @@ def vollo_multi_model_info(
 
     if not entries:
         raise ValueError("Expected at least one multi-model entry")
-    entries = [MultiModelEntry(**entry) for entry in entries]
+    entries = _entries(entries)
 
     try:
-        builder = vc.ProgramBuilder(_config(config), remember_allocations=True)
-
-        for entry in entries:
-            shaped_model, _ = vt.fx.prepare_shape(entry.model, *entry.inputs)
-            nnir = vt.fx.nnir.to_nnir(shaped_model)
-            if entry.streaming_axis is not None:
-                nnir, _ = nnir.streaming_transform(entry.streaming_axis)
-
-            builder.add_nnir(nnir, entry.name, quick_compile=quick_compile)
-
-        program = builder.to_program()
-        program.pack()
+        program = _compile_entries(entries, _config(config), quick_compile)
     except (AllocationError, SaveError, ValueError) as error:
         return [error]
 
-    results = []
-    for model_index, entry in enumerate(entries):
-        results.append(
-            Ok(
-                config=config,
-                # Each entry's own, so a module shared between entries counts in each.
-                param_count=sum(p.numel() for p in entry.model.parameters()),
-                cycle_count=program.cycle_count_per_inference(model_index=model_index),
-                latency_spaced=Microseconds(
-                    program.compute_duration_per_inference_us(
-                        model_index=model_index,
-                        spaced=True,
-                    )
-                ),
-                latency_contiguous=Microseconds(
-                    program.compute_duration_per_inference_us(
-                        model_index=model_index,
-                        spaced=False,
-                    )
-                ),
-                meta={"prog": entry.name, **(entry.meta or {})},
-            )
-        )
-
-    return results
+    return _entries_ok(program, entries, config)
 
 
 @beartype
@@ -289,18 +373,27 @@ def to_dict(r: Result) -> dict:
 
 
 @beartype
+def in_sweep(size: dict, config: Union[str, vc.Config]) -> bool:
+    """
+    Whether a size of a model's `SIZES` is swept on `config`: `config` can
+    run it (see `runs_on`), and it isn't marked `_experimental` unless
+    `sweep_experimental` is set.
+    """
+    _, requirements = catalog.split(size)
+    if requirements.get("_experimental") and not sweep_experimental:
+        return False
+    return runs_on(size, config)
+
+
+@beartype
 def sweep(sizes: Sequence[dict], config: str) -> Generator[dict]:
     """
-    The sizes in a model's `SIZES` that `config` can run (see `runs_on`), in
-    order, as arguments to the model's `instance`. Sizes marked `_experimental`
-    are left out unless `sweep_experimental` is set.
+    The sizes in a model's `SIZES` swept on `config` (see `in_sweep`), in
+    order, as arguments to the model's `instance`.
     """
     for size in sizes:
-        arguments, requirements = catalog.split(size)
-        if requirements.get("_experimental") and not sweep_experimental:
-            continue
-        if _provides(config, requirements):
-            yield arguments
+        if in_sweep(size, config):
+            yield catalog.split(size)[0]
 
 
 @beartype
