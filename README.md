@@ -38,11 +38,6 @@ Pre-requisites:
 
 - Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for dependency management.
 
-`uv run` fetches the Vollo SDK version pinned in [`uv.lock`](./uv.lock), which is
-the version every model here is written and measured against — a weekly workflow
-moves it to each new release. If you copy a model file into a project on an older
-SDK, it may use compiler features that release does not have.
-
 Then try a model out:
 
 ```fish
@@ -56,17 +51,14 @@ uv run zoo --help
 ```
 
 Each model file also runs on its own, without this repo: `uv run` reads the
-dependencies from the file's header and prints the VM estimate of each size.
+dependencies from the file's header and prints the VM estimate of each size.[^1]
 
 ```fish
 uv run vollo_model_zoo/models/wavenet.py   # or a copy of it, anywhere
 ```
 
-The one exception is `nano-llm.py`, which builds on `mamba2.py` and needs a copy
-of it in the same directory.
-
-Unlike `uv run zoo`, this resolves the latest Vollo SDK on PyPI rather than the
-one in `uv.lock`.
+[^1]: The one exception is `nano-llm.py`, which builds on `mamba2.py` and needs
+    a copy of it in the same directory.
 
 ## 🐘 Models
 
