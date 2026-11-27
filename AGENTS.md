@@ -142,13 +142,11 @@ uv lock && uv sync --all-groups && uv run pytest
 ```
 
 - **Raise a floor in the PR that needs it** — a model using a compiler feature
-  from a newer SDK, say. The `minimum` leg is what catches a missing raise. Raise
-  `vollo-compiler` and `vollo-torch` together; they are released as a pair.
-- Every dependency needs a floor, not just Vollo's: without one, lowest-direct
-  picks an ancient release that doesn't install on Python 3.13.
-- Floors are a support claim, not a benchmark: the benchmarks only ever measure
-  the locked SDK. Changing a floor alone needs no zoo version bump, but commit
-  its `uv.lock` re-lock.
+  from a newer SDK, say. Raise `vollo-compiler` and `vollo-torch` together.
+- Every dependency needs a floor, not just Vollo's
+- Floors are a support claim: the benchmarks only ever measure the locked SDK.
+  Changing a floor alone needs no zoo version bump, but commit its `uv.lock`
+  re-lock.
 
 ## Bump the zoo version when you change what is measured
 
