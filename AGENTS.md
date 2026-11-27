@@ -19,8 +19,9 @@ Two audiences constrain every change:
 
 ## Setup and commands
 
-Requires [`uv`](https://docs.astral.sh/uv/) and Python 3.13 (`.python-version`).
-`uv run` bootstraps the venv from `uv.lock` — never `pip install` into it by hand.
+Requires [`uv`](https://docs.astral.sh/uv/) and Python 3.13 (`.python-version`),
+plus `ninja` and a C++ compiler for `tests/test_approx.py`'s extension. `uv run`
+bootstraps the venv from `uv.lock` — never `pip install` into it by hand.
 
 `[project] dependencies` is only what `zoo` needs, and no dependency group is
 installed by default, so a customer's `uv run zoo` stays lean. Everything else
