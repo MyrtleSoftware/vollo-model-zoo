@@ -12,13 +12,12 @@ from vollo_compiler import AllocationError, SaveError
 
 from vollo_model_zoo import catalog
 
-# Names changed over time, fallback to depreciated for backwards-compat
-_CONFIG_CONSTRUCTORS = {
-    "V80": ("amd_v80_c6b32", "v80_c6b32"),
-    "V80LL": ("amd_v80ll_c6b32", "v80ll_c6b32"),
-    "IA-420f": ("bittware_ia420f_c6b32", "ia_420f_c6b32"),
-    "IA-840f": ("bittware_ia840f_c3b64", "ia_840f_c3b64"),
-    "NT400D11": ("napatech_nt400d11_c6b32", "nt400d11_c6b32"),
+CONFIGS = {
+    "V80": vc.Config.amd_v80_c6b32(),
+    "V80LL": vc.Config.amd_v80ll_c6b32(),
+    "IA-420f": vc.Config.bittware_ia420f_c6b32(),
+    "IA-840f": vc.Config.bittware_ia840f_c3b64(),
+    "NT400D11": vc.Config.napatech_nt400d11_c6b32(),
 }
 
 
@@ -28,25 +27,6 @@ sweep_experimental = False
 
 # The config `zoo` runs when `--config` is not given.
 DEFAULT_CONFIG = "V80"
-
-
-@beartype
-def _get_configs() -> dict[str, vc.Config]:
-    """
-    Older vollo versions may not have all the configs.
-    """
-    configs = {}
-
-    for name, constructors in _CONFIG_CONSTRUCTORS.items():
-        for constructor in constructors:
-            if hasattr(vc.Config, constructor):
-                configs[name] = getattr(vc.Config, constructor)()
-                break
-
-    return configs
-
-
-CONFIGS = _get_configs()
 
 
 @beartype
@@ -127,11 +107,8 @@ def _config(conf: str, boards: int = 1) -> vc.Config:
 def config_supports(config: str, feature: str) -> bool:
     """
     Whether a config's fabric provides a compiler feature, e.g. `"fp8"`.
-
-    Older vollo versions may not expose the feature list, in which case nothing
-    is assumed to be supported.
     """
-    return feature in getattr(_config(config), "features", [])
+    return feature in _config(config).features
 
 
 @beartype
