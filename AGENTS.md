@@ -22,6 +22,13 @@ Two audiences constrain every change:
 Requires [`uv`](https://docs.astral.sh/uv/) and Python 3.13 (`.python-version`).
 `uv run` bootstraps the venv from `uv.lock` — never `pip install` into it by hand.
 
+`[project] dependencies` is only what `zoo` needs, and no dependency group is
+installed by default, so a customer's `uv run zoo` stays lean. Everything else
+is a group: `test` (pytest, FLA), `dev` (pre-commit, ruff, ty) and `benchmarks`
+(what `benchmark`/`plot`/`report` import). `.envrc` syncs all of them
+(`layout uv --all-groups`); without direnv, run `uv sync --all-groups` once. A
+plain `uv run` never uninstalls a group, but a plain `uv sync` does.
+
 ```fish
 uv run zoo <model>                 # latency table for one model (default config: V80)
 uv run zoo <model> --config V80LL  # pick a hardware config
@@ -107,7 +114,7 @@ Two things there are load-bearing:
 
 `update_benchmarks.yml` needs none of that, because released wheels are on PyPI:
 it moves the lock (`uv lock --upgrade-package vollo-compiler --upgrade-package
-vollo-torch`) and lets a normal `uv sync` follow.
+vollo-torch`) and lets a normal `uv sync --group benchmarks` follow.
 
 - The **lock file is part of the PR**, so merging it is what gives `uv run zoo`
   users the new compiler — and `ci.yml` runs the suite against the new SDK on
@@ -152,7 +159,7 @@ rather than replacing them.
 ```text
 vollo_model_zoo/
   models/*.py     one file per model — the actual content of the zoo
-  vm.py           compile + measure harness (vollo_info, CONFIGS, Result types, vollo_fn)
+  vm.py           compile + measure harness (vollo_info, CONFIGS, Result types)
   catalog.py      every model's SIZES as data, without importing torch; builds one size
   zoo.py          `zoo` CLI: run one model, print a table (`--markdown`) or JSON
   benchmark.py \
@@ -329,7 +336,8 @@ What that means here:
   cost is visible in the table.
 - `vollo_torch.Fp8Weights()` halves weight storage on the Versal boards.
 - Inputs/outputs are bf16 unless `to_nnir` gets `inputs_precisions` /
-  `outputs_precisions` — `vm.vollo_fn` is the one place here that does.
+  `outputs_precisions` — `vollo_fn` in `tests/test_approx.py` is the one place
+  here that does.
 - `gru.py` shows an accuracy trick (`sigmoid(-z)` over `1 - sigmoid(z)`);
   `tests/test_approx.py` builds higher-precision primitives (Newton–Raphson
   reciprocal) and measures their bit accuracy. Both repo-grown.

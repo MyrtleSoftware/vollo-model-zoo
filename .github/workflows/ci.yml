@@ -29,8 +29,11 @@ jobs:
         run: |
           uv lock --check
 
+      - name: Install dependencies
+        run: uv sync --all-groups
+
       - name: Run linting
-        run: uv run --all-extras pre-commit run --all-files
+        run: uv run --group dev pre-commit run --all-files
 
       - name: Run tests
-        run: TORCH_EXTENSIONS_DIR=$RUNNER_TEMP/torch_extensions uv run --all-extras pytest -x
+        run: TORCH_EXTENSIONS_DIR=$RUNNER_TEMP/torch_extensions uv run --group test pytest -x

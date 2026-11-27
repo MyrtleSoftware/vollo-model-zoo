@@ -5,17 +5,14 @@ version = "0.8.0"
 description = "Exemplar models for the Vollo SDK "
 readme = "README.md"
 requires-python = ">=3.13"
+
+# Only what `zoo` needs is here.
 dependencies = [
   "vollo-compiler",
   "vollo-torch",
   "beartype",
-  "torch",
-  "matplotlib",
-  "pandas",
-  "tqdm",
-  "packaging",
-  "numpy",
   "tabulate",
+  "torch",
 ]
 
 [project.scripts]
@@ -26,6 +23,10 @@ report = "vollo_model_zoo.report:main"
 
 [tool.uv]
 package = true
+# No group by default, so customers' `uv run zoo` gets the runtime alone. Devs
+# take every group (`.envrc` does: `layout uv --all-groups`), and CI takes what
+# each job needs.
+default-groups = []
 
 [tool.setuptools.packages.find]
 include = ["vollo_model_zoo*"]
@@ -34,19 +35,32 @@ include = ["vollo_model_zoo*"]
 addopts = "-v"
 
 [dependency-groups]
-dev = [
+# The `benchmark`, `plot` and `report` commands: the weekly benchmark workflow.
+benchmarks = [
+  "matplotlib",
+  "packaging",
+  "pandas",
+  "tqdm",
+]
+test = [
+  # Reference implementations for the mamba1/mamba2/nano-llm equivalence tests.
   "flash-linear-attention>=0.4.1",
-  "pre-commit>=4.5.1",
+  "numpy",
+  "packaging",
   "pytest>=9.0.2",
-  "ruff>=0.17.4",
   # Unpickles the nanochat tokenizer that `test_nano_llm.py`'s checkpoint tests
   # decode with. Only reachable when the internal checkpoint mount is present.
   "tiktoken>=0.12.0",
+]
+# Lint and editor tooling.
+dev = [
+  "pre-commit>=4.5.1",
+  "ruff>=0.17.4",
   "ty>=0.0.101",
 ]
 
 [tool.ruff]
-# Markdown code blocks are hand-aligned for reading (AGENTS.md); leave them be.
+# Markdown code blocks are hand-aligned for reading; leave them be.
 extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
@@ -57,5 +71,5 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# A model's filename is its CLI name, hyphens included (`zoo mlp-res-rms`).
+# A model's filename is its CLI name, hyphens included.
 "vollo_model_zoo/models/*.py" = ["N999"]

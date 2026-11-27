@@ -1649,51 +1649,62 @@ wheels = [
 name = "vollo-model-zoo"
 version = "0.8.0"
 source = { editable = "." }
+default-groups = []
 dependencies = [
     { name = "beartype" },
-    { name = "matplotlib" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pandas" },
     { name = "tabulate" },
     { name = "torch" },
-    { name = "tqdm" },
     { name = "vollo-compiler" },
     { name = "vollo-torch" },
 ]
 
 [package.dev-dependencies]
+benchmarks = [
+    { name = "matplotlib" },
+    { name = "packaging" },
+    { name = "pandas" },
+    { name = "tqdm" },
+]
 dev = [
-    { name = "flash-linear-attention" },
     { name = "pre-commit" },
-    { name = "pytest" },
     { name = "ruff" },
-    { name = "tiktoken" },
     { name = "ty" },
+]
+test = [
+    { name = "flash-linear-attention" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "pytest" },
+    { name = "tiktoken" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "beartype" },
-    { name = "matplotlib" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pandas" },
     { name = "tabulate" },
     { name = "torch" },
-    { name = "tqdm" },
     { name = "vollo-compiler" },
     { name = "vollo-torch" },
 ]
 
 [package.metadata.requires-dev]
+benchmarks = [
+    { name = "matplotlib" },
+    { name = "packaging" },
+    { name = "pandas" },
+    { name = "tqdm" },
+]
 dev = [
-    { name = "flash-linear-attention", specifier = ">=0.4.1" },
     { name = "pre-commit", specifier = ">=4.5.1" },
-    { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.17.4" },
-    { name = "tiktoken", specifier = ">=0.12.0" },
     { name = "ty", specifier = ">=0.0.101" },
+]
+test = [
+    { name = "flash-linear-attention", specifier = ">=0.4.1" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "tiktoken", specifier = ">=0.12.0" },
 ]
 
 [[package]]

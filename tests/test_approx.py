@@ -1,15 +1,48 @@
+from collections.abc import Callable
 from functools import cache
 
+import numpy as np
 import pytest
 import torch
+import vollo_compiler as vc
 from beartype import beartype
 from torch.utils.cpp_extension import load_inline
 from vollo_torch import Fp32Activations
 
-from vollo_model_zoo.vm import vollo_fn
+from vollo_model_zoo.vm import CONFIGS, _vollo_compile
+
+type Activation = Callable[[torch.Tensor], torch.Tensor]
 
 _MANTISSA = 23
 _EXP_SIGN = 9
+
+
+@cache
+@beartype
+def vollo_fn(fn: Activation, config: str) -> Activation:
+    """
+    `fn` compiled for and run on the Vollo VM, elementwise, on fp32 scalars.
+    """
+
+    class Model(torch.nn.Module):
+        def forward(self, x):
+            return fn(x)
+
+    program = _vollo_compile(
+        Model(),
+        torch.tensor([1.0]),
+        time_axis=None,
+        config=CONFIGS[config],
+        inputs_precisions=[vc.NumberFormat.FP32],
+        outputs_precisions=[vc.NumberFormat.FP32],
+    )
+    vm = program.to_vm(bit_accurate=True)
+
+    @np.vectorize
+    def run(x):
+        return vm.run(np.atleast_1d(x).astype(np.float32)).item()
+
+    return lambda x: torch.from_numpy(run(x.numpy()))
 
 
 @cache
